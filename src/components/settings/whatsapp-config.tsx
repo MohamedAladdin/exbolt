@@ -137,7 +137,7 @@ export function WhatsAppConfig() {
 
   const webhookUrl =
     typeof window !== 'undefined'
-      ? `${window.location.origin}/api/whatsapp/webhook`
+      ? `${window.location.origin}/api/webhooks/meta`
       : '';
 
   const fetchConfig = useCallback(async (acctId: string) => {
@@ -865,7 +865,7 @@ export function WhatsAppConfig() {
                   readOnly
                   value={webhookUrl}
                   // Must be LTR: the page is RTL in Arabic and bidi reorders
-                  // the path segments, rendering "/api/whatsapp/webhook" as
+                  // the path segments, rendering "/api/webhooks/meta" as
                   // "/whatsapp/api/webhook" — which customers then paste into
                   // Meta and get a 404.
                   dir="ltr"

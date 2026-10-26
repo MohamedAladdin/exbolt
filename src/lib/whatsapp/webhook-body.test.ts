@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { MAX_WEBHOOK_BODY_BYTES, readCappedBody } from './webhook-body'
 
 function post(body: BodyInit | null, headers: Record<string, string> = {}) {
-  return new Request('http://localhost/api/whatsapp/webhook', {
+  return new Request('http://localhost/api/webhooks/meta', {
     method: 'POST',
     headers,
     body,

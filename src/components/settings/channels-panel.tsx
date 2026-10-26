@@ -97,8 +97,8 @@ export function ChannelsPanel() {
 
   const webhookUrl =
     typeof window !== "undefined"
-      ? `${window.location.origin}/api/whatsapp/webhook`
-      : "/api/whatsapp/webhook";
+      ? `${window.location.origin}/api/webhooks/meta`
+      : "/api/webhooks/meta";
 
   const copyWebhook = useCallback(async () => {
     try {

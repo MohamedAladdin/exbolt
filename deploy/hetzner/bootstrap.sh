@@ -675,7 +675,7 @@ EOF
    2. Point DNS at this host, then obtain TLS:  certbot certonly --webroot ...
    3. Start self-hosted Supabase in ${SUPABASE_DIR}
    4. git clone the app into ${APP_DIR}, write .env.production, compose up
-   5. Register the Meta webhook:  https://<your-domain>/api/whatsapp/webhook
+   5. Register the Meta webhook:  https://<your-domain>/api/webhooks/meta
 ===============================================================================
 EOF
 }

@@ -28,7 +28,7 @@ brands. Nothing to configure beyond a single-tenant install.
 
 1. Create one Meta App and add the WhatsApp product. Under
    **WhatsApp → Configuration** set the callback URL to
-   `https://<your host>/api/whatsapp/webhook` and subscribe to the
+   `https://<your host>/api/webhooks/meta` and subscribe to the
    `messages` field. Set `META_APP_SECRET` to this app's secret.
 2. For each WABA, make sure the Business portfolio that owns it has
    access to the app (Business Settings → Accounts → WhatsApp accounts →
@@ -50,7 +50,7 @@ Constraints:
   route refuses a `phone_number_id` already claimed by another account.
 * The **verify token** typed into the Meta App's webhook settings must
   equal the verify token saved by at least one wacrm account; the
-  handshake (`GET /api/whatsapp/webhook`) accepts any account's token.
+  handshake (`GET /api/webhooks/meta`) accepts any account's token.
   Using the same string in every account keeps this simple.
 
 ## Setup B — WABAs under different Meta Apps
@@ -61,7 +61,7 @@ another business's WABA. Each app signs webhooks with its own secret,
 so wacrm needs all of them.
 
 1. In **every** Meta App, set the same callback URL
-   (`https://<your host>/api/whatsapp/webhook`) and subscribe to
+   (`https://<your host>/api/webhooks/meta`) and subscribe to
    `messages`. Use a verify token that at least one wacrm account has
    saved (see the note above).
 2. Set `META_APP_SECRET` to the comma-separated list of all those apps'

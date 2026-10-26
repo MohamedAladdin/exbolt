@@ -663,7 +663,7 @@ Messenger / Instagram equivalents, which share the same callback):
 
 | Field | Value |
 |---|---|
-| Callback URL | `https://crm.example.com/api/whatsapp/webhook` |
+| Callback URL | `https://crm.example.com/api/webhooks/meta` |
 | Verify token | the exact value of `META_WEBHOOK_VERIFY_TOKEN` |
 
 Subscribe to the **`messages`** field on the WABA; for Messenger/Instagram
@@ -673,7 +673,7 @@ The handshake is a `GET` with `hub.mode=subscribe`; test it yourself so a failur
 is not ambiguous:
 
 ```bash
-curl -sS "https://crm.example.com/api/whatsapp/webhook?hub.mode=subscribe&hub.verify_token=${META_WEBHOOK_VERIFY_TOKEN}&hub.challenge=42"
+curl -sS "https://crm.example.com/api/webhooks/meta?hub.mode=subscribe&hub.verify_token=${META_WEBHOOK_VERIFY_TOKEN}&hub.challenge=42"
 # 42
 ```
 

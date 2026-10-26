@@ -8,7 +8,7 @@
  *   - message_template_quality_update     — GREEN / YELLOW / RED quality score
  *   - message_template_components_update  — Meta auto-modified the template
  *
- * The route handler at /api/whatsapp/webhook receives every change and
+ * The route handler at /api/webhooks/meta receives every change and
  * delegates here when `change.field` starts with `message_template_`.
  *
  * ─── Setup requirement (out-of-band) ──────────────────────────────

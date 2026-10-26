@@ -8,7 +8,7 @@ Supabase project ref: `lrhqeaihiqxvltzkhqre`
 - Public env is correct: anon key baked in the client bundle is `role: anon` for ref
   `lrhqeaihiqxvltzkhqre` (no service_role leak in the browser).
 - Server routes answer: `/api/account` 401, `/api/v1/me` 401 (missing API key),
-  `/api/whatsapp/webhook` 403 (verify token mismatch) — app code runs.
+  `/api/webhooks/meta` 403 (verify token mismatch) — app code runs.
 - BLOCKER: the database schema is NOT installed on the Supabase project —
   `GET /rest/v1/profiles` → `PGRST205 Could not find the table 'public.profiles'`.
   Same for `accounts`. Login/signup therefore cannot work.

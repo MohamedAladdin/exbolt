@@ -2,7 +2,7 @@
  * Persist parsed Messenger / Instagram inbound events.
  *
  * This is the non-WhatsApp twin of the WhatsApp branch in
- * `src/app/api/whatsapp/webhook/route.ts`. It deliberately reuses the
+ * `src/app/api/webhooks/meta/route.ts`. It deliberately reuses the
  * same invariants so a Messenger thread behaves exactly like a WhatsApp
  * one in the inbox:
  *

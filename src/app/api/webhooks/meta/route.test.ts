@@ -298,7 +298,7 @@ const TEXT_MESSAGE = {
 const LEGACY_CONTACTS = [{ wa_id: '15551230000', profile: { name: 'Ada' } }]
 
 function signedPost(body: BodyInit) {
-  return new Request('http://localhost/api/whatsapp/webhook', {
+  return new Request('http://localhost/api/webhooks/meta', {
     method: 'POST',
     headers: { 'x-hub-signature-256': 'sha256=stub' },
     body,
@@ -1090,7 +1090,7 @@ describe('inbound webhook: oversized body cap', () => {
 
   it('answers 413 from the declared Content-Length alone', async () => {
     const before = h.state.afterCallbacks.length
-    const req = new Request('http://localhost/api/whatsapp/webhook', {
+    const req = new Request('http://localhost/api/webhooks/meta', {
       method: 'POST',
       headers: { 'content-length': String(MAX_WEBHOOK_BODY_BYTES + 1), 'x-hub-signature-256': 'sha256=stub' },
       body: '{}',

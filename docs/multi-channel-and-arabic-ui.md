@@ -28,7 +28,7 @@ idempotency key: a Meta retry can never fork a second thread for the same
 person. WhatsApp keeps using `phone` + `wa_user_id`, untouched.
 
 **Inbound.** The Meta app delivers `object: "page"` / `object: "instagram"` to
-the *existing* callback URL (`/api/whatsapp/webhook`), so the channel is decided
+the *existing* callback URL (`/api/webhooks/meta`), so the channel is decided
 from the payload itself (`channelForWebhookObject`). The route acks immediately
 and processes in `after()`, exactly like the WhatsApp path. Parsing is pure and
 unit-tested (`src/lib/channels/inbound.ts`); persistence
