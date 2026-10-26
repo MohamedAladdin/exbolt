@@ -36,6 +36,13 @@ function LoginPageInner() {
   // account. After a successful sign-in we send them to the join
   // page to accept rather than to /dashboard.
   const inviteToken = searchParams.get("invite");
+  // Where to go after signing in. Middleware sets this when it bounces a
+  // protected URL (e.g. /admin) to /login, so an admin who opens the panel
+  // while signed out lands on the panel — not on the tenant dashboard.
+  // Only same-origin absolute paths are honoured.
+  const rawNext = searchParams.get("next");
+  const nextPath =
+    rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : null;
   const t = useTranslations("LoginPage");
   // Set by /auth/callback when an emailed link (confirmation, password
   // reset) could not be turned into a session — see src/lib/auth/callback.ts.
@@ -79,7 +86,7 @@ function LoginPageInner() {
     // reload the invite-accept flow already uses in join/[token].
     const destination = inviteToken
       ? `/join/${encodeURIComponent(inviteToken)}`
-      : "/dashboard";
+      : (nextPath ?? "/dashboard");
     window.location.href = destination;
   };
 

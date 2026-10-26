@@ -7,7 +7,7 @@ import { localeDirection } from "@/i18n/config";
 import { brandName, vendorSuffix, VENDOR_NAME, VENDOR_URL } from "@/lib/branding";
 import { useEntitlements } from "@/hooks/use-entitlements";
 import type { Feature } from "@/lib/plans/entitlements";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useTotalUnread } from "@/hooks/use-total-unread";
@@ -23,6 +23,7 @@ import {
   Radio,
   Settings,
   Shield,
+  ShieldAlert,
   User,
   UserCog,
   Users,
@@ -139,6 +140,24 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
   const allowedNavItems = navItems.filter(
     (item) => !item.feature || !entitlements || entitlements.features[item.feature] !== false,
   );
+  // Platform-admin link. Probed once per session: a tenant admin must never
+  // see it, and a normal user must not learn that /admin exists.
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
+  useEffect(() => {
+    let active = true;
+    fetch('/api/admin/session', { cache: 'no-store' })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (active && data?.admin === true) setIsPlatformAdmin(true);
+      })
+      .catch(() => {
+        /* silent: the row simply stays hidden */
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const totalUnread = useTotalUnread();
   const unreadNotifications = useUnreadNotifications();
   // Only surface the account-name strip when it actually carries
@@ -312,6 +331,17 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
           <div className="my-4 border-t border-border" />
 
           <ul className="flex flex-col gap-1">
+            {isPlatformAdmin ? (
+              <li>
+                <Link
+                  href="/admin"
+                  className="flex items-center gap-3 rounded-lg border border-dashed border-border px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:py-2"
+                >
+                  <ShieldAlert className="h-4 w-4" />
+                  <span className="flex-1">{t('superAdmin')}</span>
+                </Link>
+              </li>
+            ) : null}
             {bottomNavItems.map((item) => {
               const isActive = pathname.startsWith(item.href);
               return (

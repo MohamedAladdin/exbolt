@@ -42,7 +42,8 @@
     "menuProfile": "Profile",
     "menuSettings": "Settings",
     "menuSignOut": "Sign out",
-    "poweredBy": "Powered by"
+    "poweredBy": "Powered by",
+    "superAdmin": "Super-admin panel"
   },
   "Header": {
     "dashboard": "Dashboard",
@@ -1888,6 +1889,29 @@
       "notLive": "not live",
       "apiCredentialsTitle": "API Credentials",
       "apiCredentialsDesc": "Enter your Meta WhatsApp Business API credentials.",
+      "oauth": {
+        "connect": "Connect with Facebook",
+        "connectHint": "Link your WhatsApp Business account and phone number in a few clicks. The access token is read for you and stored encrypted.",
+        "manualToggle": "Set up manually",
+        "manualHint": "Already have a permanent token? Enter the ids and token yourself.",
+        "connected": "WhatsApp connected. New messages will arrive in the inbox.",
+        "error": {
+          "state": "The connection request expired or was started in another browser. Please try again.",
+          "state_expired": "The connection request took too long. Please start again from Settings.",
+          "denied": "You cancelled the Facebook authorization.",
+          "forbidden": "Only an admin on an active plan can connect a channel.",
+          "plan": "Your plan does not include this feature. Upgrade to connect a channel.",
+          "no_pages": "That Facebook account does not manage any Pages. Create a Page, or sign in with an account that does.",
+          "no_instagram": "None of those Pages has a linked Instagram business account.",
+          "linked_elsewhere": "That Page is already connected to another account.",
+          "number_taken": "That WhatsApp number is already connected to another account.",
+          "phone_not_found": "The selected number is not listed under that WhatsApp Business account.",
+          "setup": "Meta did not return the WhatsApp business account and number. Please start the connection again.",
+          "exchange": "Meta rejected the authorization. Please try again.",
+          "db": "The connection could not be saved. Please try again.",
+          "generic": "Could not connect the channel. Please try again."
+        }
+      },
       "phoneNumberId": "Phone Number ID",
       "wabaId": "WhatsApp Business Account ID",
       "accessToken": "Permanent Access Token",
@@ -2295,6 +2319,40 @@
         "messenger": "Facebook Page direct messages",
         "instagram": "Instagram direct messages"
       },
+      "oauth": {
+        "connect": "Connect with Facebook",
+        "connectHint": "Sign in with the Facebook account that manages your Page. We read the Page token for you and store it encrypted — no copy-paste.",
+        "manualToggle": "Set up manually",
+        "manualHint": "Already have a Page token? Enter the ids and token yourself.",
+        "connected": "Channel connected. New messages will arrive in the shared inbox.",
+        "error": {
+          "state": "The connection request expired or was started in another browser. Please try again.",
+          "state_expired": "The connection request took too long. Please start again from Settings.",
+          "denied": "You cancelled the Facebook authorization.",
+          "forbidden": "Only an admin on an active plan can connect a channel.",
+          "plan": "Your plan does not include this feature. Upgrade to connect a channel.",
+          "no_pages": "That Facebook account does not manage any Pages. Create a Page, or sign in with an account that does.",
+          "no_instagram": "None of those Pages has a linked Instagram business account.",
+          "linked_elsewhere": "That Page is already connected to another account.",
+          "number_taken": "That WhatsApp number is already connected to another account.",
+          "phone_not_found": "The selected number is not listed under that WhatsApp Business account.",
+          "setup": "Meta did not return the WhatsApp business account and number. Please start the connection again.",
+          "exchange": "Meta rejected the authorization. Please try again.",
+          "db": "The connection could not be saved. Please try again.",
+          "generic": "Could not connect the channel. Please try again."
+        }
+      },
+      "choose": {
+        "title": "Choose a Page",
+        "description": "That Facebook account manages more than one Page. Pick the one to connect.",
+        "choose": "Connect this Page",
+        "cancel": "Cancel",
+        "expiredTitle": "This request expired",
+        "expiredDesc": "For security we only keep a pending authorization for ten minutes. Start the connection again from Settings.",
+        "noneTitle": "Nothing to connect",
+        "noneDesc": "None of those Pages can serve this channel. Link an Instagram business account to the Page, then try again.",
+        "backToSettings": "Back to Settings"
+      },
       "adminOnly": "Only admins can connect or disconnect channels."
     },
     "branding": {
@@ -2387,7 +2445,9 @@
     "creating": "Creating account...",
     "submit": "Create account",
     "haveAccount": "Already have an account?",
-    "signIn": "Sign in"
+    "signIn": "Sign in",
+    "registrationClosedTitle": "Registration is closed",
+    "registrationClosedDefault": "New sign-ups are disabled right now. If you were invited or need an account, please contact the platform team."
   },
   "ForgotPasswordPage": {
     "checkEmailTitle": "Check your email",
@@ -2685,7 +2745,10 @@
         "admin": "admin",
         "agent": "agent",
         "viewer": "viewer"
-      }
+      },
+      "accountSuspended": "This account is suspended. Please contact support.",
+      "accountBanned": "This account is blocked. Please contact support.",
+      "accountArchived": "This account is archived. Data is retained but access is disabled."
     },
     "rateLimitExceeded": "Rate limit exceeded",
     "send": {
@@ -3065,5 +3128,13 @@
       "metaApiStatus": "Meta API error: {status}",
       "syncFailed": "Failed to sync templates"
     }
+  },
+  "AccountBlocked": {
+    "title": "Access to this account is disabled",
+    "suspended": "This account is suspended. Your data is intact and access returns as soon as the account is reactivated.",
+    "banned": "This account is blocked. Your data is intact, but access is disabled pending review.",
+    "archived": "This account is archived. Your data is retained and access is disabled.",
+    "contact": "Contact",
+    "signOut": "Sign out"
   }
 }
