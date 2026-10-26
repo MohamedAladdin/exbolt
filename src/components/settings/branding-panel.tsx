@@ -9,6 +9,7 @@ import { Eye, Loader2, RotateCcw, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { createClient } from "@/lib/supabase/client";
 import { brandName, composeBrandTitle, vendorSuffix, VENDOR_NAME } from "@/lib/branding";
+import { ExcalMark } from "@/components/brand/excal-mark";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -110,9 +111,7 @@ export function BrandingPanel() {
               {t("preview")}
             </p>
             <div className="mt-2 flex items-center gap-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <Sparkles className="h-4 w-4" />
-              </span>
+              <ExcalMark className="h-8 w-8 shrink-0" />
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-foreground">
                   {brandName(draft)}

@@ -15,7 +15,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { MessageSquare, CheckCircle, UsersRound, Lock } from 'lucide-react';
+import { ExcalMark } from '@/components/brand/excal-mark';
+import { CheckCircle, UsersRound, Lock } from 'lucide-react';
 
 // `useSearchParams` opts the component out of static prerendering
 // unless wrapped in Suspense — same pattern as /login.
@@ -209,13 +210,13 @@ function SignupPageInner() {
     <div className="bg-background flex min-h-screen items-center justify-center px-4">
       <Card className="border-border bg-card w-full max-w-md">
         <CardHeader className="items-center text-center">
-          <div className="bg-primary/10 mb-2 flex h-12 w-12 items-center justify-center rounded-xl">
-            {inviteToken ? (
+          {inviteToken ? (
+            <div className="bg-primary/10 mb-2 flex h-12 w-12 items-center justify-center rounded-xl">
               <UsersRound className="text-primary h-6 w-6" />
-            ) : (
-              <MessageSquare className="text-primary h-6 w-6" />
-            )}
-          </div>
+            </div>
+          ) : (
+            <ExcalMark className="mb-2 h-12 w-12" />
+          )}
           <CardTitle className="text-foreground text-xl">
             {inviteToken ? t('titleJoin') : t('title')}
           </CardTitle>
