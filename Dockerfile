@@ -47,6 +47,11 @@ ENV NODE_ENV=production \
 RUN addgroup -S nextjs && adduser -S nextjs -G nextjs
 
 COPY --from=builder --chown=nextjs:nextjs /app/.next/standalone ./
+# Next's standalone output tracing misses `nodemailer` (the mailer is pulled in
+# through the admin email helper, not a static route import), so the runtime
+# image would throw MODULE_NOT_FOUND on the first invoice/reminder. Ship the
+# package explicitly — it has zero dependencies of its own.
+COPY --from=builder --chown=nextjs:nextjs /app/node_modules/nodemailer ./node_modules/nodemailer
 COPY --from=builder --chown=nextjs:nextjs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nextjs /app/public ./public
 
