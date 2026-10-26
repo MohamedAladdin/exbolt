@@ -242,4 +242,158 @@ html[data-theme="rose"] {
   html {
     @apply font-sans;
   }
+
+  /* ============================================================
+   * TYPE SCALE — user-controlled in Settings → Appearance.
+   *
+   * Everything in the app is sized in rem, so scaling the root
+   * font-size scales the whole UI coherently. `md` is the browser
+   * default, so an untouched install looks exactly like upstream.
+   * ============================================================ */
+  html[data-font-size="sm"] {
+    font-size: 14px;
+  }
+  html[data-font-size="md"] {
+    font-size: 16px;
+  }
+  html[data-font-size="lg"] {
+    font-size: 18px;
+  }
+  html[data-font-size="xl"] {
+    font-size: 20px;
+  }
+
+  /* ============================================================
+   * ARABIC TYPOGRAPHY
+   *
+   * The Latin stack (Inter) has no Arabic coverage, so without this an
+   * Arabic UI falls back to whatever the OS ships — usually a serif
+   * Naskh that is unreadable at 13px in a dense table. The three
+   * families below are self-hosted through next/font (no CSP hole, no
+   * third-party request), and the family choice is the user's, from
+   * Settings → Appearance.
+   *
+   * Arabic needs more line-height than Latin at the same size (tall
+   * ascenders + descenders) and must never be letter-spaced.
+   * ============================================================ */
+  html[lang="ar"] {
+    letter-spacing: 0;
+    /* Headings use --font-heading, which is not inlined by @theme, so it can
+       safely follow the Arabic choice. The body stack is set explicitly
+       below because `font-sans` is inlined at build time (see @theme inline
+       at the top of this file) and therefore ignores a runtime override. */
+    --font-heading: var(--font-arabic-cairo);
+  }
+  html[lang="ar"][data-arabic-font="tajawal"] {
+    --font-heading: var(--font-arabic-tajawal);
+  }
+  html[lang="ar"][data-arabic-font="kufi"] {
+    --font-heading: var(--font-arabic-kufi);
+  }
+  html[lang="ar"] body,
+  html[lang="ar"] .font-sans {
+    font-family: var(--font-arabic-cairo), "Segoe UI", system-ui, sans-serif;
+  }
+  html[lang="ar"][data-arabic-font="tajawal"] body,
+  html[lang="ar"][data-arabic-font="tajawal"] .font-sans {
+    font-family: var(--font-arabic-tajawal), "Segoe UI", system-ui, sans-serif;
+  }
+  html[lang="ar"][data-arabic-font="kufi"] body,
+  html[lang="ar"][data-arabic-font="kufi"] .font-sans {
+    font-family: var(--font-arabic-kufi), "Segoe UI", system-ui, sans-serif;
+  }
+  html[lang="ar"] body {
+    line-height: 1.7;
+  }
+  /* Digits, phone numbers and codes stay LTR and tabular even inside an
+   * otherwise RTL sentence. */
+  html[dir="rtl"] .tabular-nums,
+  html[dir="rtl"] [dir="ltr"] {
+    font-feature-settings: "tnum" 1;
+  }
+}
+/* ============================================================
+ * ARABIC FONT — deliberately OUTSIDE any @layer.
+ *
+ * This has to be unlayered, not part of `@layer base` like the rest of
+ * the typography block. Tailwind emits `font-sans` into the utilities
+ * layer, and a layered rule loses to utilities regardless of specificity
+ * — which is why an earlier `html[lang="ar"] body` rule in base silently
+ * did nothing and Arabic kept rendering in Inter (no Arabic coverage, so
+ * the OS substituted an unreadable fallback).
+ * Unlayered CSS outranks every layer, so these do apply.
+ * ============================================================ */
+html[lang="ar"] body,
+html[lang="ar"] .font-sans,
+html[lang="ar"] input,
+html[lang="ar"] textarea,
+html[lang="ar"] select,
+html[lang="ar"] button {
+  font-family: var(--font-arabic-cairo), "Segoe UI", system-ui, sans-serif;
+}
+
+html[lang="ar"][data-arabic-font="tajawal"] body,
+html[lang="ar"][data-arabic-font="tajawal"] .font-sans,
+html[lang="ar"][data-arabic-font="tajawal"] input,
+html[lang="ar"][data-arabic-font="tajawal"] textarea,
+html[lang="ar"][data-arabic-font="tajawal"] select,
+html[lang="ar"][data-arabic-font="tajawal"] button {
+  font-family: var(--font-arabic-tajawal), "Segoe UI", system-ui, sans-serif;
+}
+
+html[lang="ar"][data-arabic-font="kufi"] body,
+html[lang="ar"][data-arabic-font="kufi"] .font-sans,
+html[lang="ar"][data-arabic-font="kufi"] input,
+html[lang="ar"][data-arabic-font="kufi"] textarea,
+html[lang="ar"][data-arabic-font="kufi"] select,
+html[lang="ar"][data-arabic-font="kufi"] button {
+  font-family: var(--font-arabic-kufi), "Segoe UI", system-ui, sans-serif;
+}
+
+/* ============================================================
+ * ARABIC READING COMFORT — unlayered (see the note above).
+ *
+ * Arabic letterforms are shorter than Latin at the same em size and carry
+ * more diacritic/descender detail, so the English ramp reads cramped and
+ * "small" in Arabic. Each step of the type scale is lifted by one pixel in
+ * Arabic only; because the whole UI is rem-based this scales layout, inputs
+ * and tables coherently instead of fighting them.
+ *
+ * Letter-spacing is forced off on tracked utilities: Arabic is a connected
+ * script, so `tracking-wide` / `uppercase` labels break the word joins and
+ * look like a rendering bug.
+ * ============================================================ */
+html[lang="ar"][data-font-size="sm"] { font-size: 15px; }
+html[lang="ar"][data-font-size="md"] { font-size: 17px; }
+html[lang="ar"][data-font-size="lg"] { font-size: 19px; }
+html[lang="ar"][data-font-size="xl"] { font-size: 21px; }
+
+html[lang="ar"] body {
+  line-height: 1.8;
+}
+
+html[lang="ar"] h1,
+html[lang="ar"] h2,
+html[lang="ar"] h3,
+html[lang="ar"] h4,
+html[lang="ar"] h5 {
+  line-height: 1.45;
+  letter-spacing: 0;
+}
+
+html[lang="ar"] .tracking-tight,
+html[lang="ar"] .tracking-wide,
+html[lang="ar"] .tracking-wider,
+html[lang="ar"] .tracking-widest,
+html[lang="ar"] .uppercase {
+  letter-spacing: 0 !important;
+}
+
+/* Numbers stay Latin-shaped and tabular inside Arabic text (phone numbers,
+ * counters, money) — inheriting an Arabic-Indic face there reads as data
+ * corruption to most users in Egypt. */
+html[lang="ar"] .tabular-nums,
+html[lang="ar"] time {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
 }

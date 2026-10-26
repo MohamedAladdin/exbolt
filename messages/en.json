@@ -41,7 +41,8 @@
     "defaultAvatar": "Avatar",
     "menuProfile": "Profile",
     "menuSettings": "Settings",
-    "menuSignOut": "Sign out"
+    "menuSignOut": "Sign out",
+    "poweredBy": "Powered by"
   },
   "Header": {
     "dashboard": "Dashboard",
@@ -330,7 +331,8 @@
   },
   "Inbox": {
     "page": {
-      "whatsappNotConnected": "WhatsApp® is not connected. Go to Settings to connect your account."
+      "whatsappNotConnected": "WhatsApp® is not connected. Go to Settings to connect your account.",
+      "openConversationFailed": "Could not open that conversation."
     },
     "conversationList": {
       "searchPlaceholder": "Search conversations...",
@@ -348,7 +350,9 @@
       "clearAll": "Clear all",
       "noConversations": "No conversations found",
       "noMessagesYet": "No messages yet",
-      "unknown": "Unknown"
+      "unknown": "Unknown",
+      "allChannels": "All",
+      "channelFilterLabel": "Filter by channel"
     },
     "messageThread": {
       "backToConversations": "Back to conversations",
@@ -528,6 +532,20 @@
       "resumed": "AI resumed.",
       "updateError": "Couldn’t update the AI assistant.",
       "networkError": "Couldn’t reach the server."
+    },
+    "contactPeek": {
+      "triggerTitle": "Show contact",
+      "loading": "Looking up this number…",
+      "lookupFailed": "Could not look up this number.",
+      "unknownName": "Unknown number",
+      "notFoundHint": "Not in your contacts yet. Start a chat and they are added automatically.",
+      "openChat": "Open conversation",
+      "startChat": "Chat now",
+      "openContact": "Open contact",
+      "chatOpened": "Conversation opened",
+      "contactCreated": "Contact added and conversation opened",
+      "chatFailed": "Could not start the conversation.",
+      "incompleteNumber": "This number is missing a country code."
     }
   },
   "Contacts": {
@@ -1964,7 +1982,10 @@
       "deals": "Deals & currency",
       "inbox": "Inbox",
       "members": "Team members",
-      "api": "API keys"
+      "api": "API keys",
+      "channels": "Channels",
+      "branding": "Branding",
+      "plan": "Plan"
     },
     "groups": {
       "account": "Account",
@@ -2033,7 +2054,20 @@
       "active": "Active",
       "accentColor": "Accent color",
       "useTheme": "Use {name} theme",
-      "themeId": "Theme id: {id}"
+      "themeId": "Theme id: {id}",
+      "language": "Language",
+      "languageDescription": "Changes the whole interface, including the reading direction.",
+      "typography": "Typography",
+      "arabicFont": "Arabic font",
+      "arabicFontHint": "Used when the interface language is Arabic.",
+      "fontSize": "Text size",
+      "fontSizeHint": "Scales the whole interface.",
+      "size": {
+        "sm": "Small",
+        "md": "Default",
+        "lg": "Large",
+        "xl": "Extra large"
+      }
     },
     "security": {
       "title": "Login & security",
@@ -2222,6 +2256,114 @@
       "textPlaceholder": "The message text to insert",
       "cancel": "Cancel",
       "save": "Save"
+    },
+    "channels": {
+      "title": "Channels",
+      "description": "Connect Facebook Messenger and Instagram DMs to the same inbox as WhatsApp. Each channel keeps its own threads, so nothing gets mixed.",
+      "webhookTitle": "Webhook",
+      "webhookDesc": "Paste this URL in the Meta app dashboard (Webhooks → Callback URL) and subscribe to the messages field.",
+      "copy": "Copy",
+      "copied": "Copied",
+      "copyFailed": "Could not copy",
+      "webhookHint": "The verify token is the app-level META_WEBHOOK_VERIFY_TOKEN set in the environment.",
+      "connected": "Connected",
+      "notConnected": "Not connected",
+      "disconnect": "Disconnect",
+      "disconnectConfirm": "Disconnect this channel? Existing conversations stay, but new messages stop arriving.",
+      "disconnected": "Channel disconnected",
+      "disconnectFailed": "Could not disconnect",
+      "loadFailed": "Could not load channels",
+      "saveFailed": "Could not save",
+      "saved": "Channel connected",
+      "saving": "Saving…",
+      "connect": "Connect",
+      "reconnect": "Reconnect",
+      "tokenLabel": "Page access token",
+      "tokenHint": "Long-lived Page token with pages_messaging and instagram_basic permissions. Stored encrypted.",
+      "messengerIdLabel": "Facebook Page ID",
+      "messengerIdPlaceholder": "e.g. 1029384756",
+      "messengerIdHint": "Page settings → About → Page ID.",
+      "instagramIdLabel": "Instagram business account ID",
+      "instagramIdPlaceholder": "e.g. 17841400000000000",
+      "instagramIdHint": "The Instagram account must be professional and linked to the same Page.",
+      "subscribeWarning": "Connected, but Meta refused the webhook subscription: {error}. Subscribe manually in the Meta dashboard.",
+      "channel": {
+        "messenger": "Messenger",
+        "instagram": "Instagram"
+      },
+      "channelDesc": {
+        "messenger": "Facebook Page direct messages",
+        "instagram": "Instagram direct messages"
+      },
+      "adminOnly": "Only admins can connect or disconnect channels."
+    },
+    "branding": {
+      "title": "Branding",
+      "description": "Set the system name your team sees in the sidebar and the browser tab.",
+      "systemName": "System name",
+      "systemNameDesc": "Shown in the sidebar and the browser title of every page.",
+      "placeholder": "e.g. نظام التواصل",
+      "hint": "Up to 60 characters. Leave empty to use the default product name.",
+      "preview": "Preview",
+      "tabTitle": "Browser tab",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Branding updated",
+      "saveFailed": "Could not save the name",
+      "reset": "Reset to default",
+      "adminOnly": "Only admins can change the system name.",
+      "creditNote": "The vendor credit “by {vendor}” is appended automatically. It is part of the licence and cannot be removed."
+    },
+    "plan": {
+      "title": "Plan",
+      "description": "Your current subscription, its limits, and the features it unlocks.",
+      "currentPlan": "Current plan",
+      "monthly": "Monthly price",
+      "annual": "Annual price",
+      "billing": "Billing",
+      "interval": {
+        "monthly": "Monthly",
+        "annual": "Annual"
+      },
+      "status": {
+        "trial": "Trial",
+        "active": "Active",
+        "past_due": "Past due",
+        "canceled": "Canceled",
+        "suspended": "Suspended"
+      },
+      "notEntitled": "This subscription is not active, so sending and editing are disabled. Contact us to reactivate it.",
+      "limits": "Limits",
+      "features": "Features",
+      "featuresDesc": "What this plan unlocks. Sections your plan does not include are hidden from the menu.",
+      "loadFailed": "Could not load the plan.",
+      "billingNote": "Invoices and plan changes are handled by",
+      "limit": {
+        "team_members": "Team members",
+        "broadcast_monthly": "Broadcast messages / month",
+        "channels": "Channels",
+        "ai_agents": "AI agents"
+      },
+      "feature": {
+        "inbox": "Shared inbox",
+        "contacts": "Contacts",
+        "pipelines": "Pipelines",
+        "broadcasts": "Broadcast campaigns",
+        "automations": "Automations",
+        "ai_suggest": "AI suggested replies",
+        "ai_agent": "Full AI agent",
+        "ai_knowledge": "AI knowledge base",
+        "flows": "Visual flow builder",
+        "reports": "Basic reports",
+        "reports_advanced": "Advanced reports & team performance",
+        "exports": "Excel export",
+        "multi_channel": "Messenger & Instagram",
+        "integrations": "Integrations (Sheets, Odoo, Zoho, Shopify)",
+        "api": "Full API",
+        "webhooks": "Webhooks",
+        "team_roles": "Members, roles & permissions",
+        "branches": "Multiple branches"
+      }
     }
   },
   "SignupPage": {

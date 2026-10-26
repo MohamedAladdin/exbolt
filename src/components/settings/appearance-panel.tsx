@@ -1,11 +1,22 @@
 "use client";
 
-import { Check, Moon, Palette, SunMoon, Sun } from "lucide-react";
+import { useCallback, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Check, Languages, Moon, Palette, SunMoon, Sun, Type } from "lucide-react";
 
 import { useTheme } from "@/hooks/use-theme";
+import { useUiPrefs } from "@/hooks/use-ui-prefs";
 import { MODES, THEMES, type Mode, type ThemeId } from "@/lib/themes";
+import {
+  ARABIC_FONTS,
+  ARABIC_FONT_LABELS,
+  FONT_SIZES,
+  type ArabicFont,
+  type FontSize,
+} from "@/lib/ui-prefs";
+import { LOCALES, LOCALE_LABELS, localeDirection, type Locale } from "@/i18n/config";
 import { cn } from "@/lib/utils";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { SettingsPanelHead } from "./settings-panel-head";
 
 /**
@@ -22,7 +33,41 @@ import { SettingsPanelHead } from "./settings-panel-head";
  */
 export function AppearancePanel() {
   const { theme, setTheme, mode, setMode } = useTheme();
+  const { arabicFont, setArabicFont, fontSize, setFontSize } = useUiPrefs();
   const t = useTranslations("Settings.appearance");
+  const currentLocale = useLocale();
+  const router = useRouter();
+  const [pendingLocale, setPendingLocale] = useState<Locale | null>(null);
+  const [, startTransition] = useTransition();
+
+  /**
+   * Switch the UI language.
+   *
+   * The locale is resolved server-side from a cookie, so the flow is:
+   * persist the choice → paint `lang`/`dir` optimistically (instant
+   * feedback, correct direction before the server answers) → refresh the
+   * server components so every string re-renders in the new catalogue.
+   * No full reload, so the panel keeps its scroll position.
+   */
+  const changeLocale = useCallback(
+    async (next: Locale) => {
+      if (next === currentLocale || pendingLocale) return;
+      setPendingLocale(next);
+      try {
+        await fetch("/api/locale", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ locale: next }),
+        });
+        document.documentElement.lang = next;
+        document.documentElement.dir = localeDirection(next);
+        startTransition(() => router.refresh());
+      } finally {
+        setPendingLocale(null);
+      }
+    },
+    [currentLocale, pendingLocale, router],
+  );
 
   return (
     <section className="max-w-3xl animate-in fade-in-50 duration-200">
@@ -31,7 +76,135 @@ export function AppearancePanel() {
         description={t("description")}
       />
 
+      {/* Language first: it decides the direction of everything below. */}
       <div className="space-y-4">
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+          <Languages className="size-4 text-muted-foreground" />
+          {t("language")}
+        </h3>
+        <p className="-mt-2 text-xs text-muted-foreground">{t("languageDescription")}</p>
+
+        <div
+          role="radiogroup"
+          aria-label={t("language")}
+          className="grid max-w-md grid-cols-2 gap-3 sm:grid-cols-3"
+        >
+          {LOCALES.map((locale) => {
+            const isActive = locale === currentLocale;
+            const isPending = pendingLocale === locale;
+            return (
+              <button
+                key={locale}
+                type="button"
+                role="radio"
+                aria-checked={isActive}
+                onClick={() => void changeLocale(locale)}
+                className={cn(
+                  "flex items-center justify-between gap-2 rounded-lg border bg-card px-3 py-2.5 text-start text-sm transition-colors",
+                  isActive
+                    ? "border-primary/60 ring-2 ring-primary/40"
+                    : "border-border hover:bg-muted/40",
+                  isPending && "opacity-60",
+                )}
+              >
+                <span className="font-medium text-foreground">
+                  {LOCALE_LABELS[locale]}
+                </span>
+                {isActive && <Check className="h-3.5 w-3.5 text-primary" />}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Typography — Arabic face + global size. */}
+      <div className="mt-8 space-y-4">
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+          <Type className="size-4 text-muted-foreground" />
+          {t("typography")}
+        </h3>
+
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">
+            {t("arabicFont")}
+          </p>
+          <div
+            role="radiogroup"
+            aria-label={t("arabicFont")}
+            className="grid max-w-md grid-cols-1 gap-2 sm:grid-cols-3"
+          >
+            {ARABIC_FONTS.map((font) => {
+              const isActive = font === arabicFont;
+              return (
+                <button
+                  key={font}
+                  type="button"
+                  role="radio"
+                  aria-checked={isActive}
+                  onClick={() => setArabicFont(font as ArabicFont)}
+                  className={cn(
+                    "flex flex-col gap-1 rounded-lg border bg-card px-3 py-2 text-start transition-colors",
+                    isActive
+                      ? "border-primary/60 ring-2 ring-primary/40"
+                      : "border-border hover:bg-muted/40",
+                  )}
+                >
+                  <span className="text-[11px] font-medium text-muted-foreground">
+                    {ARABIC_FONT_LABELS[font]}
+                  </span>
+                  <span
+                    className="text-base text-foreground"
+                    style={{
+                      fontFamily:
+                        font === "cairo"
+                          ? "var(--font-arabic-cairo)"
+                          : font === "tajawal"
+                            ? "var(--font-arabic-tajawal)"
+                            : "var(--font-arabic-kufi)",
+                    }}
+                  >
+                    أهلاً بك
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-muted-foreground">{t("arabicFontHint")}</p>
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">{t("fontSize")}</p>
+          <div
+            role="radiogroup"
+            aria-label={t("fontSize")}
+            className="flex max-w-md gap-2"
+          >
+            {FONT_SIZES.map((size) => {
+              const isActive = size === fontSize;
+              return (
+                <button
+                  key={size}
+                  type="button"
+                  role="radio"
+                  aria-checked={isActive}
+                  onClick={() => setFontSize(size as FontSize)}
+                  className={cn(
+                    "flex-1 rounded-lg border bg-card py-2 text-sm font-medium transition-colors",
+                    isActive
+                      ? "border-primary/60 text-foreground ring-2 ring-primary/40"
+                      : "border-border text-muted-foreground hover:bg-muted/40",
+                  )}
+                >
+                  {t(`size.${size}`)}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-muted-foreground">{t("fontSizeHint")}</p>
+        </div>
+      </div>
+
+      <div className="mt-8 space-y-4">
         <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <SunMoon className="size-4 text-muted-foreground" />
           {t("mode")}
@@ -97,7 +270,7 @@ function ModeCard({
       aria-checked={isActive}
       aria-label={t("useMode", { mode })}
       className={cn(
-        "flex items-center gap-3 rounded-lg border bg-card p-4 text-left transition-colors",
+        "flex items-center gap-3 rounded-lg border bg-card p-4 text-start transition-colors",
         isActive
           ? "border-primary/60 ring-2 ring-primary/40"
           : "border-border hover:border-border hover:bg-muted/40",
@@ -145,7 +318,7 @@ function ThemeCard({
       aria-pressed={isActive}
       aria-label={t("useTheme", { name })}
       className={cn(
-        "flex flex-col gap-3 rounded-lg border bg-card p-4 text-left transition-colors",
+        "flex flex-col gap-3 rounded-lg border bg-card p-4 text-start transition-colors",
         isActive
           ? "border-primary/60 ring-2 ring-primary/40"
           : "border-border hover:border-border hover:bg-muted/40",

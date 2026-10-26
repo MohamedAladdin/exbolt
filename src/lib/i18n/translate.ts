@@ -16,7 +16,7 @@ type Catalogue = Record<string, unknown>;
 
 function loadCatalogue(): { locale: string; messages: Catalogue } {
   const env = process.env.NEXT_PUBLIC_APP_LOCALE ?? '';
-  const locale = ['en', 'pt', 'es', 'ko'].includes(env) ? env : 'en';
+  const locale = ['en', 'ar'].includes(env) ? env : 'en';
   return { locale, messages: activeMessages as Catalogue };
 }
 

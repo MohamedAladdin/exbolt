@@ -2,6 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useLocale } from "next-intl";
+import { localeDirection } from "@/i18n/config";
+import { brandName, vendorSuffix, VENDOR_NAME, VENDOR_URL } from "@/lib/branding";
+import { useEntitlements } from "@/hooks/use-entitlements";
+import type { Feature } from "@/lib/plans/entitlements";
 import { useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
@@ -87,18 +92,24 @@ interface NavItem {
    * Purely informational — doesn't affect routing or access.
    */
   beta?: boolean;
+  /**
+   * Plan feature required to see this section (migration 063). Omitted =
+   * always available. The API routes check the same code server-side, so
+   * hiding the row is UX, not the control.
+   */
+  feature?: Feature;
 }
 
 const navItems: NavItem[] = [
   { href: "/dashboard", labelKey: "dashboard", icon: LayoutDashboard },
-  { href: "/inbox", labelKey: "inbox", icon: MessageSquare },
+  { href: "/inbox", labelKey: "inbox", icon: MessageSquare, feature: "inbox" },
   { href: "/notifications", labelKey: "notifications", icon: Bell },
-  { href: "/contacts", labelKey: "contacts", icon: Users },
-  { href: "/pipelines", labelKey: "pipelines", icon: GitBranch },
-  { href: "/broadcasts", labelKey: "broadcasts", icon: Radio },
-  { href: "/automations", labelKey: "automations", icon: Zap },
-  { href: "/flows", labelKey: "flows", icon: Workflow, beta: true },
-  { href: "/agents", labelKey: "aiAgents", icon: Bot },
+  { href: "/contacts", labelKey: "contacts", icon: Users, feature: "contacts" },
+  { href: "/pipelines", labelKey: "pipelines", icon: GitBranch, feature: "pipelines" },
+  { href: "/broadcasts", labelKey: "broadcasts", icon: Radio, feature: "broadcasts" },
+  { href: "/automations", labelKey: "automations", icon: Zap, feature: "automations" },
+  { href: "/flows", labelKey: "flows", icon: Workflow, beta: true, feature: "flows" },
+  { href: "/agents", labelKey: "aiAgents", icon: Bot, feature: "ai_agent" },
 ];
 
 const bottomNavItems = [
@@ -115,8 +126,19 @@ import { useTranslations } from "next-intl";
 
 export function Sidebar({ open = false, onClose }: SidebarProps) {
   const t = useTranslations("Sidebar");
+  const locale = useLocale();
+  const isRtl = localeDirection(locale) === "rtl";
   const pathname = usePathname();
   const { profile, profileLoading, account, accountRole, signOut } = useAuth();
+  const { entitlements } = useEntitlements();
+  /**
+   * Nav rows the plan allows. `entitlements === null` (still loading) shows
+   * everything: hiding and then revealing rows as the plan resolves looks
+   * like a bug, and the server refuses the actual work either way.
+   */
+  const allowedNavItems = navItems.filter(
+    (item) => !item.feature || !entitlements || entitlements.features[item.feature] !== false,
+  );
   const totalUnread = useTotalUnread();
   const unreadNotifications = useUnreadNotifications();
   // Only surface the account-name strip when it actually carries
@@ -176,9 +198,18 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
       <aside
         className={cn(
           // Mobile: fixed drawer that slides in from the left.
-          "fixed inset-y-0 left-0 z-40 flex h-full w-64 flex-col border-r border-border bg-card",
+          "fixed inset-y-0 start-0 z-40 flex h-full w-64 flex-col border-e border-border bg-card",
           "transition-transform duration-200 ease-out will-change-transform",
-          open ? "translate-x-0" : "-translate-x-full",
+          // The drawer is anchored at the inline-start edge, so its closed
+          // position is direction-dependent: RTL needs a POSITIVE X shift.
+          // This is computed in JS rather than with `rtl:translate-x-full`
+          // because that variant beats `lg:translate-x-0` on specificity,
+          // which silently pushed the desktop sidebar off-screen in Arabic.
+          open
+            ? "translate-x-0"
+            : isRtl
+              ? "translate-x-full"
+              : "-translate-x-full",
           // Desktop: static, always visible — reset all the mobile framing.
           "lg:static lg:z-0 lg:w-60 lg:translate-x-0 lg:transition-none",
         )}
@@ -187,12 +218,22 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         {/* Logo row. On mobile we put a close button here; on desktop the
             close button is hidden since the sidebar is always-visible. */}
         <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border px-4">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+          <Link href="/dashboard" className="flex min-w-0 items-center gap-2">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <MessageSquare className="h-4 w-4" />
             </div>
-            <span className="text-sm font-semibold text-foreground">
-              {t("title")}
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-semibold text-foreground">
+                {brandName(account?.brand_name)}
+              </span>
+              {/* Vendor credit — only once the account is white-labelled,
+                  otherwise the header would read "wacrm by ExCal.uk" on a
+                  fresh install. */}
+              {account?.brand_name ? (
+                <span className="block truncate text-[10px] leading-tight text-muted-foreground">
+                  {vendorSuffix(locale)}
+                </span>
+              ) : null}
             </span>
           </Link>
           <button
@@ -208,7 +249,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         {/* Main navigation */}
         <nav className="flex-1 overflow-y-auto px-3 py-4">
           <ul className="flex flex-col gap-1">
-            {navItems.map((item) => {
+            {allowedNavItems.map((item) => {
               const isActive =
                 pathname === item.href ||
                 (item.href !== "/dashboard" && pathname.startsWith(item.href));
@@ -294,6 +335,23 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         </nav>
 
         {/* User section */}
+        {/* Vendor credit. Required by the product licence terms we sell
+            under, and deliberately quiet: one muted line, above the
+            account card, never competing with the client's own brand. */}
+        <div className="shrink-0 border-t border-border px-4 py-2">
+          <p className="truncate text-[10px] text-muted-foreground">
+            {t("poweredBy")}{" "}
+            <a
+              href={VENDOR_URL}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="font-medium text-muted-foreground underline decoration-dotted underline-offset-2 hover:text-foreground"
+            >
+              {VENDOR_NAME}
+            </a>
+          </p>
+        </div>
+
         <div className="shrink-0 border-t border-border p-3">
           {/* Account name display — surfaced only when the account
               name differs from the user's own name (see
@@ -320,7 +378,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                   const Icon = meta.icon;
                   return (
                     <span
-                      className={`ml-auto inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider ${meta.className}`}
+                      className={`ms-auto inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider ${meta.className}`}
                     >
                       <Icon className="size-3" />
                       {t(meta.labelKey as string)}
@@ -331,7 +389,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
             </div>
           ) : null}
           <DropdownMenu>
-            <DropdownMenuTrigger className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-muted/60 focus:bg-muted/60 focus:outline-none data-popup-open:bg-muted/60">
+            <DropdownMenuTrigger className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-start transition-colors hover:bg-muted/60 focus:bg-muted/60 focus:outline-none data-popup-open:bg-muted/60">
               <Avatar className="size-8 shrink-0">
                 {profile?.avatar_url ? (
                   <AvatarImage

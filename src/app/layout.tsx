@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages, getTranslations } from 'next-intl/server';
-import { Inter } from "next/font/google";
+import { Inter, Cairo, Tajawal, Noto_Kufi_Arabic } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { ThemeProvider } from "@/hooks/use-theme";
@@ -14,10 +14,43 @@ import {
   STORAGE_KEY,
   THEME_IDS,
 } from "@/lib/themes";
+import {
+  ARABIC_FONTS,
+  ARABIC_FONT_STORAGE_KEY,
+  DEFAULT_ARABIC_FONT,
+  DEFAULT_FONT_SIZE,
+  FONT_SIZES,
+  FONT_SIZE_STORAGE_KEY,
+} from "@/lib/ui-prefs";
+import { localeDirection } from "@/i18n/config";
 
 const inter = Inter({
   variable: "--font-sans",
   subsets: ["latin"],
+});
+
+/**
+ * Arabic UI faces, self-hosted through next/font (no third-party request,
+ * no CSP hole). Three families because Arabic UI type is a matter of taste:
+ * Cairo (geometric, closest to the Latin default), Tajawal (narrower, fits
+ * dense tables) and Noto Kufi Arabic (heavier, high-contrast headings).
+ * Only the one the user picks is ever referenced by `--font-sans`, but all
+ * three are declared so switching is instant and offline.
+ */
+const cairo = Cairo({
+  variable: "--font-arabic-cairo",
+  subsets: ["arabic", "latin"],
+});
+
+const tajawal = Tajawal({
+  variable: "--font-arabic-tajawal",
+  subsets: ["arabic", "latin"],
+  weight: ["400", "500", "700"],
+});
+
+const notoKufi = Noto_Kufi_Arabic({
+  variable: "--font-arabic-kufi",
+  subsets: ["arabic"],
 });
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -77,9 +110,26 @@ const THEME_BOOT_SCRIPT = `
     var MODES = ${JSON.stringify(MODES)};
     var savedMode = localStorage.getItem(MODE_KEY);
     d.dataset.mode = MODES.indexOf(savedMode) !== -1 ? savedMode : MODE_DEFAULT;
+
+    // Typography preferences (Settings → Appearance). Same reasoning as
+    // theme/mode: applying them before first paint avoids a visible
+    // re-flow when the hook mounts.
+    var FONT_KEY = ${JSON.stringify(ARABIC_FONT_STORAGE_KEY)};
+    var FONT_DEFAULT = ${JSON.stringify(DEFAULT_ARABIC_FONT)};
+    var FONTS = ${JSON.stringify(ARABIC_FONTS)};
+    var savedFont = localStorage.getItem(FONT_KEY);
+    d.dataset.arabicFont = FONTS.indexOf(savedFont) !== -1 ? savedFont : FONT_DEFAULT;
+
+    var SIZE_KEY = ${JSON.stringify(FONT_SIZE_STORAGE_KEY)};
+    var SIZE_DEFAULT = ${JSON.stringify(DEFAULT_FONT_SIZE)};
+    var SIZES = ${JSON.stringify(FONT_SIZES)};
+    var savedSize = localStorage.getItem(SIZE_KEY);
+    d.dataset.fontSize = SIZES.indexOf(savedSize) !== -1 ? savedSize : SIZE_DEFAULT;
   } catch (_e) {
     d.dataset.theme = ${JSON.stringify(DEFAULT_THEME)};
     d.dataset.mode = ${JSON.stringify(DEFAULT_MODE)};
+    d.dataset.arabicFont = ${JSON.stringify(DEFAULT_ARABIC_FONT)};
+    d.dataset.fontSize = ${JSON.stringify(DEFAULT_FONT_SIZE)};
   }
 })();
 `;
@@ -91,13 +141,19 @@ export default async function RootLayout({
 }>) {
   const locale = await getLocale();
   const messages = await getMessages();
+  const dir = localeDirection(locale);
 
   return (
     <html
       lang={locale}
-      data-theme={DEFAULT_THEME}
-      data-mode={DEFAULT_MODE}
-      className={`${inter.variable} h-full antialiased`}
+      dir={dir}
+      // NOTE: data-theme / data-mode / data-arabic-font / data-font-size are
+      // deliberately NOT rendered here. They are the user's device-scoped
+      // preferences, written by the boot script below. Rendering defaults on
+      // the server meant that any client-side `router.refresh()` (e.g. after
+      // switching language) reconciled the attributes back to the defaults and
+      // silently reset the user's theme, mode and type size.
+      className={`${inter.variable} ${cairo.variable} ${tajawal.variable} ${notoKufi.variable} h-full antialiased`}
       // The `theme-boot` script below rewrites `data-theme` and
       // `data-mode` on <html> from localStorage before React hydrates,
       // so for any non-default choice the client DOM intentionally

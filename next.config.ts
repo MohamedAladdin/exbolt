@@ -19,6 +19,30 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
  *     deny them. A supply-chain compromise or a forgotten plugin
  *     can't silently opt back in.
  */
+/**
+ * Self-hosted Supabase origin (e.g. https://api.example.com).
+ *
+ * The CSP below was written for Supabase Cloud (`*.supabase.co`). A
+ * self-hosted deployment talks to its own hostname instead, so without
+ * this the browser reports every REST/auth/realtime call as a CSP
+ * violation — harmless while the policy is Report-Only, fatal the day it
+ * is switched to enforcing. Empty on a Cloud deployment / build without
+ * the env var, in which case the policy is unchanged.
+ */
+const SUPABASE_ORIGIN = (() => {
+  const raw = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!raw) return null;
+  try {
+    return new URL(raw).origin;
+  } catch {
+    return null;
+  }
+})();
+
+const SUPABASE_WS_ORIGIN = SUPABASE_ORIGIN
+  ? SUPABASE_ORIGIN.replace(/^http/, "ws")
+  : null;
+
 const SECURITY_HEADERS = [
   {
     key: "Strict-Transport-Security",
@@ -51,11 +75,11 @@ const SECURITY_HEADERS = [
       "img-src 'self' data: blob: https:",
       // Outbound media previews (blob: from MediaRecorder + file picker)
       // and Supabase public-bucket audio/video the inbox renders.
-      "media-src 'self' blob: https://*.supabase.co",
+      `media-src 'self' blob: https://*.supabase.co${SUPABASE_ORIGIN ? ` ${SUPABASE_ORIGIN}` : ""}`,
       "font-src 'self' data:",
       // Supabase REST + realtime (WSS). All Meta API calls happen
       // server-side, so graph.facebook.com does not belong here.
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+      `connect-src 'self' https://*.supabase.co wss://*.supabase.co${SUPABASE_ORIGIN ? ` ${SUPABASE_ORIGIN} ${SUPABASE_WS_ORIGIN}` : ""}`,
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",
@@ -63,7 +87,7 @@ const SECURITY_HEADERS = [
   },
 ] as const;
 
-const APP_LOCALE = ["en", "pt", "es", "ko"].includes(process.env.NEXT_PUBLIC_APP_LOCALE ?? "")
+const APP_LOCALE = ["en", "ar"].includes(process.env.NEXT_PUBLIC_APP_LOCALE ?? "")
   ? (process.env.NEXT_PUBLIC_APP_LOCALE as string)
   : "en";
 
@@ -82,6 +106,28 @@ const nextConfig: NextConfig = {
   },
   // Stop `next dev` from overwriting the repo's hand-written AGENTS.md.
   agentRules: false,
+
+  /**
+   * Local-dev only: proxy Supabase API calls through the app origin.
+   *
+   * When the app is viewed from another device on the LAN (e.g. a phone
+   * hitting http://192.168.0.111:3000), the browser cannot reach a
+   * Supabase URL that points at 127.0.0.1 — that's the phone itself.
+   * With SUPABASE_PROXY=true, NEXT_PUBLIC_SUPABASE_URL is set to the app
+   * origin and these rewrites forward /auth, /rest, /storage, etc. to
+   * the locally-running Supabase (default http://127.0.0.1:54321).
+   *
+   * Never set SUPABASE_PROXY in production: hosted Supabase is reached
+   * directly over HTTPS.
+   */
+  async rewrites() {
+    if (process.env.SUPABASE_PROXY !== "true") return [];
+    const sb = process.env.SUPABASE_PROXY_TARGET || "http://127.0.0.1:54321";
+    return ["auth", "rest", "storage", "graphql", "functions"].map((svc) => ({
+      source: `/${svc}/:path*`,
+      destination: `${sb}/${svc}/:path*`,
+    }));
+  },
 
   /**
    * Cross-origin dev access (Next.js 16).
