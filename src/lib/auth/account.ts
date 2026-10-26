@@ -73,6 +73,26 @@ export function toErrorResponse(err: unknown): NextResponse {
   if (err instanceof UnauthorizedError || err instanceof ForbiddenError) {
     return NextResponse.json({ error: err.message }, { status: err.status });
   }
+  // Plan gating (src/lib/plans/guard.ts). Matched structurally rather than
+  // by `instanceof` on purpose: the guard imports this module, so importing
+  // PlanError back would create a cycle.
+  if (err instanceof Error && err.name === "PlanError") {
+    const planErr = err as Error & {
+      status?: number;
+      code?: string;
+      feature?: string;
+      limit?: string;
+    };
+    return NextResponse.json(
+      {
+        error: err.message,
+        code: planErr.code ?? "plan_feature_missing",
+        ...(planErr.feature ? { feature: planErr.feature } : {}),
+        ...(planErr.limit ? { limit: planErr.limit } : {}),
+      },
+      { status: planErr.status ?? 402 },
+    );
+  }
   console.error("[toErrorResponse] uncategorized error:", err);
   return NextResponse.json({ error: t("internal") }, { status: 500 });
 }
