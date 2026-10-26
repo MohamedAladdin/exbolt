@@ -74,7 +74,7 @@ export function KpiTile({
       </div>
       <p className="text-2xl leading-none font-semibold tracking-tight text-foreground tabular-nums">
         {value}
-        {unit ? <span className="ml-1 text-sm font-medium text-muted-foreground">{unit}</span> : null}
+        {unit ? <span className="ms-1 text-sm font-medium text-muted-foreground">{unit}</span> : null}
       </p>
       <div className="flex items-center justify-between gap-2">
         <DeltaBadge change={change} />
@@ -105,10 +105,10 @@ export function TargetBar({ value, target }: { value: number | null; target: num
     <div className="pt-1.5" role="img" aria-label={t('target', { minutes: target })}>
       <div className="relative h-2 rounded-full bg-muted">
         <div
-          className={cn('absolute inset-y-0 left-0 rounded-full', onTarget ? 'bg-status-good' : 'bg-status-serious')}
+          className={cn('absolute inset-y-0 start-0 rounded-full', onTarget ? 'bg-status-good' : 'bg-status-serious')}
           style={{ width: `${fill}%` }}
         />
-        <div className="absolute -inset-y-1 left-1/2 w-0.5 rounded-full bg-foreground/70" />
+        <div className="absolute -inset-y-1 start-1/2 w-0.5 rounded-full bg-foreground/70" />
       </div>
       <div className="mt-1.5 flex justify-between text-[11px] text-muted-foreground tabular-nums">
         <span>0</span>

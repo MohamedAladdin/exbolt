@@ -24,6 +24,7 @@ import {
   requireRole,
   toErrorResponse,
 } from '@/lib/auth/account';
+import { requireFeature } from '@/lib/plans/guard'
 import { generateApiKey } from '@/lib/api-keys/keys';
 import { normalizeScopes } from '@/lib/api-keys/scopes';
 import {
@@ -73,7 +74,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const ctx = await requireRole('admin');
+    // Plan gate: public API access is SCALE-only (migration 063).
+    const ctx = await requireFeature('api', 'admin');
 
     const limit = checkRateLimit(
       `admin:apiKeyCreate:${ctx.userId}`,

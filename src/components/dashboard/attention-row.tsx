@@ -22,7 +22,7 @@ const TONE_CLASS: Record<Tone, string> = {
 }
 
 const TILE_CLASS =
-  'group flex w-full items-center gap-3 rounded-xl bg-card px-4 py-3 text-left ring-1 ring-foreground/10 transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
+  'group flex w-full items-center gap-3 rounded-xl bg-card px-4 py-3 text-start ring-1 ring-foreground/10 transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
 
 function TileBody({
   icon: Icon,

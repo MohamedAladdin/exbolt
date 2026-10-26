@@ -1,0 +1,104 @@
+# =============================================================================
+# wacrm — production compose file for the Next.js app
+# =============================================================================
+#
+# Lives in the repo as deploy/hetzner/app.compose.yml so the whole bundle can be
+# versioned, but on the server it is run from the repo checkout at /srv/wacrm.
+# That is why the build context and env_file are two levels up.
+#
+#   /srv/wacrm/                          <- git checkout (repo root)
+#   /srv/wacrm/.env.production           <- secrets + config (NOT in git)
+#   /srv/wacrm/deploy/hetzner/app.compose.yml
+#
+# Start / update (from /srv/wacrm):
+#   docker compose --env-file .env.production \
+#     -f deploy/hetzner/app.compose.yml up -d --build
+#
+# `--env-file` is required: Compose interpolates ${...} in this file (the build
+# args) from it, and without the flag it would read `.env` — which this repo
+# deliberately does not use.
+#
+# NOTE ON BUILD-TIME VARS
+#   NEXT_PUBLIC_* values are inlined into the client bundle by `next build`.
+#   Changing any of them requires `up -d --build` (a restart is not enough).
+#   Server-only secrets in .env.production are read at runtime.
+#
+# NOTE ON SUPABASE_PROXY
+#   Must NOT be set here. It exists only for local dev (next.config.ts rewrites
+#   /auth, /rest, /storage through the app origin) and would 404 every Supabase
+#   call in production.
+# =============================================================================
+
+name: wacrm
+
+services:
+  app:
+    image: wacrm:latest
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      args:
+        # Build-time only. Values come from .env.production via --env-file.
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:?NEXT_PUBLIC_SUPABASE_URL is required}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:?NEXT_PUBLIC_SUPABASE_ANON_KEY is required}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-}
+        NEXT_PUBLIC_APP_LOCALE: ${NEXT_PUBLIC_APP_LOCALE:-en}
+
+    # Runtime config and secrets. Resolved relative to THIS file, hence ../../
+    env_file:
+      - ../../.env.production
+
+    # `environment` wins over env_file, so a stray PORT in .env.production
+    # cannot desync the app from the port mapping, the healthcheck or nginx.
+    environment:
+      PORT: "3000"
+      NODE_ENV: production
+      HOSTNAME: "0.0.0.0"
+
+    # Loopback only: the sole public entry point is nginx (TLS). Never bind
+    # 0.0.0.0 here or the app is reachable over plain HTTP on the internet.
+    ports:
+      - "127.0.0.1:3000:3000"
+
+    restart: unless-stopped
+    stop_grace_period: 30s
+
+    # Long-running AI/broadcast requests; keep container logs bounded so the
+    # disk does not fill with a chatty webhook.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    healthcheck:
+      # /login is a public route (src/middleware.ts), so it returns 200 without
+      # a session — unlike `/`, which redirects.
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/login').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+
+    security_opt:
+      - no-new-privileges:true
+
+    networks:
+      - supabase_default
+
+networks:
+  # The self-hosted Supabase stack in /srv/supabase runs with the Compose
+  # project name `supabase`, so Compose creates the network `supabase_default`
+  # for it. Joining it lets the app reach Kong as `http://kong:8000` (server-side
+  # only) instead of hairpinning through the public domain.
+  #
+  # It is declared external because this project does not own it — create it
+  # once if the Supabase stack has not started yet:
+  #   docker network create supabase_default
+  # Verify with:  docker network inspect supabase_default
+  supabase_default:
+    external: true

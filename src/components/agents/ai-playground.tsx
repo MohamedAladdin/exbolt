@@ -99,7 +99,7 @@ export function AiPlayground({ onGoToSetup }: { onGoToSetup?: () => void }) {
           disabled={turns.length === 0 || sending}
           className="text-muted-foreground"
         >
-          <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> {t('reset')}
+          <RotateCcw className="me-1.5 h-3.5 w-3.5" /> {t('reset')}
         </Button>
       </div>
 
@@ -119,7 +119,7 @@ export function AiPlayground({ onGoToSetup }: { onGoToSetup?: () => void }) {
                 onClick={onGoToSetup}
                 className="mt-1 h-auto p-0 text-xs"
               >
-                {t('goToSetup')} <ArrowRight className="ml-1 h-3 w-3" />
+                {t('goToSetup')} <ArrowRight className="ms-1 h-3 w-3" />
               </Button>
             )}
           </div>

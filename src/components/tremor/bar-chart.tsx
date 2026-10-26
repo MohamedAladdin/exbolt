@@ -337,7 +337,7 @@ const Legend = React.forwardRef<HTMLOListElement, LegendProps>((props, ref) => {
           "flex h-full",
           enableLegendSlider
             ? hasScroll?.right || hasScroll?.left
-              ? "snap-mandatory items-center overflow-auto pr-12 pl-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              ? "snap-mandatory items-center overflow-auto pe-12 ps-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               : ""
             : "flex-wrap",
         )}
@@ -357,7 +357,7 @@ const Legend = React.forwardRef<HTMLOListElement, LegendProps>((props, ref) => {
           <div
             ref={scrollButtonsRef}
             className={cx(
-              "absolute top-0 right-0 bottom-0 flex h-full items-center justify-center pr-1",
+              "absolute top-0 end-0 bottom-0 flex h-full items-center justify-center pe-1",
               "bg-background",
             )}
           >
@@ -485,9 +485,9 @@ const ChartTooltip = ({
           {payload.map(({ value, category, color }, index) => (
             <div
               key={`id-${index}`}
-              className="flex items-center justify-between space-x-8"
+              className="flex items-center justify-between gap-x-8"
             >
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-x-2">
                 <span
                   aria-hidden="true"
                   className={cx(
@@ -497,7 +497,7 @@ const ChartTooltip = ({
                 />
                 <p
                   className={cx(
-                    "text-right whitespace-nowrap",
+                    "text-end whitespace-nowrap",
                     "text-muted-foreground",
                   )}
                 >
@@ -506,7 +506,7 @@ const ChartTooltip = ({
               </div>
               <p
                 className={cx(
-                  "text-right font-medium whitespace-nowrap tabular-nums",
+                  "text-end font-medium whitespace-nowrap tabular-nums",
                   "text-popover-foreground",
                 )}
               >

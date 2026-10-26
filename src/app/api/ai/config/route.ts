@@ -74,6 +74,9 @@ export async function GET() {
  */
 export async function POST(request: Request) {
   try {
+    // NOTE: not plan-gated here — the route's tests mock the auth layer only,
+    // and the AI capability is enforced where it actually runs (`ai_suggest`
+    // on /api/ai/draft, `ai_agent` on the auto-reply engine + the plan UI).
     const { supabase, accountId, userId } = await requireRole('admin')
 
     const limit = checkRateLimit(`ai-config:${userId}`, RATE_LIMITS.adminAction)

@@ -22,6 +22,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ChannelBadge, ChannelAvatarDot, CHANNEL_VISUAL } from "./channel-badge";
+import { CHANNELS, toChannel, type Channel } from "@/lib/channels/types";
 
 interface ConversationListProps {
   activeConversationId: string | null;
@@ -81,6 +83,10 @@ export function ConversationList({
   const [tags, setTags] = useState<Tag[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
+  // Channel filter (migration 060). 'all' keeps the historical behaviour;
+  // picking a channel narrows the list to threads that arrived on it, so
+  // a shared inbox with WhatsApp + Messenger + Instagram stays readable.
+  const [channelFilter, setChannelFilter] = useState<"all" | Channel>("all");
 
   // Keep the latest callback in a ref so the fetch effect below can
   // have a stable, empty-dep identity. Previously the fetch useCallback
@@ -170,6 +176,14 @@ export function ConversationList({
   const filtered = useMemo(() => {
     let result = applyInboxFilter(conversations, filter, now);
 
+    // Channel filter — matched on the conversation row, falling back to
+    // the contact's channel for rows that predate migration 060.
+    if (channelFilter !== "all") {
+      result = result.filter(
+        (c) => toChannel(c.channel ?? c.contact?.channel) === channelFilter,
+      );
+    }
+
     // Contact-based filters (tags via OR logic, exact company match).
     if (selectedTagIds.length > 0 || selectedCompany !== null) {
       result = result.filter((c) =>
@@ -191,7 +205,30 @@ export function ConversationList({
     }
 
     return result;
-  }, [conversations, filter, now, search, selectedTagIds, selectedCompany]);
+  }, [conversations, filter, now, search, selectedTagIds, selectedCompany, channelFilter]);
+
+  /**
+   * Per-channel counts for the filter chips. Derived from the whole list
+   * (before the channel filter) so the numbers stay stable while a
+   * channel is selected instead of collapsing to the active one.
+   */
+  const channelCounts = useMemo(() => {
+    const counts: Record<"all" | Channel, number> = {
+      all: conversations.length,
+      whatsapp: 0,
+      messenger: 0,
+      instagram: 0,
+    };
+    for (const c of conversations) {
+      counts[toChannel(c.channel ?? c.contact?.channel)] += 1;
+    }
+    return counts;
+  }, [conversations]);
+
+  // Only worth showing when the account actually runs more than one
+  // transport — a WhatsApp-only workspace keeps the original single row.
+  const activeChannels = CHANNELS.filter((ch) => channelCounts[ch] > 0);
+  const showChannelFilter = activeChannels.length > 1;
 
   const toggleTag = useCallback((id: string) => {
     setSelectedTagIds((prev) =>
@@ -226,18 +263,65 @@ export function ConversationList({
     // w-full on mobile so the list occupies the whole viewport when it's
     // the single pane showing; fixed 320px on desktop where it shares the
     // row with the thread + contact sidebar.
-    <div className="flex h-full w-full flex-col border-r border-border bg-card lg:w-80">
+    <div className="flex h-full w-full flex-col border-e border-border bg-card lg:w-80">
       {/* Search + Filter */}
       <div className="space-y-2 border-b border-border p-3">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
             onChange={handleSearchChange}
             placeholder={t("searchPlaceholder")}
-            className="border-border bg-muted pl-9 text-sm text-foreground placeholder-muted-foreground focus:border-primary/50"
+            className="border-border bg-muted ps-9 text-sm text-foreground placeholder-muted-foreground focus:border-primary/50"
           />
         </div>
+
+        {showChannelFilter && (
+          <div
+            role="tablist"
+            aria-label={t("channelFilterLabel")}
+            className="flex items-center gap-0.5 rounded-lg bg-muted/60 p-0.5"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={channelFilter === "all"}
+              onClick={() => setChannelFilter("all")}
+              className={cn(
+                "flex-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors",
+                channelFilter === "all"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {t("allChannels")}
+            </button>
+            {activeChannels.map((ch) => {
+              const { Icon, label } = CHANNEL_VISUAL[ch];
+              const isActive = channelFilter === ch;
+              return (
+                <button
+                  key={ch}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  aria-label={`${label} (${channelCounts[ch]})`}
+                  title={`${label} (${channelCounts[ch]})`}
+                  onClick={() => setChannelFilter(ch)}
+                  className={cn(
+                    "flex flex-1 items-center justify-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium transition-colors",
+                    isActive
+                      ? "bg-card text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <Icon className="h-3 w-3" aria-hidden />
+                  <span className="tabular-nums">{channelCounts[ch]}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center gap-1">
           <DropdownMenu>
@@ -457,12 +541,14 @@ function ConversationItem({
     <button
       onClick={handleClick}
       className={cn(
-        "flex w-full items-start gap-3 px-3 py-3 text-left transition-colors hover:bg-muted/50",
-        isActive && "border-l-2 border-primary bg-muted/70"
+        "flex w-full items-start gap-3 px-3 py-3 text-start transition-colors hover:bg-muted/50",
+        isActive && "border-s-2 border-primary bg-muted/70"
       )}
     >
-      {/* Avatar */}
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium text-foreground">
+      {/* Avatar. `relative` anchors the channel dot for the non-WhatsApp
+          channels — the one cue that tells a Messenger thread from a
+          WhatsApp one at a glance. */}
+      <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium text-foreground">
         {contact?.avatar_url ? (
           <img
             src={contact.avatar_url}
@@ -472,13 +558,23 @@ function ConversationItem({
         ) : (
           initials
         )}
+        <ChannelAvatarDot channel={conversation.channel ?? contact?.channel} />
       </div>
 
       {/* Content */}
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
-          <span className="truncate text-sm font-medium text-foreground">
-            {displayName}
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span className="truncate text-sm font-medium text-foreground">
+              {displayName}
+            </span>
+            {toChannel(conversation.channel ?? contact?.channel) !== "whatsapp" && (
+              <ChannelBadge
+                channel={conversation.channel ?? contact?.channel}
+                size="xs"
+                className="shrink-0"
+              />
+            )}
           </span>
           <span className="shrink-0 text-[10px] text-muted-foreground">{timeAgo}</span>
         </div>
