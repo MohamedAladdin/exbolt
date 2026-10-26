@@ -5,6 +5,7 @@ import {
   useRef,
   useCallback,
   useEffect,
+  useMemo,
   KeyboardEvent,
 } from "react";
 import {
@@ -55,6 +56,11 @@ import {
 import { validateInteractivePayload } from "@/lib/whatsapp/interactive";
 import type { InteractiveMessagePayload, QuickReply } from "@/types";
 import { QuickReplyPicker } from "./quick-reply-picker";
+import { SlashQuickReplies } from "./slash-quick-replies";
+import {
+  filterQuickReplies,
+  slashQueryAt,
+} from "@/lib/inbox/quick-reply-search";
 
 /** Media content types an agent can send from the composer. */
 export type ComposerMediaKind = "image" | "video" | "document" | "audio";
@@ -170,6 +176,28 @@ export function MessageComposer({
   const [savingQuickReply, setSavingQuickReply] = useState(false);
   const [quickReplyOpen, setQuickReplyOpen] = useState(false);
 
+  // ---- Slash quick replies ------------------------------------------
+  // Typing `/` in the textarea opens an inline, live-filtered list of the
+  // account's quick replies. The catalogue is loaded on first use (not on
+  // mount) — most messages are typed, not templated — and cached for the
+  // rest of the composer's life.
+  const [slashRange, setSlashRange] = useState<{
+    start: number;
+    end: number;
+    query: string;
+  } | null>(null);
+  const [slashItems, setSlashItems] = useState<QuickReply[] | null>(null);
+  const [slashLoading, setSlashLoading] = useState(false);
+  const [slashIndex, setSlashIndex] = useState(0);
+
+  const openInteractiveBuilder = useCallback(
+    (seed?: InteractiveMessagePayload) => {
+      setInteractivePayload(seed ?? blankButtonsPayload());
+      setInteractiveOpen(true);
+    },
+    [],
+  );
+
   // Media attachment state. `draft` holds an uploaded-but-not-yet-sent
   // attachment; `busy` covers the upload/transcode window.
   const [draft, setDraft] = useState<MediaDraft | null>(null);
@@ -235,6 +263,68 @@ export function MessageComposer({
     el.style.height = `${Math.min(el.scrollHeight, 96)}px`;
   }, []);
 
+  // ---- Slash quick replies (live search) -----------------------------
+
+  const slashMatches = useMemo(
+    () => filterQuickReplies(slashItems ?? [], slashRange?.query ?? ""),
+    [slashItems, slashRange?.query],
+  );
+
+  // Load the catalogue once, the first time a `/` token appears.
+  useEffect(() => {
+    if (!slashRange || slashItems !== null || slashLoading) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSlashLoading(true);
+    void (async () => {
+      try {
+        const res = await fetch("/api/quick-replies", { cache: "no-store" });
+        const data = await res.json().catch(() => ({}));
+        setSlashItems(res.ok ? ((data.quick_replies as QuickReply[]) ?? []) : []);
+      } catch {
+        setSlashItems([]);
+      } finally {
+        setSlashLoading(false);
+      }
+    })();
+  }, [slashRange, slashItems, slashLoading]);
+
+  /**
+   * Replace the `/token` the caret is in with the picked snippet.
+   *
+   * Interactive snippets open the builder prefilled instead of inserting
+   * text — same behaviour as picking one from the dialog.
+   */
+  const acceptSlash = useCallback(
+    (qr: QuickReply) => {
+      const range = slashRange;
+      if (!range) return;
+
+      const before = text.slice(0, range.start);
+      const after = text.slice(range.end);
+      setSlashRange(null);
+      setSlashIndex(0);
+
+      if (qr.kind === "interactive" && qr.interactive_payload) {
+        setText(`${before}${after}`.replace(/[ \t]+$/, ""));
+        openInteractiveBuilder(qr.interactive_payload);
+        return;
+      }
+
+      const body = qr.content_text ?? "";
+      setText(`${before}${body}${after}`);
+      const caret = before.length + body.length;
+      requestAnimationFrame(() => {
+        adjustHeight();
+        const el = textareaRef.current;
+        if (el) {
+          el.focus();
+          el.setSelectionRange(caret, caret);
+        }
+      });
+    },
+    [slashRange, text, openInteractiveBuilder, adjustHeight],
+  );
+
   const handleSend = useCallback(async () => {
     const trimmed = text.trim();
     if (!trimmed || sending || sessionExpired) return;
@@ -243,6 +333,7 @@ export function MessageComposer({
     try {
       onSend(trimmed, replyTo?.id);
       setText("");
+      setSlashRange(null);
       if (textareaRef.current) {
         textareaRef.current.style.height = "auto";
       }
@@ -253,18 +344,60 @@ export function MessageComposer({
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
+      // The slash picker owns the keyboard while it is open — Enter
+      // accepts the highlighted snippet instead of sending the message,
+      // which is the behaviour every chat app with a `/` menu has.
+      if (slashRange) {
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          setSlashIndex((prev) =>
+            slashMatches.length === 0 ? 0 : (prev + 1) % slashMatches.length,
+          );
+          return;
+        }
+        if (e.key === "ArrowUp") {
+          e.preventDefault();
+          setSlashIndex((prev) =>
+            slashMatches.length === 0
+              ? 0
+              : (prev - 1 + slashMatches.length) % slashMatches.length,
+          );
+          return;
+        }
+        if (e.key === "Escape") {
+          e.preventDefault();
+          setSlashRange(null);
+          return;
+        }
+        if ((e.key === "Enter" || e.key === "Tab") && !e.shiftKey) {
+          const picked = slashMatches[slashIndex];
+          if (picked) {
+            e.preventDefault();
+            acceptSlash(picked);
+            return;
+          }
+        }
+      }
+
       if (e.key === "Enter" && !e.shiftKey && enterSends) {
         e.preventDefault();
         handleSend();
       }
     },
-    [handleSend, enterSends]
+    [handleSend, enterSends, slashRange, slashMatches, slashIndex, acceptSlash]
   );
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      setText(e.target.value);
+      const value = e.target.value;
+      setText(value);
       adjustHeight();
+
+      // Recompute the `/token` under the caret on every keystroke. `""`
+      // after the slash is a valid query (browse mode: show everything).
+      const range = slashQueryAt(value, e.target.selectionStart ?? value.length);
+      setSlashRange(range);
+      if (range) setSlashIndex(0);
     },
     [adjustHeight]
   );
@@ -314,14 +447,6 @@ export function MessageComposer({
   }, [drafting, conversationId, adjustHeight, t]);
 
   // ---- Interactive message + quick replies --------------------------
-
-  const openInteractiveBuilder = useCallback(
-    (seed?: InteractiveMessagePayload) => {
-      setInteractivePayload(seed ?? blankButtonsPayload());
-      setInteractiveOpen(true);
-    },
-    [],
-  );
 
   const sendInteractive = useCallback(() => {
     const result = validateInteractivePayload(interactivePayload);
@@ -374,6 +499,7 @@ export function MessageComposer({
   const handlePickQuickReply = useCallback(
     (qr: QuickReply) => {
       setQuickReplyOpen(false);
+      setSlashRange(null);
       if (qr.kind === "interactive" && qr.interactive_payload) {
         openInteractiveBuilder(qr.interactive_payload);
         return;
@@ -553,7 +679,21 @@ export function MessageComposer({
   // ---- Render --------------------------------------------------------
 
   return (
-    <div className="border-t border-border bg-card p-3">
+    <div className="relative border-t border-border bg-card p-3">
+      {/* Slash picker — overlays the composer so the thread does not jump
+          when it opens/closes. */}
+      {slashRange && !draft && !recording && (
+        <div className="absolute inset-x-3 bottom-full z-30 mb-1">
+          <SlashQuickReplies
+            items={slashMatches}
+            activeIndex={slashIndex}
+            loading={slashLoading}
+            emptyLabel={t("quickRepliesEmpty")}
+            onPick={acceptSlash}
+            onHover={setSlashIndex}
+          />
+        </div>
+      )}
       {replyTo && (
         <div className="mb-2">
           <ReplyQuote
@@ -574,7 +714,7 @@ export function MessageComposer({
             className="h-7 text-xs text-amber-400 hover:text-amber-300"
             onClick={onOpenTemplates}
           >
-            <LayoutTemplate className="mr-1 h-3 w-3" />
+            <LayoutTemplate className="me-1 h-3 w-3" />
             {t("templates")}
           </Button>
         </div>
@@ -672,19 +812,19 @@ export function MessageComposer({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="border-border bg-popover">
               <DropdownMenuItem onClick={() => imageInputRef.current?.click()}>
-                <ImageIcon className="mr-2 h-4 w-4" />
+                <ImageIcon className="me-2 h-4 w-4" />
                 {t("photo")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => videoInputRef.current?.click()}>
-                <Video className="mr-2 h-4 w-4" />
+                <Video className="me-2 h-4 w-4" />
                 {t("video")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => documentInputRef.current?.click()}>
-                <FileText className="mr-2 h-4 w-4" />
+                <FileText className="me-2 h-4 w-4" />
                 {t("document")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => void startRecording()}>
-                <Mic className="mr-2 h-4 w-4" />
+                <Mic className="me-2 h-4 w-4" />
                 {t("voiceNote")}
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -708,11 +848,11 @@ export function MessageComposer({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="border-border bg-popover">
               <DropdownMenuItem onClick={() => openInteractiveBuilder()}>
-                <MessageSquareDashed className="mr-2 h-4 w-4" />
+                <MessageSquareDashed className="me-2 h-4 w-4" />
                 {t("interactiveMessage")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setQuickReplyOpen(true)}>
-                <Zap className="mr-2 h-4 w-4" />
+                <Zap className="me-2 h-4 w-4" />
                 {t("quickReplies")}
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -789,7 +929,7 @@ export function MessageComposer({
           `items-end` buttons below the textarea. Indented to line up
           under the textarea left edge. */}
       {!draft && !recording && (
-        <p className="mt-1 pl-1 text-[10px] text-muted-foreground sm:pl-[5.5rem]">
+        <p className="mt-1 ps-1 text-[10px] text-muted-foreground sm:ps-[5.5rem]">
           {t("draftHint")}
         </p>
       )}
@@ -813,14 +953,14 @@ export function MessageComposer({
               onClick={saveAsQuickReply}
             >
               {savingQuickReply ? (
-                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                <Loader2 className="me-1 h-4 w-4 animate-spin" />
               ) : (
-                <Zap className="mr-1 h-4 w-4" />
+                <Zap className="me-1 h-4 w-4" />
               )}
               {t("saveAsQuickReply")}
             </Button>
             <Button onClick={sendInteractive}>
-              <Send className="mr-1 h-4 w-4" />
+              <Send className="me-1 h-4 w-4" />
               {t("send")}
             </Button>
           </DialogFooter>
@@ -920,7 +1060,7 @@ function MediaDraftPreview({
           onClick={onSend}
           className={cn(
             "h-9 w-9 shrink-0 bg-primary p-0 hover:bg-primary/90 disabled:opacity-40",
-            draft.kind === "audio" && "ml-auto",
+            draft.kind === "audio" && "ms-auto",
           )}
         >
           <Send className="h-4 w-4" />
