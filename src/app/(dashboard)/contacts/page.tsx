@@ -224,6 +224,22 @@ export default function ContactsPage() {
     fetchContacts();
   }, [fetchContacts]);
 
+  // Deep link `?contact=<id>` — opened from the inbox's phone-number peek
+  // ("open contact"). Read from `window.location` rather than
+  // `useSearchParams` on purpose: this page is not wrapped in a Suspense
+  // boundary, and calling useSearchParams without one bails the whole page
+  // to client-side rendering in the production build. The detail drawer
+  // fetches the contact by id itself, so no list row needs to be present
+  // (the contact may sit on a later page of the table).
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('contact');
+    if (!id) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDetailContactId(id);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDetailOpen(true);
+  }, []);
+
   function openAddForm() {
     setEditContact(null);
     setEditContactTags([]);
@@ -387,7 +403,7 @@ export default function ContactsPage() {
       <div className="space-y-2">
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="relative w-full max-w-sm">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <Search className="absolute start-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input
               value={search}
               onChange={(e) => {
@@ -397,7 +413,7 @@ export default function ContactsPage() {
                 setPage(0);
               }}
               placeholder={t('searchPlaceholder')}
-              className="pl-8 bg-card border-border text-foreground placeholder:text-muted-foreground"
+              className="ps-8 bg-card border-border text-foreground placeholder:text-muted-foreground"
             />
           </div>
 
@@ -413,7 +429,7 @@ export default function ContactsPage() {
               <Filter className="size-4" />
               {t('filterByTags')}
               {selectedTagIds.length > 0 && (
-                <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
+                <span className="ms-1 inline-flex items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
                   {selectedTagIds.length}
                 </span>
               )}

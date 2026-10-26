@@ -33,6 +33,7 @@ import {
   MediaVideoBubble,
 } from "./message-media";
 import { InteractivePreview } from "@/components/interactive/interactive-preview";
+import { LinkedText } from "./linked-text";
 import {
   templateMessageView,
   type TemplateMessageHeader,
@@ -46,6 +47,13 @@ interface MessageBubbleProps {
   reply?: { authorLabel: string; preview: string } | null;
   reactions?: MessageReaction[];
   onToggleReaction?: (emoji: string) => void;
+  /**
+   * Display name of the teammate who sent an outgoing message, shown as a
+   * quiet caption under the bubble so supervisors can see who replied.
+   * Null for customer messages, and for agent messages sent before the
+   * sender was recorded.
+   */
+  senderName?: string | null;
   /**
    * Opens the thread's media viewer on this message. Only images and videos
    * call it; omitted when the parent renders no viewer, in which case media
@@ -181,11 +189,7 @@ function MessageContent({
 
   switch (message.content_type) {
     case "text":
-      return (
-        <p className="whitespace-pre-wrap break-words text-sm">
-          {message.content_text}
-        </p>
-      );
+      return <LinkedText text={message.content_text ?? ""} onPrimary={isAgent} />;
 
     case "image":
       return (
@@ -196,9 +200,11 @@ function MessageContent({
             <MediaUnavailable label={t("photo")} t={t} />
           )}
           {message.content_text && (
-            <p className="mt-1 whitespace-pre-wrap break-words text-sm">
-              {message.content_text}
-            </p>
+            <LinkedText
+              text={message.content_text}
+              onPrimary={isAgent}
+              className="mt-1"
+            />
           )}
         </div>
       );
@@ -212,9 +218,11 @@ function MessageContent({
             <MediaUnavailable label={t("video")} t={t} />
           )}
           {message.content_text && (
-            <p className="mt-1 whitespace-pre-wrap break-words text-sm">
-              {message.content_text}
-            </p>
+            <LinkedText
+              text={message.content_text}
+              onPrimary={isAgent}
+              className="mt-1"
+            />
           )}
         </div>
       );
@@ -262,9 +270,11 @@ function MessageContent({
             <TemplateHeader header={view.header} message={message} t={t} />
           )}
           {message.content_text ? (
-            <p className="mt-1 whitespace-pre-wrap break-words text-sm">
-              {message.content_text}
-            </p>
+            <LinkedText
+              text={message.content_text}
+              onPrimary={isAgent}
+              className="mt-1"
+            />
           ) : (
             message.template_name && (
               <p className="mt-1 break-words text-sm italic opacity-80">
@@ -355,9 +365,10 @@ function MessageContent({
 
     default:
       return (
-        <p className="whitespace-pre-wrap break-words text-sm">
-          {message.content_text || t("unsupported")}
-        </p>
+        <LinkedText
+          text={message.content_text || t("unsupported")}
+          onPrimary={isAgent}
+        />
       );
   }
 }
@@ -368,6 +379,7 @@ export function MessageBubble({
   reply,
   reactions,
   onToggleReaction,
+  senderName,
   onOpenMedia,
 }: MessageBubbleProps) {
   const t = useTranslations("Inbox.bubble");
@@ -441,6 +453,21 @@ export function MessageBubble({
           {isAgent && <StatusIcon status={message.status} title={failure} />}
         </div>
       </div>
+      {/* Who replied. Supervisors reviewing a shared inbox need to attribute
+          an outgoing message to a teammate without opening the audit trail,
+          so the sender's name sits under the bubble in the smallest, lightest
+          type in the ramp — present but never competing with the message.
+          `dir="auto"` keeps a Latin name from being reordered inside the RTL
+          layout. */}
+      {isAgent && senderName && (
+        <span
+          dir="auto"
+          className="mt-0.5 max-w-[85%] truncate px-1 text-[10px] font-light leading-tight text-muted-foreground"
+          title={senderName}
+        >
+          {senderName}
+        </span>
+      )}
       {failure && (
         <p
           className="mt-0.5 px-1 text-[10px] leading-tight text-muted-foreground"

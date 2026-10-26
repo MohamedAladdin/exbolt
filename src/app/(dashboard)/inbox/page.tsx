@@ -14,6 +14,7 @@ import { ConversationList } from "@/components/inbox/conversation-list";
 import { parseInboxFilter } from "@/lib/inbox/inbox-filters";
 import { MessageThread } from "@/components/inbox/message-thread";
 import { ContactSidebar } from "@/components/inbox/contact-sidebar";
+import { OPEN_CONVERSATION_EVENT } from "@/components/inbox/contact-peek";
 import { toast } from "sonner";
 import { WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -178,6 +179,56 @@ function InboxPageInner() {
       hydratingConvIdsRef.current.delete(convId);
     }
   }, []);
+
+  /**
+   * Open a thread by id from anywhere inside the inbox. Used by the
+   * phone-number peek's "start chat": the number may belong to a contact
+   * whose thread is not in the current list page (or is brand new), so we
+   * fetch the row with its contact join, merge it into the list, then
+   * select it exactly like a click.
+   */
+  const openConversationById = useCallback(
+    async (convId: string) => {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("conversations")
+        .select(CONVERSATION_SELECT)
+        .eq("id", convId)
+        .maybeSingle();
+
+      if (error || !data) {
+        toast.error(t("openConversationFailed"));
+        return;
+      }
+
+      const fetched = normalizeConversation(data);
+      setConversations((prev) => {
+        const exists = prev.some((c) => c.id === fetched.id);
+        return exists
+          ? prev.map((c) => (c.id === fetched.id ? { ...c, ...fetched } : c))
+          : [fetched, ...prev];
+      });
+      // Same ref the deep-link auto-selector uses, so the URL change below
+      // cannot re-run the auto-select against a stale list.
+      autoSelectedForDeepLinkRef.current = convId;
+      setActiveConversation(fetched);
+      setActiveContact(fetched.contact ?? null);
+      setMessages([]);
+      router.replace(`/inbox?c=${convId}`, { scroll: false });
+    },
+    [router, t],
+  );
+
+  // Bridge for components that are not wired to the list state (the
+  // phone-number peek inside a message body).
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ conversationId?: string }>).detail;
+      if (detail?.conversationId) void openConversationById(detail.conversationId);
+    };
+    window.addEventListener(OPEN_CONVERSATION_EVENT, handler);
+    return () => window.removeEventListener(OPEN_CONVERSATION_EVENT, handler);
+  }, [openConversationById]);
 
   // Check WhatsApp connection status on mount
   useEffect(() => {
