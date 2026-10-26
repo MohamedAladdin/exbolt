@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { usePresence } from "@/hooks/use-presence";
 import { PresenceDot } from "@/components/presence/presence-dot";
+import { ChannelBadge } from "./channel-badge";
 import { presenceLabel } from "@/lib/presence";
 import { cn } from "@/lib/utils";
 import type {
@@ -40,6 +41,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageBubble } from "./message-bubble";
+import {
+  senderDisplayName,
+  unresolvedSenderIds,
+  type SenderProfileRow,
+} from "@/lib/inbox/sender-names";
 import { MessageActions } from "./message-actions";
 import { MediaLightbox } from "./media-lightbox";
 import { collectMediaGallery } from "@/lib/media/gallery";
@@ -193,6 +199,16 @@ export function MessageThread({
   const { user } = useAuth();
   const { getPresence, getRow, now } = usePresence();
   const [loading, setLoading] = useState(false);
+  /**
+   * Names of the teammates who sent the outbound messages in this thread.
+   * `messages.sender_id` has no FK to `profiles`, so the caption needs one
+   * extra lookup; results are cached for the life of the thread and failed
+   * ids are remembered so a deleted user cannot trigger a fetch loop.
+   */
+  const [senderNames, setSenderNames] = useState<Map<string, string>>(
+    new Map(),
+  );
+  const failedSenderIds = useRef<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrollAnchorRef = useRef<{ scrollHeight: number; scrollTop: number } | null>(null);
   const [olderPages, setOlderPages] = useState<{
@@ -326,6 +342,49 @@ export function MessageThread({
   useEffect(() => {
     onMessagesLoadedRef.current = onMessagesLoaded;
   });
+
+  useEffect(() => {
+    const ids = unresolvedSenderIds(messages, senderNames, failedSenderIds.current);
+    if (ids.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await createClient()
+        .from("profiles")
+        .select("user_id, full_name, email")
+        .in("user_id", ids);
+
+      if (cancelled) return;
+      if (error) {
+        // A supervisor without account-wide profile visibility (or an id that
+        // no longer exists) must not break the thread: mark them resolved-as-
+        // unknown and move on.
+        ids.forEach((id) => failedSenderIds.current.add(id));
+        console.error("Failed to resolve message senders:", error);
+        return;
+      }
+
+      const rows = (data ?? []) as SenderProfileRow[];
+      if (rows.length === 0) {
+        ids.forEach((id) => failedSenderIds.current.add(id));
+        return;
+      }
+
+      setSenderNames((prev) => {
+        const next = new Map(prev);
+        for (const row of rows) {
+          const label = senderDisplayName(row);
+          if (label) next.set(row.user_id, label);
+          else failedSenderIds.current.add(row.user_id);
+        }
+        return next;
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [messages, senderNames]);
 
   const conversationId = conversation?.id;
   const hasUnread = (conversation?.unread_count ?? 0) > 0;
@@ -1017,7 +1076,18 @@ export function MessageThread({
             {displayName.charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0">
-            <h2 className="truncate text-sm font-semibold text-foreground">{displayName}</h2>
+            <h2 className="flex items-center gap-1.5 truncate text-sm font-semibold text-foreground">
+              {displayName}
+              {/* Which transport this thread lives on (migration 060).
+                  Always shown — WhatsApp included — so a mixed inbox never
+                  leaves "where did this come from?" to guesswork. */}
+              <ChannelBadge
+                channel={conversation.channel ?? contact?.channel}
+                size="xs"
+                withLabel
+                className="shrink-0 font-normal"
+              />
+            </h2>
             <p className="truncate text-xs text-muted-foreground">
               {contactHandle(contact)}
             </p>
@@ -1027,7 +1097,7 @@ export function MessageThread({
           <Badge
             variant="outline"
             className={cn(
-              "ml-1 hidden gap-1 border-border text-[10px] sm:inline-flex sm:ml-2",
+              "ms-1 hidden gap-1 border-border text-[10px] sm:inline-flex sm:ms-2",
               sessionInfo.expired ? "text-red-400" : "text-primary"
             )}
           >
@@ -1151,13 +1221,13 @@ export function MessageThread({
                           getRow(p.user_id)?.last_seen_at ?? null,
                           now
                         )}
-                        className="mr-2"
+                        className="me-2"
                       />
                       <span className="flex-1">
                         {p.full_name}
                         {p.user_id === user?.id ? t("me") : ""}
                       </span>
-                      {isSelected && <Check className="ml-2 h-3 w-3" />}
+                      {isSelected && <Check className="ms-2 h-3 w-3" />}
                     </DropdownMenuItem>
                   );
                 })
@@ -1253,6 +1323,11 @@ export function MessageThread({
                           }
                           reply={reply}
                           reactions={msgReactions}
+                          senderName={
+                            msg.sender_id
+                              ? (senderNames.get(msg.sender_id) ?? null)
+                              : null
+                          }
                           onToggleReaction={handlePillToggle}
                           onOpenMedia={handleMediaChange}
                         />
