@@ -113,7 +113,10 @@ export function ConversationList({
       const { data, error } = await supabase
         .from("conversations")
         .select(CONVERSATION_SELECT)
-        .order("last_message_at", { ascending: false });
+        // NULLS LAST is not cosmetic: Postgres sorts NULLs FIRST on DESC, so a
+        // conversation with no messages (created by "open chat" before the
+        // first send) would pin itself to the top of the list forever.
+        .order("last_message_at", { ascending: false, nullsFirst: false });
 
       if (cancelled) return;
 
