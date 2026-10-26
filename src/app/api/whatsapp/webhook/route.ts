@@ -32,6 +32,8 @@ import {
   isTemplateWebhookField,
 } from '@/lib/whatsapp/template-webhook'
 import { applyMessageStatus } from '@/lib/whatsapp/message-status-sync'
+import { channelForWebhookObject } from '@/lib/channels/types'
+import { processMessagingWebhook } from '@/lib/channels/process-inbound'
 
 // The `after()` callback in POST runs within this route's max duration.
 // Inbound processing can fan out to per-media Meta verification calls, so
@@ -159,6 +161,18 @@ export async function GET(request: Request) {
       )
     }
 
+    // App-level fallback. Messenger and Instagram subscriptions are
+    // verified against ONE shared token (Meta asks for the same callback
+    // URL + token on every subscribed object) and are not tied to a
+    // WhatsApp number row, so they cannot match a whatsapp_config row.
+    const appVerifyToken = process.env.META_WEBHOOK_VERIFY_TOKEN
+    if (appVerifyToken && verifyTokenMatches(appVerifyToken, verifyToken)) {
+      return new Response(challenge, {
+        status: 200,
+        headers: { 'Content-Type': 'text/plain' },
+      })
+    }
+
     // Fetch all whatsapp configs to check verify tokens
     const { data: configs, error: configError } = await supabaseAdmin()
       .from('whatsapp_config')
@@ -245,11 +259,31 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
   }
 
-  let body: { entry?: WhatsAppWebhookEntry[] }
+  let body: { entry?: WhatsAppWebhookEntry[]; object?: string }
   try {
     body = JSON.parse(rawBody)
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
+
+  // ---- Messenger / Instagram DMs -----------------------------------
+  // The same Meta app delivers `object: "page"` (Messenger) and
+  // `object: "instagram"` events to this one callback URL, so the channel
+  // is decided from the payload itself. Signature verification above is
+  // identical for all three objects (one app, one app secret).
+  const messagingChannel = channelForWebhookObject(body.object)
+  if (messagingChannel) {
+    after(async () => {
+      try {
+        const result = await processMessagingWebhook(body)
+        console.info(
+          `[webhook] ${messagingChannel} batch: ${result.processed} stored, ${result.skipped} skipped`
+        )
+      } catch (error) {
+        console.error(`Error processing ${messagingChannel} webhook:`, error)
+      }
+    })
+    return NextResponse.json({ status: 'received' }, { status: 200 })
   }
 
   // Process AFTER the response so we ack Meta within their ~20s timeout

@@ -115,6 +115,12 @@ export interface Contact {
   /** WhatsApp username without the leading @. Display only: usernames
    *  are user-changeable, so they must never key a contact. */
   wa_username?: string | null;
+  /** Transport this contact first reached us on (migration 060).
+   *  Mirrors `conversations.channel`. Defaults to 'whatsapp'. */
+  channel?: 'whatsapp' | 'messenger' | 'instagram';
+  /** Channel-native addressing id — PSID (Messenger) / IGSID
+   *  (Instagram). WhatsApp contacts use `phone` + `wa_user_id`. */
+  channel_user_id?: string | null;
   name?: string;
   email?: string;
   company?: string;
@@ -180,6 +186,9 @@ export interface Conversation {
   last_inbound_at?: string | null;
   last_reply_at?: string | null;
   closed_at?: string | null;
+  /** Transport this thread arrived on (migration 060). The send path
+   *  dispatches on it. Defaults to 'whatsapp' for legacy rows. */
+  channel?: 'whatsapp' | 'messenger' | 'instagram';
   created_at: string;
   updated_at: string;
   contact?: Contact;

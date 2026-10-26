@@ -49,6 +49,12 @@ import {
   templateContentText,
   templateHeaderMediaUrl,
 } from '@/lib/whatsapp/template-body';
+import { toChannel, type MessagingChannel } from '@/lib/channels/types';
+import {
+  sendChannelText,
+  sendChannelMedia,
+  type ChannelMediaKind,
+} from '@/lib/channels/graph-api';
 
 export const MEDIA_KINDS = ['image', 'video', 'document', 'audio'] as const;
 export const VALID_MESSAGE_TYPES = [
@@ -237,6 +243,30 @@ export async function sendMessageToConversation(
   }
 
   const contact = conversation.contact;
+
+  // ---- Channel dispatch -------------------------------------------
+  // Messenger / Instagram threads are delivered through the Send API
+  // instead of the WhatsApp Cloud API. Everything downstream of this
+  // point is WhatsApp-specific (templates, interactive lists, phone
+  // variants), so those channels branch off here.
+  const channel = toChannel(conversation.channel);
+  if (channel !== 'whatsapp') {
+    return sendOnMessagingChannel({
+      db,
+      accountId,
+      conversationId,
+      channel,
+      contactId: contact?.id ?? null,
+      recipientId: (contact as { channel_user_id?: string | null } | null)
+        ?.channel_user_id ?? null,
+      messageType,
+      contentText,
+      mediaUrl,
+      filename,
+      replyToMessageId,
+      senderId,
+    });
+  }
 
   // A contact is addressable by phone number OR by business-scoped user
   // ID. Meta withholds the phone number for a customer who has adopted
@@ -548,4 +578,190 @@ export async function sendMessageToConversation(
   }
 
   return { messageId: messageRecord.id, whatsappMessageId: waMessageId };
+}
+
+// ============================================================
+// Messenger / Instagram send path.
+//
+// Deliberately a sibling of the WhatsApp path rather than a shared
+// abstraction: the two transports agree on almost nothing (no
+// templates, no interactive lists, no phone-variant retry, no wamid
+// status webhooks), and pretending otherwise would hide the real
+// differences behind a leaky interface. What IS shared is the contract
+// with callers: same `SendMessageParams`, same `SendMessageError`
+// family, same persisted `messages` row, same conversation summary
+// update and Flow pause.
+// ============================================================
+
+const CHANNEL_MEDIA_KINDS = MEDIA_KINDS as readonly string[];
+
+interface MessagingSendArgs {
+  db: SupabaseClient;
+  accountId: string;
+  conversationId: string;
+  channel: MessagingChannel;
+  contactId: string | null;
+  /** PSID / IGSID — the id the Send API addresses. */
+  recipientId: string | null;
+  messageType: string;
+  contentText?: string | null;
+  mediaUrl?: string | null;
+  filename?: string | null;
+  replyToMessageId?: string | null;
+  senderId?: string | null;
+}
+
+async function sendOnMessagingChannel(
+  args: MessagingSendArgs
+): Promise<SendMessageResult> {
+  const {
+    db,
+    accountId,
+    conversationId,
+    channel,
+    contactId,
+    recipientId,
+    messageType,
+    contentText,
+    mediaUrl,
+    replyToMessageId,
+    senderId,
+  } = args;
+
+  if (messageType === 'template' || messageType === 'interactive') {
+    throw new SendMessageError(
+      'bad_request',
+      `Templates and interactive messages are WhatsApp-only. Use free-form text on ${channel}.`,
+      400
+    );
+  }
+
+  if (!recipientId) {
+    throw new SendMessageError(
+      'bad_request',
+      `Contact has no ${channel} user id — it cannot be addressed on this channel.`,
+      400
+    );
+  }
+
+  const { data: config, error: configError } = await db
+    .from('channel_configs')
+    .select('external_id, access_token, is_active')
+    .eq('account_id', accountId)
+    .eq('channel', channel)
+    .maybeSingle();
+
+  if (configError || !config || !config.is_active) {
+    throw new SendMessageError(
+      'channel_not_configured',
+      `${channel} is not connected for this account. Connect it in Settings → Channels.`,
+      400
+    );
+  }
+
+  const accessToken = decrypt(config.access_token);
+
+  // Reply context — same ownership rule as the WhatsApp path: the parent
+  // must belong to this conversation, so a caller cannot quote messages
+  // they cannot see.
+  let contextMessageId: string | undefined;
+  if (replyToMessageId) {
+    const { data: parent } = await db
+      .from('messages')
+      .select('message_id')
+      .eq('id', replyToMessageId)
+      .eq('conversation_id', conversationId)
+      .maybeSingle();
+    if (parent?.message_id) contextMessageId = parent.message_id;
+  }
+
+  const sendArgs = {
+    externalId: config.external_id as string,
+    accessToken,
+    recipientId,
+    replyToMessageId: contextMessageId,
+  };
+
+  let metaMessageId: string;
+  try {
+    if (CHANNEL_MEDIA_KINDS.includes(messageType)) {
+      if (!mediaUrl) {
+        throw new SendMessageError(
+          'bad_request',
+          'media_url is required for media messages',
+          400
+        );
+      }
+      metaMessageId = await sendChannelMedia(
+        sendArgs,
+        messageType as ChannelMediaKind,
+        mediaUrl,
+        contentText || undefined
+      );
+    } else {
+      metaMessageId = await sendChannelText(sendArgs, contentText!);
+    }
+  } catch (err) {
+    if (err instanceof SendMessageError) throw err;
+    const message = err instanceof Error ? err.message : 'Unknown channel API error';
+    console.error(`[send-message] ${channel} send failed:`, message);
+    throw new SendMessageError('meta_error', `${channel} API error: ${message}`, 502);
+  }
+
+  const { data: messageRecord, error: msgError } = await db
+    .from('messages')
+    .insert({
+      conversation_id: conversationId,
+      sender_type: 'agent',
+      sender_id: senderId ?? null,
+      content_type: messageType,
+      content_text: contentText ?? null,
+      media_url: mediaUrl || null,
+      message_id: metaMessageId,
+      status: 'sent',
+      reply_to_message_id: replyToMessageId || null,
+    })
+    .select()
+    .single();
+
+  if (msgError) {
+    console.error('[send-message] error inserting sent message:', msgError);
+    throw new SendMessageError(
+      'db_error',
+      `Message sent to ${channel} but failed to save to DB: ${msgError.message}`,
+      500
+    );
+  }
+
+  await db
+    .from('conversations')
+    .update({
+      last_message_text: contentText || `[${messageType}]`,
+      last_message_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', conversationId);
+
+  // Same "agent stepped in" signal as the WhatsApp path.
+  if (contactId) {
+    try {
+      await supabaseAdmin()
+        .from('flow_runs')
+        .update({
+          status: 'paused_by_agent',
+          ended_at: new Date().toISOString(),
+          end_reason: 'agent_replied',
+        })
+        .eq('account_id', accountId)
+        .eq('contact_id', contactId)
+        .eq('status', 'active');
+    } catch (err) {
+      console.error(
+        '[flows] pause-on-agent-send threw:',
+        err instanceof Error ? err.message : err
+      );
+    }
+  }
+
+  return { messageId: messageRecord.id, whatsappMessageId: metaMessageId };
 }
