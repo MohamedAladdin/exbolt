@@ -82,7 +82,7 @@ so the card can say "Open conversation" instead of "Chat now".
 **Route 2 — `POST /api/contacts/open-chat {phone, name?}`.** Wraps
 `resolveConversationByPhone` (already used by the public API): find-or-create
 contact → find-or-create conversation → return the conversation id. The inbox
-listens for a `wacrm:open-conversation` window event, pulls the row with its
+listens for a `exbolt:open-conversation` window event, pulls the row with its
 contact join and selects it, so the flow works even when the thread is not in
 the current list page.
 
@@ -99,7 +99,7 @@ typeface/size, and the option lives in Settings.
 
 **Locale is a runtime choice, not a build variable.** Upstream resolved the
 catalogue at build time from `NEXT_PUBLIC_APP_LOCALE`. That cannot support a
-switch, so the order is now: cookie (`wacrm_locale`) → env default → English
+switch, so the order is now: cookie (`exbolt_locale`) → env default → English
 (`src/i18n/config.ts`, `resolveLocale`). `POST /api/locale` writes the cookie;
 the Appearance panel then paints `lang`/`dir` optimistically and calls
 `router.refresh()`, so every server-rendered string re-renders without a reload.

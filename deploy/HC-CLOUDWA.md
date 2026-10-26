@@ -20,7 +20,7 @@ Supabase project ref: `lrhqeaihiqxvltzkhqre`
 ## Steps to make login work
 ```bash
 supabase login                                   # browser, on the machine
-cd ~/rado-yard/wacrm
+cd ~/rado-yard/exbolt
 supabase link --project-ref lrhqeaihiqxvltzkhqre # asks for the DB password once
 supabase db push                                 # applies the 39 migrations
 ```

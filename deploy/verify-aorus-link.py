@@ -10,7 +10,7 @@ import pathlib
 from playwright.sync_api import sync_playwright
 
 BASE = "http://10.0.0.1:3000"
-SHOTS = pathlib.Path("/home/maladdin/rado-yard/wacrm/docs/admin-shots")
+SHOTS = pathlib.Path("/home/maladdin/rado-yard/exbolt/docs/admin-shots")
 ok = True
 
 
@@ -23,7 +23,7 @@ def check(name, passed, detail=""):
 with sync_playwright() as p:
     browser = p.chromium.launch()
     ctx = browser.new_context(viewport={"width": 1440, "height": 1000})
-    ctx.add_cookies([{"name": "wacrm_locale", "value": "ar", "url": BASE}])
+    ctx.add_cookies([{"name": "exbolt_locale", "value": "ar", "url": BASE}])
     page = ctx.new_page()
 
     page.goto(f"{BASE}/login", wait_until="networkidle")

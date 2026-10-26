@@ -154,7 +154,7 @@ on conflict (user_id) do nothing;
 ## 7. Local run
 
 ```bash
-cd ~/rado-yard/wacrm
+cd ~/rado-yard/exbolt
 npx supabase start -x analytics      # if not running
 npm run build
 bash deploy/restart-local.sh         # rebuild + standalone on :3000

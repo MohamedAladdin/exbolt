@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # =============================================================================
-# wacrm — fresh-host bootstrap for Hetzner Cloud (Ubuntu / Debian)
+# ExBolt — fresh-host bootstrap for Hetzner Cloud (Ubuntu / Debian)
 # =============================================================================
 #
 # Prepares a brand-new Hetzner VM to host:
-#   * the wacrm Next.js app  (Docker, /srv/wacrm)
+#   * the ExBolt Next.js app  (Docker, /srv/exbolt)
 #   * self-hosted Supabase   (Docker, /srv/supabase)
 #   * nginx + Let's Encrypt in front of both
 #
@@ -15,7 +15,7 @@
 #      `sshd -t` BEFORE ssh is reloaded. If validation fails the drop-in is
 #      moved aside and ssh is left untouched.
 #   3. No secrets. This script never writes an application secret; the app env
-#      lives in /srv/wacrm/.env.production, provisioned separately (README.md).
+#      lives in /srv/exbolt/.env.production, provisioned separately (README.md).
 #
 # USAGE (as root, fresh box):
 #   bash bootstrap.sh "ssh-ed25519 AAAAC3Nz... deploy@laptop"
@@ -25,10 +25,10 @@
 #   key you will actually log in with — password auth is disabled at the end.
 #
 #   Escape hatches (rarely needed, documented in README.md):
-#     WACRM_ALLOW_NO_KEYS=1  — proceed even if no SSH key is present anywhere.
+#     EXBOLT_ALLOW_NO_KEYS=1  — proceed even if no SSH key is present anywhere.
 #                              Only for a console/rescue session where you know
 #                              what you are doing; you may lose SSH access.
-#     WACRM_SSH_PORT=2222    — also open this TCP port in ufw.
+#     EXBOLT_SSH_PORT=2222    — also open this TCP port in ufw.
 #
 # REQUIREMENTS: Ubuntu 22.04/24.04 or Debian 12/13, root, outbound HTTPS.
 # =============================================================================
@@ -41,16 +41,16 @@ set -Eeuo pipefail   # -E: the ERR trap must also fire inside functions
 readonly SWAPFILE="/swapfile"
 readonly SSHD_HARDEN="/etc/ssh/sshd_config.d/99-hardening.conf"
 readonly DEPLOY_USER="deploy"
-readonly APP_DIR="/srv/wacrm"
+readonly APP_DIR="/srv/exbolt"
 readonly SUPABASE_DIR="/srv/supabase"
-readonly LOG_DIR="/var/log/wacrm"
+readonly LOG_DIR="/var/log/exbolt"
 
 AGENT_PUBKEY="${1:-}"
 OS_ID=""
 OS_VERSION=""
 OS_PRETTY=""
 OS_CODENAME=""
-SSH_PORT="${WACRM_SSH_PORT:-22}"
+SSH_PORT="${EXBOLT_SSH_PORT:-22}"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE=a
@@ -166,9 +166,9 @@ ensure_swap() {
   fi
 
   if ! grep -qsE "^${SWAPFILE}[[:space:]]" /etc/fstab; then
-    cp -a /etc/fstab "/etc/fstab.wacrm.bak"
+    cp -a /etc/fstab "/etc/fstab.exbolt.bak"
     printf '%s none swap sw 0 0\n' "${SWAPFILE}" >> /etc/fstab
-    log "persisted ${SWAPFILE} in /etc/fstab (backup: /etc/fstab.wacrm.bak)"
+    log "persisted ${SWAPFILE} in /etc/fstab (backup: /etc/fstab.exbolt.bak)"
   else
     log "${SWAPFILE} already in /etc/fstab"
   fi
@@ -200,7 +200,7 @@ configure_time_and_updates() {
 
   # Periodic apt metadata refresh + unattended application of upgrades.
   cat > /etc/apt/apt.conf.d/20auto-upgrades <<'EOF'
-// Managed by wacrm deploy/hetzner/bootstrap.sh
+// Managed by ExBolt deploy/hetzner/bootstrap.sh
 APT::Periodic::Update-Package-Lists "1";
 APT::Periodic::Unattended-Upgrade "1";
 APT::Periodic::AutocleanInterval "7";
@@ -216,17 +216,17 @@ EOF
   #
   # It is a dpkg conffile: apt_install() runs with --force-confold, so a future
   # package upgrade keeps this version instead of prompting.
-  install -d -m 0750 /var/backups/wacrm
+  install -d -m 0750 /var/backups/exbolt
   local uu="/etc/apt/apt.conf.d/50unattended-upgrades"
   if [[ -f "${uu}" ]] &&
-     [[ ! -f /var/backups/wacrm/50unattended-upgrades.dist ]] &&
-     ! grep -qs 'Managed by wacrm deploy/hetzner/bootstrap.sh' "${uu}"; then
-    cp -a "${uu}" /var/backups/wacrm/50unattended-upgrades.dist
-    log "backed up the distro upgrade policy to /var/backups/wacrm/50unattended-upgrades.dist"
+     [[ ! -f /var/backups/exbolt/50unattended-upgrades.dist ]] &&
+     ! grep -qs 'Managed by ExBolt deploy/hetzner/bootstrap.sh' "${uu}"; then
+    cp -a "${uu}" /var/backups/exbolt/50unattended-upgrades.dist
+    log "backed up the distro upgrade policy to /var/backups/exbolt/50unattended-upgrades.dist"
   fi
 
   cat > /etc/apt/apt.conf.d/50unattended-upgrades <<'EOF'
-// Managed by wacrm deploy/hetzner/bootstrap.sh — replaces the distro default.
+// Managed by ExBolt deploy/hetzner/bootstrap.sh — replaces the distro default.
 // Security pocket only: no release-pocket or -updates packages install
 // unattended, and nothing reboots the host on its own.
 Unattended-Upgrade::Allowed-Origins {
@@ -242,7 +242,7 @@ Unattended-Upgrade::SyslogEnable "true";
 EOF
 
   # Drop the earlier two-file variant if this host ran a previous revision.
-  rm -f /etc/apt/apt.conf.d/51wacrm-unattended-upgrades
+  rm -f /etc/apt/apt.conf.d/51exbolt-unattended-upgrades
 
   systemctl enable --now unattended-upgrades >/dev/null 2>&1 || \
     warn "could not enable unattended-upgrades.service (timer-only systems are fine)"
@@ -290,13 +290,13 @@ ensure_deploy_user() {
   if id -u "${DEPLOY_USER}" >/dev/null 2>&1; then
     log "user ${DEPLOY_USER} already exists"
   else
-    useradd --create-home --shell /bin/bash --comment "wacrm deploy" "${DEPLOY_USER}"
+    useradd --create-home --shell /bin/bash --comment "ExBolt deploy" "${DEPLOY_USER}"
     log "created user ${DEPLOY_USER}"
   fi
 
   # Sudo without a password: the account is key-only, and this box is
   # administered non-interactively by the operator / agents.
-  local sudoers="/etc/sudoers.d/90-wacrm-${DEPLOY_USER}"
+  local sudoers="/etc/sudoers.d/90-exbolt-${DEPLOY_USER}"
   install -d -m 0750 /etc/sudoers.d
   printf '%s ALL=(ALL) NOPASSWD:ALL\n' "${DEPLOY_USER}" > "${sudoers}"
   chmod 0440 "${sudoers}"
@@ -354,8 +354,8 @@ harden_ssh() {
   done
 
   if (( key_lines == 0 )); then
-    if [[ "${WACRM_ALLOW_NO_KEYS:-0}" == "1" ]]; then
-      warn "no authorised keys found and WACRM_ALLOW_NO_KEYS=1 — disabling password auth anyway"
+    if [[ "${EXBOLT_ALLOW_NO_KEYS:-0}" == "1" ]]; then
+      warn "no authorised keys found and EXBOLT_ALLOW_NO_KEYS=1 — disabling password auth anyway"
       warn "you have been warned: this is how boxes get locked out"
     else
       die "refusing to disable password authentication: no SSH keys found in
@@ -364,7 +364,7 @@ harden_ssh() {
        Pass your public key as ARG 1:
          bash bootstrap.sh \"\$(cat ~/.ssh/id_ed25519.pub)\"
        or, if you are on the Hetzner web console and accept the risk:
-         WACRM_ALLOW_NO_KEYS=1 bash bootstrap.sh"
+         EXBOLT_ALLOW_NO_KEYS=1 bash bootstrap.sh"
     fi
   else
     log "${key_lines} authorised key line(s) present"
@@ -377,7 +377,7 @@ harden_ssh() {
   if [[ ! -f /etc/ssh/sshd_config ]]; then
     warn "/etc/ssh/sshd_config is missing — writing a minimal skeleton"
     cat > /etc/ssh/sshd_config <<'EOF'
-# Minimal sshd_config written by wacrm deploy/hetzner/bootstrap.sh
+# Minimal sshd_config written by ExBolt deploy/hetzner/bootstrap.sh
 Include /etc/ssh/sshd_config.d/*.conf
 Port 22
 HostKey /etc/ssh/ssh_host_ed25519_key
@@ -387,16 +387,16 @@ EOF
 
   # Drop-in config only takes effect if the main config includes the directory.
   if ! grep -qE '^[[:space:]]*Include[[:space:]]+/etc/ssh/sshd_config\.d/' /etc/ssh/sshd_config; then
-    if [[ ! -f /etc/ssh/sshd_config.wacrm.bak ]]; then
-      cp -a /etc/ssh/sshd_config /etc/ssh/sshd_config.wacrm.bak
+    if [[ ! -f /etc/ssh/sshd_config.exbolt.bak ]]; then
+      cp -a /etc/ssh/sshd_config /etc/ssh/sshd_config.exbolt.bak
     fi
     # OpenSSH uses the FIRST value it sees, so the include must be at the top.
     sed -i '1i Include /etc/ssh/sshd_config.d/*.conf' /etc/ssh/sshd_config
-    log "added 'Include /etc/ssh/sshd_config.d/*.conf' to sshd_config (backup: .wacrm.bak)"
+    log "added 'Include /etc/ssh/sshd_config.d/*.conf' to sshd_config (backup: .exbolt.bak)"
   fi
 
   cat > "${SSHD_HARDEN}" <<'EOF'
-# Managed by wacrm deploy/hetzner/bootstrap.sh — changes are overwritten on re-run.
+# Managed by ExBolt deploy/hetzner/bootstrap.sh — changes are overwritten on re-run.
 # Key-only login. Root may log in with a key (needed for provider rescue flows)
 # but never with a password.
 PermitRootLogin prohibit-password
@@ -424,17 +424,17 @@ EOF
       continue
     fi
     if grep -qEi '^[[:space:]]*(PasswordAuthentication|PermitRootLogin|KbdInteractiveAuthentication|ChallengeResponseAuthentication|PubkeyAuthentication)[[:space:]]' "${dropin}"; then
-      cp -a "${dropin}" "${dropin}.wacrm.bak"
-      sed -i -E 's@^([[:space:]]*)(PasswordAuthentication|PermitRootLogin|KbdInteractiveAuthentication|ChallengeResponseAuthentication|PubkeyAuthentication)([[:space:]])@# disabled by wacrm bootstrap (see 99-hardening.conf): \1\2\3@' "${dropin}"
-      log "neutralised conflicting directives in ${dropin} (backup: ${dropin}.wacrm.bak)"
+      cp -a "${dropin}" "${dropin}.exbolt.bak"
+      sed -i -E 's@^([[:space:]]*)(PasswordAuthentication|PermitRootLogin|KbdInteractiveAuthentication|ChallengeResponseAuthentication|PubkeyAuthentication)([[:space:]])@# disabled by ExBolt bootstrap (see 99-hardening.conf): \1\2\3@' "${dropin}"
+      log "neutralised conflicting directives in ${dropin} (backup: ${dropin}.exbolt.bak)"
     fi
   done
 
   # Keep cloud-init's own model consistent, so a later cloud-init run cannot
   # write `PasswordAuthentication yes` back in.
   if [[ -d /etc/cloud/cloud.cfg.d ]]; then
-    printf 'ssh_pwauth: false\n' > /etc/cloud/cloud.cfg.d/99-wacrm-ssh.cfg
-    log "cloud-init: ssh_pwauth=false (/etc/cloud/cloud.cfg.d/99-wacrm-ssh.cfg)"
+    printf 'ssh_pwauth: false\n' > /etc/cloud/cloud.cfg.d/99-exbolt-ssh.cfg
+    log "cloud-init: ssh_pwauth=false (/etc/cloud/cloud.cfg.d/99-exbolt-ssh.cfg)"
   fi
 
   # VALIDATE BEFORE RELOADING. `sshd -t` parses the full effective config,
@@ -490,8 +490,8 @@ configure_fail2ban() {
   step "fail2ban"
 
   install -d -m 0755 /etc/fail2ban/jail.d /etc/fail2ban/filter.d
-  cat > /etc/fail2ban/jail.d/wacrm-sshd.local <<EOF
-# Managed by wacrm deploy/hetzner/bootstrap.sh
+  cat > /etc/fail2ban/jail.d/exbolt-sshd.local <<EOF
+# Managed by ExBolt deploy/hetzner/bootstrap.sh
 [DEFAULT]
 # Ubuntu 24.04 has no rsyslog by default; read the journal instead.
 backend = systemd
@@ -602,7 +602,7 @@ install_nginx_certbot() {
 
   systemctl enable --now nginx
   # A fresh install listens on :80 with the default site. We leave it in place
-  # (harmless) — the runbook removes it when the wacrm site is enabled.
+  # (harmless) — the runbook removes it when the ExBolt site is enabled.
   log "nginx $(nginx -v 2>&1 | sed 's/^nginx version: //') running; certbot $(certbot --version 2>&1 | awk '{print $2}')"
 }
 
@@ -634,7 +634,7 @@ print_summary() {
   cat <<EOF
 
 ===============================================================================
- wacrm host bootstrap complete
+ ExBolt host bootstrap complete
 ===============================================================================
  OS              : ${OS_PRETTY}
  Kernel          : $(uname -r)
@@ -684,7 +684,7 @@ EOF
 # main
 # ---------------------------------------------------------------------------
 main() {
-  log "wacrm bootstrap — $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+  log "ExBolt bootstrap — $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
 
   require_root
   detect_os

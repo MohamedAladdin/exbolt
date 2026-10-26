@@ -18,7 +18,7 @@ export type Locale = (typeof LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = 'en';
 
 /** Cookie holding the user's choice. Read server-side by src/i18n/request.ts. */
-export const LOCALE_COOKIE = 'wacrm_locale';
+export const LOCALE_COOKIE = 'exbolt_locale';
 
 /** Locales written right-to-left. */
 export const RTL_LOCALES: readonly Locale[] = ['ar'];

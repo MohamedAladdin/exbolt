@@ -1,7 +1,7 @@
-# Hetzner provisioning runbook — wacrm
+# Hetzner provisioning runbook — ExBolt
 
 Everything needed to take a **brand-new Hetzner Cloud server** (Ubuntu or Debian,
-no prior config) to a running wacrm deployment: hardened host, Docker, self-hosted
+no prior config) to a running ExBolt deployment: hardened host, Docker, self-hosted
 Supabase, nginx + Let's Encrypt in front of the Next.js app, and the Meta webhook
 registered.
 
@@ -17,7 +17,7 @@ Internet ──► :443 nginx ──► 127.0.0.1:3000   app container (Next.js 
 | File | Purpose |
 |---|---|
 | `bootstrap.sh` | One-shot, idempotent host provisioning. Run as root on the fresh box. |
-| `nginx-wacrm.conf.template` | nginx server block for the app (placeholders: `__DOMAIN__`, `__UPSTREAM__`). |
+| `nginx-exbolt.conf.template` | nginx server block for the app (placeholders: `__DOMAIN__`, `__UPSTREAM__`). |
 | `app.compose.yml` | Production compose file for the app container. |
 | `README.md` | This runbook. |
 
@@ -28,7 +28,7 @@ export DOMAIN=crm.example.com                  # app hostname
 export API_DOMAIN=api.crm.example.com          # Supabase API hostname
 export EMAIL=ops@example.com                   # Let's Encrypt + admin mail
 export SERVER_IP=203.0.113.10                  # Hetzner server IPv4
-export REPO_URL=<your fork's git URL>          # e.g. git@github.com:you/wacrm.git
+export REPO_URL=<your fork's git URL>          # e.g. git@github.com:you/exbolt.git
 ```
 
 ---
@@ -75,7 +75,7 @@ ssh root@"$SERVER_IP" 'bash /root/hetzner-bootstrap/bootstrap.sh "$(cat /root/ag
 > both `/root/.ssh/authorized_keys` and `/home/deploy/.ssh/authorized_keys`, and
 > password authentication is disabled at the end of the run. With **no key present
 > anywhere**, the script refuses to disable password auth and exits (override only
-> from a web console, with `WACRM_ALLOW_NO_KEYS=1`).
+> from a web console, with `EXBOLT_ALLOW_NO_KEYS=1`).
 
 Runtime: ~3–6 minutes. The script is idempotent — safe to re-run after a failure,
 a reboot, or just to confirm state. A second run is a fast no-op.
@@ -84,8 +84,8 @@ Optional environment knobs:
 
 | Variable | Effect |
 |---|---|
-| `WACRM_SSH_PORT=2222` | Also opens that TCP port in `ufw` (you still have to move sshd itself). |
-| `WACRM_ALLOW_NO_KEYS=1` | Proceeds with password auth disabled even with zero keys. Lockout risk — console only. |
+| `EXBOLT_SSH_PORT=2222` | Also opens that TCP port in `ufw` (you still have to move sshd itself). |
+| `EXBOLT_ALLOW_NO_KEYS=1` | Proceeds with password auth disabled even with zero keys. Lockout risk — console only. |
 
 ---
 
@@ -95,18 +95,18 @@ Optional environment knobs:
 |---|---|---|
 | OS check | Aborts unless `/etc/os-release` says `ubuntu` or `debian`. | read-only |
 | Base packages | `curl ca-certificates gnupg git jq unzip rsync sudo ufw fail2ban python3-systemd htop ncdu unattended-upgrades apt-listchanges` | `apt-get install` is a no-op when current |
-| Swap | Adds `/swapfile`: **1 GB** if RAM ≥ 8 GB, **2 GB** if 4–8 GB, **4 GB** if < 4 GB — only when the host has no swap. Persisted in `/etc/fstab` (backup: `/etc/fstab.wacrm.bak`). | skipped when any swap is active |
+| Swap | Adds `/swapfile`: **1 GB** if RAM ≥ 8 GB, **2 GB** if 4–8 GB, **4 GB** if < 4 GB — only when the host has no swap. Persisted in `/etc/fstab` (backup: `/etc/fstab.exbolt.bak`). | skipped when any swap is active |
 | Time | `timedatectl set-timezone UTC`. | idempotent |
-| Updates | `/etc/apt/apt.conf.d/20auto-upgrades` (daily metadata refresh + apply) and a replacement `/etc/apt/apt.conf.d/50unattended-upgrades` that allows **only the security pocket** (plus Ubuntu ESM) and never reboots. apt appends list values across files with no way to clear them, so the distro file is replaced rather than amended; the original is kept at `/var/backups/wacrm/50unattended-upgrades.dist`. | files rewritten verbatim |
+| Updates | `/etc/apt/apt.conf.d/20auto-upgrades` (daily metadata refresh + apply) and a replacement `/etc/apt/apt.conf.d/50unattended-upgrades` that allows **only the security pocket** (plus Ubuntu ESM) and never reboots. apt appends list values across files with no way to clear them, so the distro file is replaced rather than amended; the original is kept at `/var/backups/exbolt/50unattended-upgrades.dist`. | files rewritten verbatim |
 | `deploy` user | Created (if missing) with `/bin/bash`, home, and `NOPASSWD:ALL` sudo validated by `visudo -cf`. | existing user untouched |
 | SSH keys | Root's `authorized_keys` copied to `deploy`; `ARG 1` appended to both, deduplicated on the key blob. Perms forced to `700`/`600`. | no duplicate lines on re-run |
-| sshd hardening | `/etc/ssh/sshd_config.d/99-hardening.conf`: `PermitRootLogin prohibit-password`, `PasswordAuthentication no`, `KbdInteractiveAuthentication no`, `X11Forwarding no`, `MaxAuthTries 3`. Adds the `Include` line to `/etc/ssh/sshd_config` if the image lacks it (backup: `.wacrm.bak`). Because sshd honours the **first** value it reads, conflicting directives in *other* drop-ins (Ubuntu's `50-cloud-init.conf` ships `PasswordAuthentication yes`) are commented out — otherwise the 99- file loses. `ssh_pwauth: false` is also written to `/etc/cloud/cloud.cfg.d/` so cloud-init cannot re-add it. **`sshd -t` must pass before the reload** — on failure the drop-in is renamed to `.rejected` and ssh is *not* touched. | file rewritten, conflicting lines neutralised once, validated, reloaded |
+| sshd hardening | `/etc/ssh/sshd_config.d/99-hardening.conf`: `PermitRootLogin prohibit-password`, `PasswordAuthentication no`, `KbdInteractiveAuthentication no`, `X11Forwarding no`, `MaxAuthTries 3`. Adds the `Include` line to `/etc/ssh/sshd_config` if the image lacks it (backup: `.exbolt.bak`). Because sshd honours the **first** value it reads, conflicting directives in *other* drop-ins (Ubuntu's `50-cloud-init.conf` ships `PasswordAuthentication yes`) are commented out — otherwise the 99- file loses. `ssh_pwauth: false` is also written to `/etc/cloud/cloud.cfg.d/` so cloud-init cannot re-add it. **`sshd -t` must pass before the reload** — on failure the drop-in is renamed to `.rejected` and ssh is *not* touched. | file rewritten, conflicting lines neutralised once, validated, reloaded |
 | Firewall | `ufw` default deny incoming / allow outgoing; TCP 22, 80, 443 open; enabled non-interactively. | `ufw allow` on an existing rule is a no-op |
-| fail2ban | `/etc/fail2ban/jail.d/wacrm-sshd.local`: `sshd` jail, `maxretry=5`, `findtime=10m`, `bantime=1h`, `banaction=ufw`, `backend=systemd` (Ubuntu 24.04 has no syslog). | rewritten + reloaded |
+| fail2ban | `/etc/fail2ban/jail.d/exbolt-sshd.local`: `sshd` jail, `maxretry=5`, `findtime=10m`, `bantime=1h`, `banaction=ufw`, `backend=systemd` (Ubuntu 24.04 has no syslog). | rewritten + reloaded |
 | Docker | Official Docker apt repo + `docker-ce`, `docker-ce-cli`, `containerd.io`, `docker-buildx-plugin`, `docker-compose-plugin`. `deploy` joins the `docker` group. | **skipped entirely** when `docker` + `docker compose` already work |
 | Node.js | NodeSource 22.x, only when `node` is missing or major < 22. | skipped when ≥ 22 |
 | nginx + certbot | `nginx`, `python3-certbot-nginx`; nginx enabled and started. | apt no-op, service already running |
-| Directories | `/srv/wacrm`, `/srv/supabase`, `/var/log/wacrm` — `deploy:deploy`, mode `750`. | `install -d` |
+| Directories | `/srv/exbolt`, `/srv/supabase`, `/var/log/exbolt` — `deploy:deploy`, mode `750`. | `install -d` |
 | Summary | Prints OS, kernel, CPU/RAM, swap, disk, timezone, Docker/Compose/Node/nginx/certbot versions, users, paths, ufw state and **effective** `sshd -T` auth settings. | — |
 
 Nothing in the script writes an application secret. `.env.production` is yours to
@@ -155,7 +155,7 @@ docker --version && docker compose version && node --version && nginx -v
 # Docker version 27.x / Docker Compose version v2.x / v22.x / nginx version: nginx/1.24.0
 
 # Swap + time + dirs
-swapon --show && timedatectl | grep 'Time zone' && ls -ld /srv/wacrm /srv/supabase /var/log/wacrm
+swapon --show && timedatectl | grep 'Time zone' && ls -ld /srv/exbolt /srv/supabase /var/log/exbolt
 ```
 
 If `/var/run/reboot-required` exists (kernel/libc upgraded during the run), reboot
@@ -167,17 +167,17 @@ now — before deploying anything: `sudo reboot`.
 
 | Path | Contents |
 |---|---|
-| `/srv/wacrm` | Git checkout of this repo (app source + `Dockerfile` + `deploy/hetzner/*`). `deploy:deploy`, `750`. |
-| `/srv/wacrm/.env.production` | App secrets/config, `chmod 600 deploy:deploy`, **never committed** (`.gitignore` has `.env*`). |
+| `/srv/exbolt` | Git checkout of this repo (app source + `Dockerfile` + `deploy/hetzner/*`). `deploy:deploy`, `750`. |
+| `/srv/exbolt/.env.production` | App secrets/config, `chmod 600 deploy:deploy`, **never committed** (`.gitignore` has `.env*`). |
 | `/srv/supabase` | Self-hosted Supabase stack root: `docker-compose.yml`, `.env`, `volumes/` (db data + storage objects) and `backups/`. |
-| `/var/log/wacrm` | Free for app-level log shipping. Docker's own json logs live under `/var/lib/docker/containers` and are capped at 10 MB × 3 per container. |
-| `/etc/nginx/sites-available/wacrm.conf` | Rendered from `nginx-wacrm.conf.template`. |
+| `/var/log/exbolt` | Free for app-level log shipping. Docker's own json logs live under `/var/lib/docker/containers` and are capped at 10 MB × 3 per container. |
+| `/etc/nginx/sites-available/exbolt.conf` | Rendered from `nginx-exbolt.conf.template`. |
 | `/etc/letsencrypt/` | Certbot-managed certs and renewal config. |
 
 Logs, when you need them:
 
 ```bash
-cd /srv/wacrm
+cd /srv/exbolt
 docker compose --env-file .env.production -f deploy/hetzner/app.compose.yml logs -f --tail=200 app   # app
 sudo tail -f /var/log/nginx/error.log                                     # proxy
 sudo journalctl -u docker -n 100                                          # daemon
@@ -211,7 +211,7 @@ it first with a throwaway ACME-only server block on :80:
 ```bash
 sudo mkdir -p /var/www/certbot
 
-sudo tee /etc/nginx/sites-available/wacrm-acme.conf >/dev/null <<EOF
+sudo tee /etc/nginx/sites-available/exbolt-acme.conf >/dev/null <<EOF
 server {
     listen 80;
     listen [::]:80;
@@ -220,7 +220,7 @@ server {
 }
 EOF
 
-sudo ln -sfn /etc/nginx/sites-available/wacrm-acme.conf /etc/nginx/sites-enabled/wacrm-acme.conf
+sudo ln -sfn /etc/nginx/sites-available/exbolt-acme.conf /etc/nginx/sites-enabled/exbolt-acme.conf
 sudo nginx -t && sudo systemctl reload nginx
 
 sudo certbot certonly --webroot -w /var/www/certbot \
@@ -241,10 +241,10 @@ Certificate is saved at: /etc/letsencrypt/live/crm.example.com/fullchain.pem
 cd /root/hetzner-bootstrap    # or wherever you copied the bundle
 
 sudo sed -e "s|__DOMAIN__|${DOMAIN}|g" -e "s|__UPSTREAM__|127.0.0.1:3000|g" \
-  nginx-wacrm.conf.template | sudo tee /etc/nginx/sites-available/wacrm.conf >/dev/null
+  nginx-exbolt.conf.template | sudo tee /etc/nginx/sites-available/exbolt.conf >/dev/null
 
-sudo ln -sfn /etc/nginx/sites-available/wacrm.conf /etc/nginx/sites-enabled/wacrm.conf
-sudo rm -f /etc/nginx/sites-enabled/wacrm-acme.conf /etc/nginx/sites-enabled/default
+sudo ln -sfn /etc/nginx/sites-available/exbolt.conf /etc/nginx/sites-enabled/exbolt.conf
+sudo rm -f /etc/nginx/sites-enabled/exbolt-acme.conf /etc/nginx/sites-enabled/default
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
@@ -389,7 +389,7 @@ Copy the two printed values into `.env` (and later into `.env.production`).
 
 ### 7.2 Point Supabase at your domain
 
-Edit `/srv/supabase/.env`. The values that matter for wacrm:
+Edit `/srv/supabase/.env`. The values that matter for ExBolt:
 
 ```env
 POSTGRES_PASSWORD=<the generated password>
@@ -416,7 +416,7 @@ ENABLE_EMAIL_AUTOCONFIRM=false
 
 # Supabase Auth emails (sign-up confirmation, password reset).
 SMTP_ADMIN_EMAIL=ops@example.com
-SMTP_SENDER_NAME=wacrm
+SMTP_SENDER_NAME=ExBolt
 SMTP_HOST=smtp.yourprovider.com
 SMTP_PORT=587
 SMTP_USER=...
@@ -475,13 +475,13 @@ curl -sS -o /dev/null -w '%{http_code}\n' https://api.crm.example.com/rest/v1/
 ### 8.1 Get the code onto the server
 
 **Git (recommended)** — the compose file's build context is the repo root, so the
-checkout must live at `/srv/wacrm` itself. Run this *before* creating
+checkout must live at `/srv/exbolt` itself. Run this *before* creating
 `.env.production`: `git clone` refuses a non-empty directory.
 
 ```bash
 sudo -iu deploy
-cd /srv/wacrm
-git clone "$REPO_URL" .        # /srv/wacrm must still be empty here
+cd /srv/exbolt
+git clone "$REPO_URL" .        # /srv/exbolt must still be empty here
 git log --oneline -1
 ```
 
@@ -491,12 +491,12 @@ git log --oneline -1
 rsync -az --delete \
   --exclude node_modules --exclude .next --exclude .git \
   --exclude '.env*' --exclude 'tsconfig.tsbuildinfo' \
-  ./ deploy@"$SERVER_IP":/srv/wacrm/
+  ./ deploy@"$SERVER_IP":/srv/exbolt/
 ```
 
 ### 8.2 Production env checklist
 
-Create `/srv/wacrm/.env.production` (**owner** `deploy`, **mode** `600`). Nothing
+Create `/srv/exbolt/.env.production` (**owner** `deploy`, **mode** `600`). Nothing
 here is committed; `.gitignore` ignores `.env*` and `.dockerignore` keeps it out of
 the image.
 
@@ -544,7 +544,7 @@ WHATSAPP_TEMPLATES_DRY_RUN=false
 
 ```bash
 sudo -iu deploy
-cd /srv/wacrm
+cd /srv/exbolt
 install -m 600 /dev/null .env.production    # then edit it
 ```
 
@@ -555,7 +555,7 @@ buckets are all created by `supabase/migrations/*.sql` — nothing is created by
 containers.
 
 ```bash
-cd /srv/wacrm
+cd /srv/exbolt
 # libpq honours PGPASSWORD, so the URL does not need to carry the secret
 export PGPASSWORD="$(grep -E '^POSTGRES_PASSWORD=' /srv/supabase/.env | cut -d= -f2-)"
 npx --yes supabase@latest db push \
@@ -577,7 +577,7 @@ Re-running `db push` after a `git pull` applies new migrations only.
 ### 8.4 Build and run
 
 ```bash
-cd /srv/wacrm
+cd /srv/exbolt
 
 # The app joins the Supabase network; create it once if Supabase is not up yet.
 docker network inspect supabase_default >/dev/null 2>&1 || docker network create supabase_default
@@ -606,7 +606,7 @@ within `start_period` (40 s):
 ```bash
 $DC ps
 # NAME        IMAGE          STATUS
-# wacrm-app-1 wacrm:latest   Up 2 minutes (healthy)
+# exbolt-app-1 ExBolt:latest   Up 2 minutes (healthy)
 ```
 
 ### 8.5 Verify end to end
@@ -636,7 +636,7 @@ $DC exec -T app node -e "fetch('http://kong:8000/auth/v1/health').then(r=>consol
 
 ```bash
 sudo -iu deploy
-cd /srv/wacrm
+cd /srv/exbolt
 DC="docker compose --env-file .env.production -f deploy/hetzner/app.compose.yml"
 
 git pull --ff-only
@@ -646,7 +646,7 @@ $DC up -d --build
 Tag the previous image first if you want a fast rollback:
 
 ```bash
-docker tag wacrm:latest "wacrm:$(git rev-parse --short HEAD)"
+docker tag ExBolt:latest "ExBolt:$(git rev-parse --short HEAD)"
 ```
 
 Only `NEXT_PUBLIC_*` changes require `--build`; runtime secrets (service-role key,
@@ -691,25 +691,25 @@ pinger. Two endpoints, both authenticated with the `x-cron-secret` header
 (`AUTOMATION_CRON_SECRET`): `GET /api/automations/cron` and `GET /api/flows/cron`.
 
 A one-line crontab is tempting but keeps the secret in a world-readable file and
-breaks on quoting. Use a script instead — `/srv/wacrm/cron-ping.sh`:
+breaks on quoting. Use a script instead — `/srv/exbolt/cron-ping.sh`:
 
 ```bash
-sudo -u deploy tee /srv/wacrm/cron-ping.sh >/dev/null <<'SCRIPT'
+sudo -u deploy tee /srv/exbolt/cron-ping.sh >/dev/null <<'SCRIPT'
 #!/usr/bin/env bash
 set -euo pipefail
-SECRET="$(grep -E '^AUTOMATION_CRON_SECRET=' /srv/wacrm/.env.production | cut -d= -f2-)"
+SECRET="$(grep -E '^AUTOMATION_CRON_SECRET=' /srv/exbolt/.env.production | cut -d= -f2-)"
 [[ -n "${SECRET}" ]] || { echo "AUTOMATION_CRON_SECRET not set" >&2; exit 1; }
 for endpoint in automations flows; do
   curl -fsS -m 120 -H "x-cron-secret: ${SECRET}" \
     "https://crm.example.com/api/${endpoint}/cron" >/dev/null
 done
 SCRIPT
-sudo chmod 750 /srv/wacrm/cron-ping.sh
+sudo chmod 750 /srv/exbolt/cron-ping.sh
 
 # ping every 5 minutes; cron.d wants a user column and no inline secrets
-echo '*/5 * * * * deploy /srv/wacrm/cron-ping.sh >/dev/null 2>&1' \
-  | sudo tee /etc/cron.d/wacrm >/dev/null
-sudo chmod 0644 /etc/cron.d/wacrm
+echo '*/5 * * * * deploy /srv/exbolt/cron-ping.sh >/dev/null 2>&1' \
+  | sudo tee /etc/cron.d/exbolt >/dev/null
+sudo chmod 0644 /etc/cron.d/exbolt
 ```
 
 
@@ -717,7 +717,7 @@ Check the endpoints answer `200` and not `503` (503 = the secret is not set in t
 running container — `up -d` after editing `.env.production`):
 
 ```bash
-SECRET="$(sudo grep -E '^AUTOMATION_CRON_SECRET=' /srv/wacrm/.env.production | cut -d= -f2-)"
+SECRET="$(sudo grep -E '^AUTOMATION_CRON_SECRET=' /srv/exbolt/.env.production | cut -d= -f2-)"
 curl -sS -o /dev/null -w '%{http_code}\n' -H "x-cron-secret: ${SECRET}" https://crm.example.com/api/automations/cron
 ```
 
@@ -740,10 +740,10 @@ mkdir -p "$DEST"
 
 # 1. logical database dump (custom format, restorable table-by-table)
 docker exec supabase-db pg_dump -U postgres -d postgres -Fc \
-  > "$DEST/wacrm-db-${STAMP}.dump"
+  > "$DEST/exbolt-db-${STAMP}.dump"
 
 # 2. storage objects (bind mount at /srv/supabase/volumes/storage)
-tar czf "$DEST/wacrm-storage-${STAMP}.tar.gz" \
+tar czf "$DEST/exbolt-storage-${STAMP}.tar.gz" \
   -C /srv/supabase/volumes storage
 
 # 3. keep 14 days locally
@@ -751,28 +751,28 @@ find "$DEST" -type f -mtime +14 -delete
 SCRIPT
 sudo chmod 750 /srv/supabase/backup.sh
 
-echo '15 3 * * * deploy /srv/supabase/backup.sh >> /var/log/wacrm/backup.log 2>&1' \
-  | sudo tee /etc/cron.d/wacrm-backup >/dev/null
-sudo chmod 0644 /etc/cron.d/wacrm-backup
+echo '15 3 * * * deploy /srv/supabase/backup.sh >> /var/log/exbolt/backup.log 2>&1' \
+  | sudo tee /etc/cron.d/exbolt-backup >/dev/null
+sudo chmod 0644 /etc/cron.d/exbolt-backup
 ```
 
 Off-site copy (Hetzner Storage Box or any rclone remote) — do **not** keep the only
 copy on the box being backed up:
 
 ```bash
-rsync -az --delete /srv/supabase/backups/ u123456@u123456.your-storagebox.de:/wacrm/
+rsync -az --delete /srv/supabase/backups/ u123456@u123456.your-storagebox.de:/exbolt/
 ```
 
 Restore drill (do this once, on a throwaway database):
 
 ```bash
 docker exec -i supabase-db psql -U postgres -c 'create database restore_test;'
-docker exec -i supabase-db pg_restore -U postgres -d restore_test --no-owner < /srv/supabase/backups/wacrm-db-<stamp>.dump
+docker exec -i supabase-db pg_restore -U postgres -d restore_test --no-owner < /srv/supabase/backups/exbolt-db-<stamp>.dump
 docker exec -i supabase-db psql -U postgres -d restore_test -c 'select count(*) from accounts;'
 docker exec -i supabase-db psql -U postgres -c 'drop database restore_test;'
 ```
 
-Also back up (small, but annoying to lose): `/srv/wacrm/.env.production`,
+Also back up (small, but annoying to lose): `/srv/exbolt/.env.production`,
 `/srv/supabase/.env`, `/etc/nginx/sites-available/*.conf`, and
 `/etc/letsencrypt/` (or just re-issue certificates).
 
@@ -783,10 +783,10 @@ Also back up (small, but annoying to lose): `/srv/wacrm/.env.production`,
 ### 12.1 App rollback
 
 ```bash
-cd /srv/wacrm
+cd /srv/exbolt
 DC="docker compose --env-file .env.production -f deploy/hetzner/app.compose.yml"
 
-docker tag wacrm:latest wacrm:broken-$(date +%s)          # keep the evidence
+docker tag ExBolt:latest exbolt:broken-$(date +%s)          # keep the evidence
 git log --oneline -10                                     # pick the last good commit
 git checkout -B deploy <good-sha>
 $DC up -d --build
@@ -795,7 +795,7 @@ $DC up -d --build
 Or run the previously tagged image without rebuilding (fastest):
 
 ```bash
-docker tag wacrm:<short-sha> wacrm:latest
+docker tag ExBolt:<short-sha> ExBolt:latest
 $DC up -d
 ```
 
@@ -833,7 +833,7 @@ Recovery order, cheapest first:
      cat /mnt/etc/ssh/sshd_config.d/99-hardening.conf
      rm /mnt/etc/ssh/sshd_config.d/99-hardening.conf      # or fix PasswordAuthentication
      # if the Include line itself was the problem, revert the main config:
-     # cp /mnt/etc/ssh/sshd_config.wacrm.bak /mnt/etc/ssh/sshd_config
+     # cp /mnt/etc/ssh/sshd_config.exbolt.bak /mnt/etc/ssh/sshd_config
      umount /mnt
      ```
    - Console → **Disable rescue mode**, then reboot. Removing the drop-in restores

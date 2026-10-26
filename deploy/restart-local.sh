@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Rebuild wacrm and (re)start the standalone server on :3000, killing only the
+# Rebuild ExBolt and (re)start the standalone server on :3000, killing only the
 # process actually listening on the port.
 set -uo pipefail
-cd /home/maladdin/rado-yard/wacrm || exit 1
+cd /home/maladdin/rado-yard/exbolt || exit 1
 
 PIDS="$(ss -ltnp 2>/dev/null | grep ':3000' | grep -o 'pid=[0-9]*' | cut -d= -f2 | sort -u)"
 if [ -n "${PIDS}" ]; then
@@ -13,7 +13,7 @@ fi
 sleep 2
 
 echo "building…"
-npm run build > /tmp/wacrm-build2.log 2>&1
+npm run build > /tmp/exbolt-build2.log 2>&1
 echo "BUILD_EXIT=$?"
 
 cp -r public .next/standalone/ 2>/dev/null
@@ -28,7 +28,7 @@ set -a
 # shellcheck disable=SC1091
 source .env.local
 set +a
-HOSTNAME=0.0.0.0 PORT=3000 node .next/standalone/server.js > /tmp/wacrm-standalone.log 2>&1 &
+HOSTNAME=0.0.0.0 PORT=3000 node .next/standalone/server.js > /tmp/exbolt-standalone.log 2>&1 &
 SRV=$!
 sleep 20
 
@@ -37,4 +37,4 @@ curl -s -o /dev/null -w "login:%{http_code}\n" http://127.0.0.1:3000/login
 CSS="$(curl -s http://127.0.0.1:3000/login | grep -o '/_next/static/chunks/[^"]*\.css' | head -1)"
 echo "css=${CSS}"
 curl -s -o /dev/null -w "css:%{http_code} type:%{content_type}\n" "http://127.0.0.1:3000${CSS}"
-tail -5 /tmp/wacrm-standalone.log
+tail -5 /tmp/exbolt-standalone.log

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Bundle all wacrm migrations into one SQL file for the Supabase SQL editor."""
+"""Bundle all ExBolt migrations into one SQL file for the Supabase SQL editor."""
 import pathlib
 
-root = pathlib.Path("/home/maladdin/rado-yard/wacrm")
+root = pathlib.Path("/home/maladdin/rado-yard/exbolt")
 src = sorted((root / "supabase/migrations").glob("*.sql"))
 out = root / "deploy/hc-cloudwa-migrations.sql"
 parts = [
-    f"-- wacrm migrations bundle ({len(src)} files, in order) — apply to a fresh Supabase project.",
+    f"-- ExBolt migrations bundle ({len(src)} files, in order) — apply to a fresh Supabase project.",
     "-- Generated from supabase/migrations/*.sql. Idempotent where the source files are.",
     "",
 ]

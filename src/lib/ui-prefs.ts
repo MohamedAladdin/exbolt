@@ -16,8 +16,8 @@ export type ArabicFont = (typeof ARABIC_FONTS)[number];
 export const FONT_SIZES = ['sm', 'md', 'lg', 'xl'] as const;
 export type FontSize = (typeof FONT_SIZES)[number];
 
-export const ARABIC_FONT_STORAGE_KEY = 'wacrm:ui:arabic-font';
-export const FONT_SIZE_STORAGE_KEY = 'wacrm:ui:font-size';
+export const ARABIC_FONT_STORAGE_KEY = 'exbolt:ui:arabic-font';
+export const FONT_SIZE_STORAGE_KEY = 'exbolt:ui:font-size';
 
 export const DEFAULT_ARABIC_FONT: ArabicFont = 'cairo';
 export const DEFAULT_FONT_SIZE: FontSize = 'md';

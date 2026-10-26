@@ -12,7 +12,7 @@ import pathlib
 from playwright.sync_api import sync_playwright
 
 BASE = "http://10.0.0.1:3000"
-SHOTS = pathlib.Path("/home/maladdin/rado-yard/wacrm/docs/admin-shots")
+SHOTS = pathlib.Path("/home/maladdin/rado-yard/exbolt/docs/admin-shots")
 results = []
 
 
@@ -34,7 +34,7 @@ with sync_playwright() as p:
 
     # ---------- 1. signed-out deep link ----------
     ctx = browser.new_context(viewport={"width": 1440, "height": 950})
-    ctx.add_cookies([{"name": "wacrm_locale", "value": "ar", "url": BASE}])
+    ctx.add_cookies([{"name": "exbolt_locale", "value": "ar", "url": BASE}])
     page = ctx.new_page()
     page.goto(f"{BASE}/admin", wait_until="networkidle")
     check("signed-out /admin goes to login with next", "/login" in page.url and "next=%2Fadmin" in page.url, page.url)
@@ -53,7 +53,7 @@ with sync_playwright() as p:
 
     # ---------- 3. normal tenant user ----------
     ctx2 = browser.new_context(viewport={"width": 1440, "height": 950})
-    ctx2.add_cookies([{"name": "wacrm_locale", "value": "ar", "url": BASE}])
+    ctx2.add_cookies([{"name": "exbolt_locale", "value": "ar", "url": BASE}])
     page2 = ctx2.new_page()
     login(page2, "demo.nour@nour-retail.test", "Demo12345!")
     check("normal user signed in", "/dashboard" in page2.url, page2.url)

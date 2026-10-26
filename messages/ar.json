@@ -1686,7 +1686,7 @@
       "done": "تم",
       "dialogTitle": "دعوة زميل",
       "networkError": "تعذّر الوصول إلى الخادم. حاول مجددًا؟",
-      "fallbackAccountName": "حسابنا على wacrm",
+      "fallbackAccountName": "حسابنا على ExBolt",
       "dialogDesc": "أنشئ رابط دعوة لمرة واحدة. شاركه عبر WhatsApp أو Slack أو أي قناة تريدها — دون الحاجة لخدمة بريد.",
       "roleLabel": "الدور",
       "validForLabel": "صلاحية الرابط",
@@ -1703,7 +1703,7 @@
       "labelTooLong": "يجب ألا تتجاوز التسمية {max} حرفًا",
       "copied": "تم نسخ رابط الدعوة",
       "clipboardBlocked": "الحافظة محظورة — انسخ الرابط يدويًا",
-      "whatsappMessage": "انضم إلى {accountName} على wacrm عبر هذا الرابط (صالح لمدة {expiresInDays} يومًا): {url}",
+      "whatsappMessage": "انضم إلى {accountName} على ExBolt عبر هذا الرابط (صالح لمدة {expiresInDays} يومًا): {url}",
       "createFailed": "تعذّر إنشاء الدعوة"
     },
     "tagsAndFields": {
@@ -1823,8 +1823,8 @@
       "saveResubmit": "حفظ وإعادة إرسال",
       "submitApproval": "إرسال للاعتماد",
       "deleteDialogTitle": "حذف القالب؟",
-      "deleteMetaDesc": "سيُحذف «{name}» من Meta ومن wacrm. ستبدأ الحملات النشطة التي تستخدم هذا القالب بالفشل عند إرسالها التالي. لا يمكن التراجع.",
-      "deleteLocalDesc": "سيُحذف «{name}» من wacrm. لم يُرسل إلى Meta قط، لذا لا حاجة لتنظيف عن بُعد.",
+      "deleteMetaDesc": "سيُحذف «{name}» من Meta ومن ExBolt. ستبدأ الحملات النشطة التي تستخدم هذا القالب بالفشل عند إرسالها التالي. لا يمكن التراجع.",
+      "deleteLocalDesc": "سيُحذف «{name}» من ExBolt. لم يُرسل إلى Meta قط، لذا لا حاجة لتنظيف عن بُعد.",
       "deleting": "جارٍ الحذف…",
       "delete": "حذف",
       "toastLoadFailed": "تعذّر تحميل القوالب",
@@ -1876,7 +1876,7 @@
       "notConnected": "غير متصل",
       "connectedDesc": "رمز الوصول لديك يوثّق مع Meta. راجع حالة التسجيل أدناه لمعرفة ما إذا كانت الـ Webhooks موصولة فعليًا.",
       "notConnectedDesc": "أعدّ بيانات اعتماد Meta API أدناه لربط حساب WhatsApp Business.",
-      "registered": "مسجّل — ستوصل Meta الأحداث إلى wacrm",
+      "registered": "مسجّل — ستوصل Meta الأحداث إلى ExBolt",
       "notRegistered": "غير مسجّل — لن توصل Meta الأحداث",
       "verifyWithMeta": "التحقق مع Meta",
       "subscribedSince": "مشترك منذ {date}. اضغط التحقق مع Meta إذا توقفت الأحداث.",
@@ -1924,7 +1924,7 @@
       "twoStepPin": "رمز PIN للتحقق بخطوتين",
       "optional": "(اختياري)",
       "pinPlaceholder": "رمز PIN من 6 أرقام من Meta WhatsApp Manager",
-      "pinHint": "يلزم فقط لربط الرسائل الواردة لرقم إنتاجي. اضبطه في Meta Business Manager ← WhatsApp Accounts ← Phone Numbers ← Two-step verification، ثم الصقه هنا ليتمكن wacrm من الاشتراك بالرقم — وإلا توجّه Meta الأحداث الواردة إلى آخر تطبيق طالبها (وهي المشكلة التي تصيب الأرقام الثانية تحت WABA مشترك). أرقام Meta التجريبية بلا PIN ومسجّلة مسبقًا — اتركه فارغًا لها. وتركه فارغًا يبقي أي تسجيل قائم دون تغيير.",
+      "pinHint": "يلزم فقط لربط الرسائل الواردة لرقم إنتاجي. اضبطه في Meta Business Manager ← WhatsApp Accounts ← Phone Numbers ← Two-step verification، ثم الصقه هنا ليتمكن ExBolt من الاشتراك بالرقم — وإلا توجّه Meta الأحداث الواردة إلى آخر تطبيق طالبها (وهي المشكلة التي تصيب الأرقام الثانية تحت WABA مشترك). أرقام Meta التجريبية بلا PIN ومسجّلة مسبقًا — اتركه فارغًا لها. وتركه فارغًا يبقي أي تسجيل قائم دون تغيير.",
       "webhookTitle": "إعداد Webhook",
       "webhookDesc": "استخدم هذا URL كـ webhook callback في لوحة تطبيق Meta.",
       "webhookUrl": "URL استدعاء Webhook",
@@ -2188,7 +2188,7 @@
     },
     "aiConfig": {
       "title": "إعداد الوكيل",
-      "description": "استخدم مفتاح OpenAI أو Anthropic أو واجهة متوافقة مع OpenAI خاصًا بك. يتصل wacrm بالمزوّد مباشرة بمفتاحك — بلا رسوم AI لكل مقعد، وبياناتك تبقى لك. يشغّل هذا الردود المصاغة بالـ AI في صندوق الوارد، وروبوت الرد التلقائي، وساحة التجربة.",
+      "description": "استخدم مفتاح OpenAI أو Anthropic أو واجهة متوافقة مع OpenAI خاصًا بك. يتصل ExBolt بالمزوّد مباشرة بمفتاحك — بلا رسوم AI لكل مقعد، وبياناتك تبقى لك. يشغّل هذا الردود المصاغة بالـ AI في صندوق الوارد، وروبوت الرد التلقائي، وساحة التجربة.",
       "adminOnlyConfig": "يمكن للمسؤولين والمالكين فقط تغيير إعدادات AI.",
       "loadFailed": "تعذّر تحميل إعدادات AI",
       "providerAndKey": "المزوّد والمفتاح",
@@ -2607,7 +2607,7 @@
     }
   },
   "Metadata": {
-    "description": "قالب CRM قابل للاستضافة الذاتية لـ WhatsApp."
+    "description": "ExBolt — نظام CRM لواتساب: صندوق وارد مشترك، جهات اتصال، مسارات بيع، حملات وأتمتة بلا كود."
   },
   "Currency": {
     "USD": "دولار أمريكي",
@@ -3073,7 +3073,7 @@
       "wabaIdDigits": "يجب أن يحتوي معرّف حساب WhatsApp Business على أرقام فقط — انسخه من Meta ← WhatsApp ← API Setup.",
       "pinDigits": "يجب أن يتكون PIN من 6 أرقام بالضبط.",
       "validateFailed": "تعذّر التحقق من الإعدادات",
-      "numberLinkedElsewhere": "رقم WhatsApp هذا مرتبط بحساب آخر على هذه النسخة. يمكن ربط كل رقم هاتف بمستخدم wacrm واحد فقط.",
+      "numberLinkedElsewhere": "رقم WhatsApp هذا مرتبط بحساب آخر على هذه النسخة. يمكن ربط كل رقم هاتف بمستخدم ExBolt واحد فقط.",
       "encryptFailed": "تعذّر تشفير الرمز. تحقق من أن ENCRYPTION_KEY سلسلة سداسية عشرية صالحة من 64 حرفًا في متغيرات بيئتك.",
       "updateFailed": "تعذّر تحديث الإعدادات",
       "saveFailed": "تعذّر حفظ الإعدادات",

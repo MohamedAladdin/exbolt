@@ -9,7 +9,7 @@
  * everything falls back to the built-in product name.
  */
 
-export const PRODUCT_NAME = "wacrm";
+export const PRODUCT_NAME = "ExBolt";
 export const VENDOR_NAME = "ExCal.uk";
 export const VENDOR_URL = "https://excal.uk";
 

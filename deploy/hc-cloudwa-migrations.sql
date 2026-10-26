@@ -1,4 +1,4 @@
--- wacrm migrations bundle (39 files, in order) — apply to a fresh Supabase project.
+-- ExBolt migrations bundle (39 files, in order) — apply to a fresh Supabase project.
 -- Generated from supabase/migrations/*.sql. Idempotent where the source files are.
 
 -- ============================================================
@@ -1415,7 +1415,7 @@ END $$;
 -- can land in this column without another migration.
 --
 -- Why a per-account flag rather than a global env var:
---   - Self-hosted wacrm instances are multi-user (small teams, shared
+--   - Self-hosted ExBolt instances are multi-user (small teams, shared
 --     workspaces). A global flag would force every account on the
 --     instance to opt into a not-yet-stable feature simultaneously.
 --   - The owner wanted to dogfood the feature on their own account
@@ -1499,7 +1499,7 @@ GRANT EXECUTE ON FUNCTION increment_flow_execution_count(UUID) TO service_role;
 -- rows returned") and the webhook silently drops every inbound
 -- message — see issue #136.
 --
--- wacrm is single-tenant per WhatsApp number by design (RLS on
+-- ExBolt is single-tenant per WhatsApp number by design (RLS on
 -- conversations / messages is `auth.uid() = user_id`, so another user
 -- physically cannot read a conversation routed to a different owner).
 -- A UNIQUE constraint at the DB level makes that intent enforceable
@@ -1799,7 +1799,7 @@ CREATE INDEX IF NOT EXISTS idx_message_templates_meta_template_id
 --   Until those two complete successfully, Meta routes inbound
 --   events to whichever app last registered the number (often the
 --   one that did Embedded Signup originally). Symptom: a second
---   wacrm user adds a second number under the same WABA, the UI
+--   ExBolt user adds a second number under the same WABA, the UI
 --   reports "Connected" because metadata verification succeeds,
 --   but Meta's activity log shows zero events for that number.
 --
@@ -1950,7 +1950,7 @@ CREATE POLICY "Users can delete their own flow media"
 -- ============================================================
 -- 017_account_sharing.sql — Multi-user accounts (foundation)
 --
--- Turns wacrm from single-tenant-per-user into multi-tenant-per-
+-- Turns ExBolt from single-tenant-per-user into multi-tenant-per-
 -- account. Every existing user becomes the sole `owner` of a
 -- freshly-created account; every existing row is backfilled with
 -- that account's id. Post-apply behaviour is identical to before
@@ -3301,7 +3301,7 @@ CREATE POLICY "Members can delete flow media"
 --
 -- Before this, the app hardcoded USD everywhere — deal-value
 -- formatters, the new-deal form, and automation-created deals all
--- assumed USD. wacrm is self-hostable and used globally, so a fixed
+-- assumed USD. ExBolt is self-hostable and used globally, so a fixed
 -- USD default made deal tracking unhelpful for non-US businesses
 -- (issue #218).
 --
@@ -3585,7 +3585,7 @@ CREATE POLICY "Members can delete chat media"
 --
 -- Adds a lightweight presence layer so the Team members roster (and
 -- the inbox Assign dropdown) can show who is actively using the
--- dashboard, idle, or gone. Implements wacrm#269.
+-- dashboard, idle, or gone. Implements ExBolt#269.
 --
 -- Design
 --
@@ -3784,7 +3784,7 @@ GRANT EXECUTE ON FUNCTION public.filter_contacts_by_tags(UUID[], TEXT, INT, INT)
 --     original key, which is returned exactly once at creation. Same
 --     pattern as `account_invitations.token_hash` (migration 017/019).
 --   - `key_prefix` is a short, non-secret display string
---     (`wacrm_live_a1b2c3d4`) so the dashboard can show "which key
+--     (`exbolt_live_a1b2c3d4`) so the dashboard can show "which key
 --     is this" in a list without ever resurfacing the secret.
 --   - Authorization is by `scopes[]` (scopes-only model), resolved
 --     in the application layer (`src/lib/api-keys/scopes.ts`). The
@@ -3809,7 +3809,7 @@ CREATE TABLE IF NOT EXISTS api_keys (
   account_id   uuid NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
   created_by   uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   name         text NOT NULL,
-  key_prefix   text NOT NULL,             -- display only, e.g. "wacrm_live_a1b2c3d4"
+  key_prefix   text NOT NULL,             -- display only, e.g. "exbolt_live_a1b2c3d4"
   key_hash     text NOT NULL UNIQUE,      -- SHA-256 hex of the full plaintext key
   scopes       text[] NOT NULL DEFAULT '{}',
   last_used_at timestamptz,
@@ -3990,7 +3990,7 @@ END $$;
 -- ============================================================
 -- 028_webhook_endpoints.sql — Outbound event webhooks (public API)
 --
--- Lets an account register HTTPS endpoints that wacrm POSTs to when
+-- Lets an account register HTTPS endpoints that ExBolt POSTs to when
 -- something happens (an inbound message arrives, a delivery status
 -- changes, a conversation is created). This is the "react to inbound"
 -- half of the public API (#245): instead of polling
@@ -4337,7 +4337,7 @@ CREATE TABLE IF NOT EXISTS ai_knowledge_chunks (
   account_id   uuid NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
   chunk_index  integer NOT NULL DEFAULT 0,
   content      text NOT NULL,
-  -- Language-neutral FTS config: wacrm is used in many languages
+  -- Language-neutral FTS config: ExBolt is used in many languages
   -- (its markets include BR / LATAM / IN), and this lexical path is the
   -- fallback for accounts without an embeddings key. `'simple'` tokenizes
   -- + lowercases without English-only stemming/stopwords, so it degrades

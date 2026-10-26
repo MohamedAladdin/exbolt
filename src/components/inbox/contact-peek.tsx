@@ -25,7 +25,7 @@ import { ChannelBadge } from "./channel-badge";
 import type { PhoneCandidate } from "@/lib/contacts/phone-detect";
 
 /** Window event the inbox listens for to open a thread by id. */
-export const OPEN_CONVERSATION_EVENT = "wacrm:open-conversation";
+export const OPEN_CONVERSATION_EVENT = "exbolt:open-conversation";
 
 interface PeekContact {
   id: string;

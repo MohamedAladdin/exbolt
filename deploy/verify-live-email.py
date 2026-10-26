@@ -16,7 +16,7 @@ def check(name, ok, detail=""):
 with sync_playwright() as p:
     browser = p.chromium.launch()
     ctx = browser.new_context()
-    ctx.add_cookies([{"name": "wacrm_locale", "value": "ar", "url": BASE}])
+    ctx.add_cookies([{"name": "exbolt_locale", "value": "ar", "url": BASE}])
     page = ctx.new_page()
     page.goto(f"{BASE}/login", wait_until="networkidle")
     page.fill("#email", EMAIL)

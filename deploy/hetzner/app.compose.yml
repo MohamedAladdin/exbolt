@@ -1,16 +1,16 @@
 # =============================================================================
-# wacrm — production compose file for the Next.js app
+# ExBolt — production compose file for the Next.js app
 # =============================================================================
 #
 # Lives in the repo as deploy/hetzner/app.compose.yml so the whole bundle can be
-# versioned, but on the server it is run from the repo checkout at /srv/wacrm.
+# versioned, but on the server it is run from the repo checkout at /srv/exbolt.
 # That is why the build context and env_file are two levels up.
 #
-#   /srv/wacrm/                          <- git checkout (repo root)
-#   /srv/wacrm/.env.production           <- secrets + config (NOT in git)
-#   /srv/wacrm/deploy/hetzner/app.compose.yml
+#   /srv/exbolt/                          <- git checkout (repo root)
+#   /srv/exbolt/.env.production           <- secrets + config (NOT in git)
+#   /srv/exbolt/deploy/hetzner/app.compose.yml
 #
-# Start / update (from /srv/wacrm):
+# Start / update (from /srv/exbolt):
 #   docker compose --env-file .env.production \
 #     -f deploy/hetzner/app.compose.yml up -d --build
 #
@@ -29,11 +29,11 @@
 #   call in production.
 # =============================================================================
 
-name: wacrm
+name: ExBolt
 
 services:
   app:
-    image: wacrm:latest
+    image: ExBolt:latest
     build:
       context: ../..
       dockerfile: Dockerfile

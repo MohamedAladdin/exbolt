@@ -246,7 +246,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                 {brandName(account?.brand_name)}
               </span>
               {/* Vendor credit — only once the account is white-labelled,
-                  otherwise the header would read "wacrm by ExCal.uk" on a
+                  otherwise the header would read "ExBolt by ExCal.uk" on a
                   fresh install. */}
               {account?.brand_name ? (
                 <span className="block truncate text-[10px] leading-tight text-muted-foreground">

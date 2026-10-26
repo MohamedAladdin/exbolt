@@ -19,8 +19,8 @@ BASE = "http://127.0.0.1:3000"
 SUPABASE = "http://127.0.0.1:54321"
 EMAIL = "test@excal.local"
 PASSWORD = "Test12345!"
-SHOTS = pathlib.Path("/home/maladdin/rado-yard/wacrm/docs/admin-shots")
-ENV_FILE = pathlib.Path("/home/maladdin/rado-yard/wacrm/.env.local")
+SHOTS = pathlib.Path("/home/maladdin/rado-yard/exbolt/docs/admin-shots")
+ENV_FILE = pathlib.Path("/home/maladdin/rado-yard/exbolt/.env.local")
 
 results = []
 
@@ -70,7 +70,7 @@ def main():
     with sync_playwright() as p:
         browser = p.chromium.launch()
         ctx = browser.new_context(viewport={"width": 1440, "height": 1000})
-        ctx.add_cookies([{"name": "wacrm_locale", "value": "ar", "url": BASE}])
+        ctx.add_cookies([{"name": "exbolt_locale", "value": "ar", "url": BASE}])
         page = ctx.new_page()
 
         login(page)
@@ -155,7 +155,7 @@ def main():
 
         # ---------- English ----------
         ctx2 = browser.new_context(viewport={"width": 1440, "height": 1000})
-        ctx2.add_cookies([{"name": "wacrm_locale", "value": "en", "url": BASE}])
+        ctx2.add_cookies([{"name": "exbolt_locale", "value": "en", "url": BASE}])
         page2 = ctx2.new_page()
         login(page2)
         page2.goto(f"{BASE}/admin", wait_until="networkidle")
