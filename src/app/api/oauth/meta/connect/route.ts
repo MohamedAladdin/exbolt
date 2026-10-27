@@ -6,7 +6,12 @@ import { requireFeature } from '@/lib/plans/guard';
 import { isMessagingChannel } from '@/lib/channels/types';
 import { decrypt } from '@/lib/whatsapp/encryption';
 import { connectMessagingChannel } from '@/lib/oauth/connect';
-import { META_PAGES_COOKIE, MetaOAuthError, listPages } from '@/lib/oauth/meta';
+import {
+  META_PAGES_COOKIE,
+  MetaOAuthError,
+  listPages,
+  requestOrigin,
+} from '@/lib/oauth/meta';
 
 /**
  * POST /api/oauth/meta/connect
@@ -45,7 +50,7 @@ function finish(origin: string, params: Record<string, string>): NextResponse {
 }
 
 export async function POST(request: Request) {
-  const origin = new URL(request.url).origin;
+  const origin = requestOrigin(request);
 
   let ctx;
   try {
@@ -121,6 +126,6 @@ export async function POST(request: Request) {
 
 /** The chooser page's "Cancel" link can be a plain GET back to Settings. */
 export async function GET(request: Request) {
-  const origin = new URL(request.url).origin;
+  const origin = requestOrigin(request);
   return finish(origin, {});
 }

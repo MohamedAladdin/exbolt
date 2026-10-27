@@ -133,6 +133,32 @@ export function metaOAuthRedirectUri(): string {
   return value ? value : DEFAULT_META_OAUTH_REDIRECT_URI;
 }
 
+/**
+ * Origin used to build browser-facing redirects.
+ *
+ * Inside the container `request.url` is `http://0.0.0.0:3000`, so
+ * `new URL(request.url).origin` produces `Location: https://0.0.0.0:3000/…`
+ * and the browser never reaches it (observed live before this existed).
+ * nginx sets `Host` and `X-Forwarded-Proto`; trust those, like middleware does.
+ */
+export function requestOrigin(request: Request): string {
+  const headers = request.headers;
+  const host = headers.get('x-forwarded-host') ?? headers.get('host');
+  if (!host) return new URL(request.url).origin;
+
+  const forwardedProto = headers
+    .get('x-forwarded-proto')
+    ?.split(',')[0]
+    ?.trim();
+  const isLocal =
+    host.startsWith('localhost') ||
+    host.startsWith('127.0.0.1') ||
+    host.startsWith('192.168.') ||
+    host.startsWith('10.');
+
+  return `${forwardedProto || (isLocal ? 'http' : 'https')}://${host}`;
+}
+
 /** Embedded Signup configuration id — only needed for the WhatsApp flow. */
 export function metaEmbeddedSignupConfigId(): string | null {
   const value = process.env.META_ES_CONFIG_ID?.trim();

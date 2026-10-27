@@ -10,6 +10,7 @@ import {
   isMetaOAuthConfigured,
   metaOAuthRedirectUri,
   randomNonce,
+  requestOrigin,
   settingsTabForChannel,
   signState,
 } from '@/lib/oauth/meta';
@@ -34,7 +35,7 @@ export async function GET(request: Request) {
 
   const backTo = (tab: 'whatsapp' | 'channels', error: string) =>
     NextResponse.redirect(
-      new URL(`/settings?tab=${tab}&error=${error}`, requestUrl.origin),
+      new URL(`/settings?tab=${tab}&error=${error}`, requestOrigin(request)),
       303
     );
 

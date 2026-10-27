@@ -13,6 +13,7 @@ import {
   metaAppId,
   metaAppSecret,
   metaOAuthRedirectUri,
+  requestOrigin,
   settingsTabForChannel,
   signState,
   verifyState,
@@ -405,5 +406,47 @@ describe('OAuth credentials precedence', () => {
     vi.stubEnv('META_APP_SECRET', '');
     vi.stubEnv('META_OAUTH_APP_SECRET', '');
     expect(isMetaOAuthConfigured()).toBe(false);
+  });
+});
+
+describe('requestOrigin', () => {
+  const req = (headers: Record<string, string>) =>
+    new Request('http://0.0.0.0:3000/api/oauth/meta/start', { headers });
+
+  it('uses the proxied host and proto, never the container origin', () => {
+    expect(
+      requestOrigin(req({ host: 'bolt.excal.uk', 'x-forwarded-proto': 'https' }))
+    ).toBe('https://bolt.excal.uk');
+  });
+
+  it('prefers x-forwarded-host', () => {
+    expect(
+      requestOrigin(
+        req({
+          host: '127.0.0.1:3000',
+          'x-forwarded-host': 'bolt.excal.uk',
+          'x-forwarded-proto': 'https',
+        })
+      )
+    ).toBe('https://bolt.excal.uk');
+  });
+
+  it('keeps plain http for LAN/local hosts', () => {
+    expect(requestOrigin(req({ host: '192.168.0.111:3000' }))).toBe(
+      'http://192.168.0.111:3000'
+    );
+    expect(requestOrigin(req({ host: 'localhost:3000' }))).toBe(
+      'http://localhost:3000'
+    );
+  });
+
+  it('defaults to https for a public host with no forwarded proto', () => {
+    expect(requestOrigin(req({ host: 'bolt.excal.uk' }))).toBe(
+      'https://bolt.excal.uk'
+    );
+  });
+
+  it('falls back to the request origin when there is no host header', () => {
+    expect(requestOrigin(req({}))).toBe('http://0.0.0.0:3000');
   });
 });

@@ -19,6 +19,7 @@ import {
   isMetaOAuthConfigured,
   listPages,
   metaOAuthRedirectUri,
+  requestOrigin,
   safeCompare,
   settingsTabForChannel,
   verifyState,
@@ -78,7 +79,7 @@ function errorRedirect(origin: string, tab: Tab, code: string): NextResponse {
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const params = requestUrl.searchParams;
-  const origin = requestUrl.origin;
+  const origin = requestOrigin(request);
 
   const cookieStore = await cookies();
   const stateParam = params.get('state') ?? '';
