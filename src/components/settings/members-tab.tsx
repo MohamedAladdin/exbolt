@@ -89,6 +89,8 @@ interface Invitation {
   id: string;
   role: 'admin' | 'agent' | 'viewer';
   label: string | null;
+  /** Set when the invite was addressed to a mailbox (server-mailed). */
+  email?: string | null;
   created_at: string;
   expires_at: string;
 }
@@ -533,6 +535,11 @@ export function MembersTab() {
                           </span>
                         </div>
                         <p className="mt-0.5 text-xs text-muted-foreground">
+                          {inv.email ? (
+                            <>
+                              <span dir="ltr">{inv.email}</span> ·{' '}
+                            </>
+                          ) : null}
                           {t('created', { date: fmtDate(inv.created_at) })} · {fmtExpiresIn(inv.expires_at, t)}
                         </p>
                       </div>

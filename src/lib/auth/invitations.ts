@@ -99,3 +99,36 @@ export function clampExpiryDays(expiresInDays: number | undefined): number {
   }
   return Math.min(Math.floor(expiresInDays), MAX_INVITE_EXPIRY_DAYS);
 }
+
+/** Longest address the RFCs allow, in practice: 254 octets. */
+export const MAX_INVITE_EMAIL_LEN = 254;
+
+/**
+ * Normalise the optional invitee address.
+ *
+ * Why this lives here and not inline in the route: the same rules
+ * decide what we store and what we hand to GoTrue's admin invite,
+ * and a mismatch between the two is a silent "email sent to X,
+ * row says Y" bug. One function, one truth.
+ *
+ * Local-part is case-sensitive per RFC 5321 but every real provider
+ * treats it case-insensitively, so lower-casing the whole address is
+ * the safe, predictable choice — it also makes the duplicate-invite
+ * check in the API route work (Postgres-side `lower(email)` index).
+ */
+export function normalizeInviteEmail(
+  raw: unknown,
+): { ok: true; email: string } | { ok: false; reason: "invalid" } {
+  if (typeof raw !== "string") return { ok: false, reason: "invalid" };
+  const email = raw.trim().toLowerCase();
+  if (email === "" || email.length > MAX_INVITE_EMAIL_LEN) {
+    return { ok: false, reason: "invalid" };
+  }
+  // Deliberately loose: one @, no whitespace, a dot in the domain.
+  // Anything stricter rejects addresses that real mail servers accept.
+  if (!/^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/.test(email)) {
+    return { ok: false, reason: "invalid" };
+  }
+  return { ok: true, email };
+}
+

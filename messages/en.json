@@ -1758,6 +1758,12 @@
       "copied": "Invite link copied",
       "clipboardBlocked": "Clipboard blocked — copy the link manually",
       "whatsappMessage": "Join {accountName} on ExBolt using this link (valid for {expiresInDays} days): {url}",
+      "emailLabel": "Member email",
+      "emailPlaceholder": "name@clinic.com",
+      "emailHint": "Add their address and we email the invite from here — one click, they pick a password and land on the join page. Leave it blank to share the link yourself.",
+      "emailSent": "Invite emailed to {email}.",
+      "emailExistingUser": "{email} already has an account, so no email was sent. Share the link below — they sign in and accept.",
+      "emailNotSent": "Couldn't email {email}. Share the link below instead.",
       "createFailed": "Failed to create invitation"
     },
     "tagsAndFields": {
@@ -3022,6 +3028,8 @@
         "loadFailed": "Failed to load invitations",
         "roleInvalid": "'role' must be one of admin, agent, viewer",
         "labelTooLong": "Label must be {max} characters or fewer",
+        "emailInvalid": "Enter a valid email address",
+        "emailAlreadyInvited": "That email already has a pending invitation",
         "createFailed": "Failed to create invitation"
       },
       "members": {

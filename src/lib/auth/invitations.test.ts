@@ -7,6 +7,7 @@ import {
   inviteExpiresAt,
   inviteUrl,
   MAX_INVITE_EXPIRY_DAYS,
+  normalizeInviteEmail,
 } from "./invitations";
 
 describe("generateInviteToken", () => {
@@ -140,5 +141,38 @@ describe("inviteExpiresAt", () => {
       now.getTime() + MAX_INVITE_EXPIRY_DAYS * 24 * 60 * 60 * 1000,
     );
     expect(out.toISOString()).toBe(expected.toISOString());
+  });
+});
+
+describe("normalizeInviteEmail", () => {
+  it("lower-cases and trims a normal address", () => {
+    expect(normalizeInviteEmail("  Mariam.Ahmed@Clinic.COM ")).toEqual({
+      ok: true,
+      email: "mariam.ahmed@clinic.com",
+    });
+  });
+
+  it("accepts plus-addressing and subdomains", () => {
+    expect(normalizeInviteEmail("sara+team@mail.clinic.co.uk")).toEqual({
+      ok: true,
+      email: "sara+team@mail.clinic.co.uk",
+    });
+  });
+
+  it.each([
+    ["", "empty"],
+    ["sara", "no @"],
+    ["sara@clinic", "no dot in domain"],
+    ["sara@@clinic.com", "double @"],
+    ["sara @clinic.com", "whitespace"],
+    ["sara@clinic..com", "empty label"],
+  ])("rejects %j (%s)", (raw) => {
+    expect(normalizeInviteEmail(raw)).toEqual({ ok: false, reason: "invalid" });
+  });
+
+  it("rejects non-strings and over-long addresses", () => {
+    expect(normalizeInviteEmail(undefined).ok).toBe(false);
+    expect(normalizeInviteEmail(42).ok).toBe(false);
+    expect(normalizeInviteEmail(`${"a".repeat(250)}@clinic.com`).ok).toBe(false);
   });
 });

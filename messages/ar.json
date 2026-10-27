@@ -1758,6 +1758,12 @@
       "copied": "تم نسخ رابط الدعوة",
       "clipboardBlocked": "الحافظة محظورة — انسخ الرابط يدويًا",
       "whatsappMessage": "انضم إلى {accountName} على ExBolt عبر هذا الرابط (صالح لمدة {expiresInDays} يومًا): {url}",
+      "emailLabel": "بريد العضو",
+      "emailPlaceholder": "name@clinic.com",
+      "emailHint": "لو كتبت الإيميل، الدعوة تتبعت منه هنا على طول — يدوس مرة واحدة، يحدد باسوورد، ويفتح صفحة الانضمام. سيبه فاضي لو هتبعت الرابط بنفسك.",
+      "emailSent": "الدعوة اتبعتت على {email}.",
+      "emailExistingUser": "{email} عنده حساب بالفعل، فمفيش إيميل اتبعت. ابعتله الرابط اللي تحت — يسجل دخول ويقبل.",
+      "emailNotSent": "تعذّر إرسال الإيميل لـ {email}. ابعتله الرابط اللي تحت.",
       "createFailed": "تعذّر إنشاء الدعوة"
     },
     "tagsAndFields": {
@@ -3022,6 +3028,8 @@
         "loadFailed": "تعذّر تحميل الدعوات",
         "roleInvalid": "يجب أن يكون 'role' أحد: admin أو agent أو viewer",
         "labelTooLong": "يجب ألا تتجاوز التسمية {max} حرفًا",
+        "emailInvalid": "اكتب بريدًا إلكترونيًا صحيحًا",
+        "emailAlreadyInvited": "هذا البريد لديه دعوة معلّقة بالفعل",
         "createFailed": "تعذّر إنشاء الدعوة"
       },
       "members": {

@@ -25,6 +25,7 @@ import {
   generateInviteToken,
   inviteExpiresAt,
   inviteUrl,
+  normalizeInviteEmail,
 } from "@/lib/auth/invitations";
 import { isAccountRole } from "@/lib/auth/roles";
 import {
@@ -32,9 +33,51 @@ import {
   rateLimitResponse,
   RATE_LIMITS,
 } from "@/lib/rate-limit";
+import { supabaseAdmin } from "@/lib/automations/admin-client";
 import { getT } from "@/lib/i18n/translate";
 
 const t = getT("Api");
+
+/**
+ * How the emailed half of an invitation went.
+ *
+ *   not_requested   — link-only invite (no email supplied).
+ *   sent            — GoTrue created the user and mailed the invite link.
+ *   existing_user   — the address already has an account; no mail was sent,
+ *                     the shareable link still works after they sign in.
+ *   signup_closed   — GoTrue refused to create the user (signups disabled at
+ *                     the instance level). The invite row exists and is
+ *                     usable once registration is open or the person has an
+ *                     account.
+ */
+type EmailStatus =
+  | "not_requested"
+  | "sent"
+  | "existing_user"
+  | "signup_closed"
+  | "failed";
+
+function classifyInviteError(
+  message: string,
+): Exclude<EmailStatus, "sent" | "not_requested"> {
+  const m = message.toLowerCase();
+  if (
+    m.includes("already been registered") ||
+    m.includes("already registered") ||
+    m.includes("already exists")
+  ) {
+    return "existing_user";
+  }
+  if (
+    m.includes("signups not allowed") ||
+    m.includes("database error saving new user") ||
+    m.includes("signup_closed")
+  ) {
+    return "signup_closed";
+  }
+  return "failed";
+}
+
 
 // Resolve the base URL we publish invite links under.
 //
@@ -146,7 +189,7 @@ export async function GET() {
     const { data, error } = await ctx.supabase
       .from("account_invitations")
       .select(
-        "id, role, label, created_by_user_id, created_at, expires_at, accepted_at, accepted_by_user_id",
+        "id, role, label, email, created_by_user_id, created_at, expires_at, accepted_at, accepted_by_user_id",
       )
       .eq("account_id", ctx.accountId)
       .is("accepted_at", null)
@@ -182,7 +225,7 @@ export async function POST(request: Request) {
     if (!limit.success) return rateLimitResponse(limit);
 
     const body = (await request.json().catch(() => null)) as
-      | { role?: unknown; expiresInDays?: unknown; label?: unknown }
+      | { role?: unknown; expiresInDays?: unknown; label?: unknown; email?: unknown }
       | null;
 
     const role = body?.role;
@@ -217,7 +260,44 @@ export async function POST(request: Request) {
       label = trimmed === "" ? null : trimmed;
     }
 
+    // Optional address: when present the invite is *delivered* by GoTrue
+    // (admin invite) instead of relying on the invitee finding the signup
+    // form — the only path that works on an instance whose own signups are
+    // restricted.
+    let email: string | null = null;
+    if (body?.email !== undefined && body?.email !== null && body?.email !== "") {
+      const parsed = normalizeInviteEmail(body.email);
+      if (!parsed.ok) {
+        return NextResponse.json(
+          { error: t("account.invitations.emailInvalid") },
+          { status: 400 },
+        );
+      }
+      email = parsed.email;
+    }
+
+    // Same address, same account, still pending → the admin already invited
+    // them. Re-sending would burn a second seat and leave two live tokens.
+    if (email) {
+      const { data: duplicate } = await ctx.supabase
+        .from("account_invitations")
+        .select("id, expires_at")
+        .eq("account_id", ctx.accountId)
+        .eq("email", email)
+        .is("accepted_at", null)
+        .gt("expires_at", new Date().toISOString())
+        .maybeSingle();
+
+      if (duplicate) {
+        return NextResponse.json(
+          { error: t("account.invitations.emailAlreadyInvited") },
+          { status: 409 },
+        );
+      }
+    }
+
     const { token, hash } = generateInviteToken();
+    const baseUrl = getBaseUrl(request);
 
     const { data, error } = await ctx.supabase
       .from("account_invitations")
@@ -227,9 +307,10 @@ export async function POST(request: Request) {
         role,
         created_by_user_id: ctx.userId,
         label,
+        email,
         expires_at: expiresAt.toISOString(),
       })
-      .select("id, role, label, expires_at, created_at")
+      .select("id, role, label, email, expires_at, created_at")
       .single();
 
     if (error || !data) {
@@ -240,13 +321,43 @@ export async function POST(request: Request) {
       );
     }
 
+    // Addressed invite → let GoTrue create the auth user and mail the link.
+    // The redirect lands on /auth/callback so the link mints a session before
+    // the invitee sees /join/<token>; they only have to pick a password.
+    let emailStatus: EmailStatus = "not_requested";
+    if (email) {
+      const redirectTo = `${baseUrl}/auth/callback?next=${encodeURIComponent(
+        `/join/${token}`,
+      )}`;
+      const { error: inviteError } = await supabaseAdmin().auth.admin.inviteUserByEmail(
+        email,
+        {
+          redirectTo,
+          data: { full_name: label ?? email.split("@")[0] },
+        },
+      );
+
+      if (!inviteError) {
+        emailStatus = "sent";
+      } else {
+        emailStatus = classifyInviteError(inviteError.message);
+        console.warn("[POST /api/account/invitations] email invite failed:", {
+          email,
+          status: emailStatus,
+          message: inviteError.message,
+        });
+      }
+    }
+
     return NextResponse.json(
       {
         invitation: data,
         // Plaintext payload — visible to the admin exactly once.
         token,
-        url: inviteUrl(token, getBaseUrl(request)),
+        url: inviteUrl(token, baseUrl),
         expiresInDays: expiryDays,
+        email,
+        emailStatus,
       },
       { status: 201 },
     );

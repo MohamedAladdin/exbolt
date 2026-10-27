@@ -64,6 +64,15 @@ interface CreatedInvite {
   url: string;
   role: InviteRole;
   expiresInDays: number;
+  /** Address the invitation was sent to, when one was supplied. */
+  email: string | null;
+  /** Outcome of the emailed half (see the API route's EmailStatus). */
+  emailStatus:
+    | 'not_requested'
+    | 'sent'
+    | 'existing_user'
+    | 'signup_closed'
+    | 'failed';
   /** Snapshotted at creation time so a later account rename can't
    *  retroactively change the wa.me message text on the result step. */
   accountName: string;
@@ -80,6 +89,7 @@ export function InviteMemberDialog({
   const [role, setRole] = useState<InviteRole>('agent');
   const [expiry, setExpiry] = useState<string>('7');
   const [label, setLabel] = useState('');
+  const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<CreatedInvite | null>(null);
 
@@ -87,6 +97,7 @@ export function InviteMemberDialog({
     setRole('agent');
     setExpiry('7');
     setLabel('');
+    setEmail('');
     setResult(null);
     setSubmitting(false);
   }
@@ -103,6 +114,7 @@ export function InviteMemberDialog({
       toast.error(t('labelTooLong', { max: MAX_LABEL_LEN }));
       return;
     }
+    const trimmedEmail = email.trim();
     setSubmitting(true);
     try {
       const res = await fetch('/api/account/invitations', {
@@ -112,6 +124,7 @@ export function InviteMemberDialog({
           role,
           expiresInDays: Number(expiry),
           label: trimmedLabel || undefined,
+          email: trimmedEmail || undefined,
         }),
       });
 
@@ -124,12 +137,16 @@ export function InviteMemberDialog({
       const data = (await res.json()) as {
         url: string;
         expiresInDays: number;
+        email: string | null;
+        emailStatus: CreatedInvite['emailStatus'];
       };
 
       setResult({
         url: data.url,
         role,
         expiresInDays: data.expiresInDays,
+        email: data.email ?? null,
+        emailStatus: data.emailStatus ?? 'not_requested',
         // Snapshot the account name into the result so the wa.me
         // share message has team context. Falls back to a generic
         // string if `account` hasn't loaded yet (shouldn't happen
@@ -196,6 +213,22 @@ export function InviteMemberDialog({
                 })}
               </DialogDescription>
             </DialogHeader>
+
+            {result.emailStatus === 'sent' && result.email && (
+              <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+                {t('emailSent', { email: result.email })}
+              </div>
+            )}
+            {(result.emailStatus === 'existing_user' ||
+              result.emailStatus === 'signup_closed' ||
+              result.emailStatus === 'failed') &&
+              result.email && (
+                <div className="rounded-md border border-amber-500/50 bg-amber-500/15 px-3 py-2 text-xs text-amber-200">
+                  {result.emailStatus === 'existing_user'
+                    ? t('emailExistingUser', { email: result.email })
+                    : t('emailNotSent', { email: result.email })}
+                </div>
+              )}
 
             <div className="space-y-3 py-2">
               <Label className="text-muted-foreground">{t('inviteLink')}</Label>
@@ -267,6 +300,25 @@ export function InviteMemberDialog({
             </DialogHeader>
 
             <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label htmlFor="invite-email" className="text-muted-foreground">
+                  {t('emailLabel')}{' '}
+                  <span className="text-xs text-muted-foreground">{t('optional')}</span>
+                </Label>
+                <Input
+                  id="invite-email"
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  dir="ltr"
+                  placeholder={t('emailPlaceholder')}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="bg-muted border-border text-foreground placeholder:text-muted-foreground"
+                />
+                <p className="text-xs text-muted-foreground">{t('emailHint')}</p>
+              </div>
+
               <div className="space-y-2">
                 <Label className="text-muted-foreground">{t('roleLabel')}</Label>
                 <Select
