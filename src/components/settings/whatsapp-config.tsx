@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import {
   Eye,
@@ -14,7 +13,6 @@ import {
   Zap,
   AlertTriangle,
   RotateCcw,
-  Link2,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
@@ -33,7 +31,6 @@ import {
   AccordionContent,
 } from '@/components/ui/accordion';
 import type { WhatsAppConfig as WhatsAppConfigType } from '@/types';
-import { isOAuthConnectedChannel, oauthMessageKey } from '@/lib/oauth/result';
 
 const MASKED_TOKEN = '••••••••••••••••';
 
@@ -228,42 +225,6 @@ export function WhatsAppConfig() {
       setLoading(false);
     }
   }, [supabase, t]);
-
-  // The OAuth callback returns to /settings?tab=whatsapp with
-  // `?connected=whatsapp` or `?error=<code>`. Report it once, then strip the
-  // params so a refresh does not replay the toast.
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const oauthResultHandled = useRef(false);
-
-  useEffect(() => {
-    if (oauthResultHandled.current) return;
-    const connected = searchParams.get('connected');
-    const error = searchParams.get('error');
-    if (!connected && !error) return;
-
-    oauthResultHandled.current = true;
-    if (connected && isOAuthConnectedChannel(connected)) {
-      toast.success(t('oauth.connected'));
-      // The row is new — reload it so the status banner reflects reality
-      // instead of the pre-connect empty state.
-      if (accountId) {
-        loadedAccountIdRef.current = accountId;
-        fetchConfig(accountId);
-      }
-    } else if (error) {
-      toast.error(t(oauthMessageKey(error)));
-    }
-    router.replace('/settings?tab=whatsapp', { scroll: false });
-  }, [searchParams, router, t, accountId, fetchConfig]);
-
-  const startOAuth = useCallback(() => {
-    // Hard navigation, not router.push: the route answers with a 302 to
-    // facebook.com and the browser has to follow it while keeping the
-    // httpOnly state cookie.
-    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-    window.location.href = '/api/oauth/meta/start?channel=whatsapp';
-  }, []);
 
   useEffect(() => {
     // Need both the auth session (`!authLoading`) AND the profile
@@ -787,123 +748,104 @@ export function WhatsAppConfig() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {canEditSettings && (
-              <div className="space-y-2 rounded-md border border-border bg-muted/20 p-3">
-                <Button size="sm" className="gap-1.5" onClick={startOAuth}>
-                  <Link2 className="size-3.5" />
-                  {t('oauth.connect')}
-                </Button>
-                <p className="text-xs text-muted-foreground">{t('oauth.connectHint')}</p>
-              </div>
-            )}
+            <div className="space-y-2">
+              <Label className="text-muted-foreground">{t('phoneNumberId')}</Label>
+              <Input
+                placeholder={t('phoneNumberIdPlaceholder')}
+                value={phoneNumberId}
+                onChange={(e) => setPhoneNumberId(e.target.value)}
+                className="bg-muted border-border text-foreground placeholder:text-muted-foreground"
+              />
+            </div>
 
-            <details className="rounded-md border border-border/70 px-3 py-2">
-              <summary className="cursor-pointer text-xs text-muted-foreground">
-                {t('oauth.manualToggle')}
-              </summary>
-              <p className="mt-2 text-xs text-muted-foreground">{t('oauth.manualHint')}</p>
+            <div className="space-y-2">
+              <Label className="text-muted-foreground">{t('wabaId')}</Label>
+              <Input
+                placeholder={t('wabaIdPlaceholder')}
+                value={wabaId}
+                onChange={(e) => setWabaId(e.target.value)}
+                className="bg-muted border-border text-foreground placeholder:text-muted-foreground"
+              />
+            </div>
 
-              <div className="mt-3 space-y-4">
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">{t('phoneNumberId')}</Label>
-                  <Input
-                    placeholder={t('phoneNumberIdPlaceholder')}
-                    value={phoneNumberId}
-                    onChange={(e) => setPhoneNumberId(e.target.value)}
-                    className="bg-muted border-border text-foreground placeholder:text-muted-foreground"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">{t('wabaId')}</Label>
-                  <Input
-                    placeholder={t('wabaIdPlaceholder')}
-                    value={wabaId}
-                    onChange={(e) => setWabaId(e.target.value)}
-                    className="bg-muted border-border text-foreground placeholder:text-muted-foreground"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">{t('accessToken')}</Label>
-                  <div className="relative">
-                    <Input
-                      type={showToken ? 'text' : 'password'}
-                      placeholder={t('accessTokenPlaceholder')}
-                      value={accessToken}
-                      onChange={(e) => {
-                        setAccessToken(e.target.value);
-                        setTokenEdited(true);
-                      }}
-                      onFocus={() => {
-                        if (accessToken === MASKED_TOKEN) {
-                          setAccessToken('');
-                          setTokenEdited(true);
-                        }
-                      }}
-                      className="bg-muted border-border text-foreground placeholder:text-muted-foreground pe-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowToken(!showToken)}
-                      className="absolute end-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {showToken ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                    </button>
-                  </div>
-                  {config && !tokenEdited && (
-                    <p className="text-xs text-muted-foreground">
-                      {t('tokenHidden')}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">{t('webhookVerifyToken')}</Label>
-                  <Input
-                    placeholder={t('webhookVerifyTokenPlaceholder')}
-                    value={verifyToken}
-                    onChange={(e) => {
-                      setVerifyToken(e.target.value);
-                      setVerifyEdited(true);
-                    }}
-                    onFocus={() => {
-                      if (verifyToken === MASKED_TOKEN) {
-                        setVerifyToken('');
-                        setVerifyEdited(true);
-                      }
-                    }}
-                    className="bg-muted border-border text-foreground placeholder:text-muted-foreground"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {config?.verify_token && !verifyEdited
-                      ? t('webhookVerifyTokenSaved')
-                      : t('webhookVerifyTokenHint')}
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">
-                    {t('twoStepPin')}
-                    <span className="ms-1 text-muted-foreground">{t('optional')}</span>
-                  </Label>
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={6}
-                    placeholder={t('pinPlaceholder')}
-                    value={pin}
-                    onChange={(e) =>
-                      setPin(e.target.value.replace(/\D/g, '').slice(0, 6))
+            <div className="space-y-2">
+              <Label className="text-muted-foreground">{t('accessToken')}</Label>
+              <div className="relative">
+                <Input
+                  type={showToken ? 'text' : 'password'}
+                  placeholder={t('accessTokenPlaceholder')}
+                  value={accessToken}
+                  onChange={(e) => {
+                    setAccessToken(e.target.value);
+                    setTokenEdited(true);
+                  }}
+                  onFocus={() => {
+                    if (accessToken === MASKED_TOKEN) {
+                      setAccessToken('');
+                      setTokenEdited(true);
                     }
-                    className="bg-muted border-border text-foreground placeholder:text-muted-foreground tracking-widest"
-                  />
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    <span dangerouslySetInnerHTML={{ __html: t('pinHint') }} />
-                  </p>
-                </div>
+                  }}
+                  className="bg-muted border-border text-foreground placeholder:text-muted-foreground pe-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowToken(!showToken)}
+                  className="absolute end-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showToken ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
               </div>
-            </details>
+              {config && !tokenEdited && (
+                <p className="text-xs text-muted-foreground">
+                  {t('tokenHidden')}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-muted-foreground">{t('webhookVerifyToken')}</Label>
+              <Input
+                placeholder={t('webhookVerifyTokenPlaceholder')}
+                value={verifyToken}
+                onChange={(e) => {
+                  setVerifyToken(e.target.value);
+                  setVerifyEdited(true);
+                }}
+                onFocus={() => {
+                  if (verifyToken === MASKED_TOKEN) {
+                    setVerifyToken('');
+                    setVerifyEdited(true);
+                  }
+                }}
+                className="bg-muted border-border text-foreground placeholder:text-muted-foreground"
+              />
+              <p className="text-xs text-muted-foreground">
+                {config?.verify_token && !verifyEdited
+                  ? t('webhookVerifyTokenSaved')
+                  : t('webhookVerifyTokenHint')}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-muted-foreground">
+                {t('twoStepPin')}
+                <span className="ms-1 text-muted-foreground">{t('optional')}</span>
+              </Label>
+              <Input
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                placeholder={t('pinPlaceholder')}
+                value={pin}
+                onChange={(e) =>
+                  setPin(e.target.value.replace(/\D/g, '').slice(0, 6))
+                }
+                className="bg-muted border-border text-foreground placeholder:text-muted-foreground tracking-widest"
+              />
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                <span dangerouslySetInnerHTML={{ __html: t('pinHint') }} />
+              </p>
+            </div>
           </CardContent>
         </Card>
 

@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   Aperture,
@@ -28,7 +27,6 @@ import {
 } from "@/components/ui/card";
 import { SettingsPanelHead } from "./settings-panel-head";
 import type { MessagingChannel } from "@/lib/channels/types";
-import { isOAuthConnectedChannel, oauthMessageKey } from "@/lib/oauth/result";
 
 interface ChannelConfig {
   channel: MessagingChannel;
@@ -60,17 +58,14 @@ const CHANNEL_META: Record<
  * Settings → Channels: connect a Facebook Page (Messenger) or an
  * Instagram business account to the shared inbox.
  *
- * The primary action is "Connect with Facebook" — /api/oauth/meta/start
- * runs the Facebook Login flow, resolves the Page (or asks which one), and
- * stores an encrypted Page token without anyone handling a credential.
- * The manual id + token form stays available behind a collapsed
- * disclosure for customers who already hold a long-lived Page token.
+ * Deliberately credential-shaped rather than an OAuth dance: the client
+ * owns their Meta app, so the admin pastes the Page token they just
+ * generated. The route verifies it against Graph before storing anything,
+ * and subscribes the Page to this app's webhook, so a wrong token fails
+ * here instead of silently at the first inbound DM.
  */
 export function ChannelsPanel() {
   const t = useTranslations("Settings.channels");
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const oauthResultHandled = useRef(false);
   const { canEditSettings, profileLoading } = useAuth();
   const [configs, setConfigs] = useState<ChannelConfig[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,32 +94,6 @@ export function ChannelsPanel() {
   useEffect(() => {
     void load();
   }, [load]);
-
-  // The OAuth callback lands back here with `?connected=` or `?error=`.
-  // Report it once, then drop the params so a reload does not replay the
-  // toast. `oauthResultHandled` survives the router.replace re-render.
-  useEffect(() => {
-    if (oauthResultHandled.current) return;
-    const connected = searchParams.get("connected");
-    const error = searchParams.get("error");
-    if (!connected && !error) return;
-
-    oauthResultHandled.current = true;
-    if (connected && isOAuthConnectedChannel(connected)) {
-      toast.success(t("oauth.connected"));
-    } else if (error) {
-      toast.error(t(oauthMessageKey(error)));
-    }
-    router.replace("/settings?tab=channels", { scroll: false });
-  }, [searchParams, router, t]);
-
-  const startOAuth = useCallback((channel: MessagingChannel) => {
-    // A hard navigation, not router.push: the route answers with a 302 to
-    // facebook.com, and the browser (not the Next router) has to follow
-    // that cross-origin hop while keeping the httpOnly state cookie.
-    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-    window.location.href = `/api/oauth/meta/start?channel=${channel}`;
-  }, []);
 
   const webhookUrl =
     typeof window !== "undefined"
@@ -291,87 +260,63 @@ export function ChannelsPanel() {
 
                 {editable && (
                   <>
-                    <div className="space-y-2 rounded-md border border-border bg-muted/20 p-3">
-                      <Button
-                        size="sm"
-                        className="gap-1.5"
-                        onClick={() => startOAuth(channel)}
-                      >
-                        <Link2 className="size-3.5" />
-                        {t("oauth.connect")}
-                      </Button>
-                      <p className="text-[11px] text-muted-foreground">
-                        {t("oauth.connectHint")}
-                      </p>
+                    <div className="grid gap-2 sm:max-w-sm">
+                      <Label htmlFor={`${channel}-id`} className="text-muted-foreground">
+                        {t(meta.idLabelKey)}
+                      </Label>
+                      <Input
+                        id={`${channel}-id`}
+                        dir="ltr"
+                        inputMode="numeric"
+                        value={draft.externalId}
+                        placeholder={t(meta.idPlaceholderKey)}
+                        onChange={(e) =>
+                          setDrafts((prev) => ({
+                            ...prev,
+                            [channel]: { ...prev[channel], externalId: e.target.value },
+                          }))
+                        }
+                      />
+                      <p className="text-[11px] text-muted-foreground">{t(meta.docsKey)}</p>
                     </div>
 
-                    <details className="rounded-md border border-border/70 px-3 py-2">
-                      <summary className="cursor-pointer text-xs text-muted-foreground">
-                        {t("oauth.manualToggle")}
-                      </summary>
-                      <p className="mt-2 text-[11px] text-muted-foreground">
-                        {t("oauth.manualHint")}
-                      </p>
+                    <div className="grid gap-2">
+                      <Label htmlFor={`${channel}-token`} className="text-muted-foreground">
+                        {t("tokenLabel")}
+                      </Label>
+                      <Input
+                        id={`${channel}-token`}
+                        dir="ltr"
+                        type="password"
+                        autoComplete="off"
+                        value={draft.token}
+                        placeholder="EAAG…"
+                        onChange={(e) =>
+                          setDrafts((prev) => ({
+                            ...prev,
+                            [channel]: { ...prev[channel], token: e.target.value },
+                          }))
+                        }
+                      />
+                      <p className="text-[11px] text-muted-foreground">{t("tokenHint")}</p>
+                    </div>
 
-                      <div className="mt-3 grid gap-2 sm:max-w-sm">
-                        <Label htmlFor={`${channel}-id`} className="text-muted-foreground">
-                          {t(meta.idLabelKey)}
-                        </Label>
-                        <Input
-                          id={`${channel}-id`}
-                          dir="ltr"
-                          inputMode="numeric"
-                          value={draft.externalId}
-                          placeholder={t(meta.idPlaceholderKey)}
-                          onChange={(e) =>
-                            setDrafts((prev) => ({
-                              ...prev,
-                              [channel]: { ...prev[channel], externalId: e.target.value },
-                            }))
-                          }
-                        />
-                        <p className="text-[11px] text-muted-foreground">{t(meta.docsKey)}</p>
-                      </div>
-
-                      <div className="mt-3 grid gap-2">
-                        <Label htmlFor={`${channel}-token`} className="text-muted-foreground">
-                          {t("tokenLabel")}
-                        </Label>
-                        <Input
-                          id={`${channel}-token`}
-                          dir="ltr"
-                          type="password"
-                          autoComplete="off"
-                          value={draft.token}
-                          placeholder="EAAG…"
-                          onChange={(e) =>
-                            setDrafts((prev) => ({
-                              ...prev,
-                              [channel]: { ...prev[channel], token: e.target.value },
-                            }))
-                          }
-                        />
-                        <p className="text-[11px] text-muted-foreground">{t("tokenHint")}</p>
-                      </div>
-
-                      <Button
-                        size="sm"
-                        className="mt-3"
-                        disabled={busy || !draft.externalId.trim() || !draft.token.trim()}
-                        onClick={() => void save(channel)}
-                      >
-                        {busy ? (
-                          <>
-                            <Loader2 className="size-4 animate-spin" />
-                            {t("saving")}
-                          </>
-                        ) : config ? (
-                          t("reconnect")
-                        ) : (
-                          t("connect")
-                        )}
-                      </Button>
-                    </details>
+                    <Button
+                      size="sm"
+                      disabled={busy || !draft.externalId.trim() || !draft.token.trim()}
+                      onClick={() => void save(channel)}
+                    >
+                      {busy ? (
+                        <>
+                          <Loader2 className="size-4 animate-spin" />
+                          {t("saving")}
+                        </>
+                      ) : config ? (
+                        t("reconnect")
+                      ) : (
+                        t("connect")
+                      )}
+                    </Button>
                   </>
                 )}
 
