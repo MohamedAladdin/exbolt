@@ -137,6 +137,9 @@ export async function POST(request: Request) {
         display_name: displayName,
         access_token: encrypt(accessToken),
         is_active: true,
+        last_error: subscribed.ok
+          ? null
+          : (subscribed.error ?? 'subscription failed'),
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'account_id,channel' },

@@ -109,6 +109,9 @@ export async function connectMessagingChannel(args: {
       display_name: mapped.row.display_name,
       access_token: mapped.row.access_token,
       is_active: true,
+      last_error: subscribed.ok
+        ? null
+        : (subscribed.error ?? 'subscription failed'),
       updated_at: new Date().toISOString(),
     },
     { onConflict: 'account_id,channel' }

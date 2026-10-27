@@ -187,10 +187,22 @@ export async function subscribePageToApp(args: {
   externalId: string;
   accessToken: string;
 }): Promise<{ ok: boolean; error?: string }> {
+  // Graph requires `subscribed_fields` on this call and answers
+  // "(#100) The parameter subscribed_fields is required." without it. That
+  // failure is silent in the UI — the channel row is written either way and
+  // the tenant then wonders why no message ever arrives.
+  const body = new URLSearchParams({
+    subscribed_fields: 'messages,messaging_postbacks,message_reactions',
+  });
   try {
     const res = await fetch(graphUrl(`${args.externalId}/subscribed_apps`), {
       method: 'POST',
-      headers: { Authorization: `Bearer ${args.accessToken}` },
+      headers: {
+        Authorization: `Bearer ${args.accessToken}`,
+        'content-type': 'application/x-www-form-urlencoded',
+      },
+      body,
+      signal: AbortSignal.timeout(10000),
     });
     if (!res.ok) {
       const payload = (await res.json().catch(() => ({}))) as {
