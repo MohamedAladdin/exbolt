@@ -200,6 +200,8 @@ vi.mock('@/lib/whatsapp/message-status-sync', () => ({
 
 interface CapturedWrites {
   message?: Record<string, unknown>;
+  /** `update()` payload written to `messages` (edit-in-place path). */
+  messageUpdate?: Record<string, unknown>;
   conversation?: Record<string, unknown>;
 }
 
@@ -235,6 +237,7 @@ function sendPathDb(
         },
         update: (row: Record<string, unknown>) => {
           if (table === 'conversations') captured.conversation = row;
+          if (table === 'messages') captured.messageUpdate = row;
           return builder;
         },
         maybeSingle: async () => ({ data: null, error: null }),
@@ -528,5 +531,56 @@ describe('sendMessageToConversation — statuses that beat the insert', () => {
       'acct-1',
       'wamid.text'
     );
+  });
+});
+
+// ============================================================
+// Editing a failed send IN PLACE (migration 066).
+// ============================================================
+
+describe('sendMessageToConversation — edit a failed send in place', () => {
+  it('updates the existing row instead of inserting a twin', async () => {
+    const captured: CapturedWrites = {};
+    const result = await sendMessageToConversation(
+      sendPathDb([], captured),
+      'acct-1',
+      {
+        conversationId: 'cv-1',
+        messageType: 'text',
+        contentText: 'السعر 250 مش 200',
+        senderId: 'u-1',
+      },
+      { replaceMessageId: 'msg-1' }
+    );
+
+    // No new row — the corrected text takes over the failed one.
+    expect(captured.message).toBeUndefined();
+    expect(captured.messageUpdate).toMatchObject({
+      content_text: 'السعر 250 مش 200',
+      status: 'sent',
+      // Fresh wamid from the successful re-send, not the old one.
+      message_id: 'wamid.text',
+      sender_id: 'u-1',
+      // The old failure reason no longer describes this row.
+      error_code: null,
+      error_title: null,
+      error_details: null,
+    });
+    expect(captured.messageUpdate?.edited_at).toEqual(expect.any(String));
+    expect(result.messageId).toBe('msg-1');
+    expect(result.whatsappMessageId).toBe('wamid.text');
+    // The conversation preview still moves to the new text.
+    expect(captured.conversation?.last_message_text).toBe('السعر 250 مش 200');
+  });
+
+  it('still inserts when no replace target is given', async () => {
+    const captured: CapturedWrites = {};
+    await sendMessageToConversation(sendPathDb([], captured), 'acct-1', {
+      conversationId: 'cv-1',
+      messageType: 'text',
+      contentText: 'hello',
+    });
+    expect(captured.messageUpdate).toBeUndefined();
+    expect(captured.message?.content_text).toBe('hello');
   });
 });

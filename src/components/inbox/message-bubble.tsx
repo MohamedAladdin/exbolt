@@ -20,6 +20,8 @@ import {
   ExternalLink,
   Phone,
   Copy,
+  Forward,
+  PencilLine,
   type LucideIcon,
 } from "lucide-react";
 import { format } from "date-fns";
@@ -436,6 +438,41 @@ export function MessageBubble({
             >
               <Sparkles className="h-2.5 w-2.5" />
               {t("aiBadge")}
+            </span>
+          )}
+          {/* Forward marker — the same idea as WhatsApp's arrow: this
+              message arrived here from another chat. */}
+          {message.forwarded_from_message_id && (
+            <span
+              className={cn(
+                "inline-flex items-center gap-0.5 text-[10px]",
+                isAgent ? "text-primary-foreground/70" : "text-muted-foreground",
+              )}
+              title={t("forwardedTitle", {
+                count: message.forward_count ?? 0,
+              })}
+            >
+              <Forward className="h-2.5 w-2.5 rtl:-scale-x-100" />
+              {t("forwarded")}
+            </span>
+          )}
+          {/* Edit trail. `correction_message_id` means a follow-up fixed
+              this one (Meta has no edit endpoint); a bare `edited_at`
+              means the text was rewritten in place after a failed send. */}
+          {(message.edited_at || message.correction_message_id) && (
+            <span
+              className={cn(
+                "inline-flex items-center gap-0.5 text-[10px]",
+                isAgent ? "text-primary-foreground/70" : "text-muted-foreground",
+              )}
+              title={
+                message.correction_message_id
+                  ? t("correctedTitle")
+                  : t("editedTitle")
+              }
+            >
+              <PencilLine className="h-2.5 w-2.5" />
+              {message.correction_message_id ? t("corrected") : t("edited")}
             </span>
           )}
           <span

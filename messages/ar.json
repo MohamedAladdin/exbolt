@@ -461,7 +461,13 @@
       "downloadFailed": "تعذّر تنزيل المرفق",
       "viewImage": "عرض الصورة",
       "expandVideo": "تكبير الفيديو",
-      "imageAlt": "صورة مُشاركة"
+      "imageAlt": "صورة مُشاركة",
+      "forwarded": "تم التوجيه",
+      "forwardedTitle": "موجّهة من محادثة تانية",
+      "edited": "عُدّلت",
+      "editedTitle": "اتعدلت بعد فشل الإرسال وأُعيد إرسالها",
+      "corrected": "صُحّحت",
+      "correctedTitle": "اتبعتتلها رسالة تصحيح"
     },
     "mediaViewer": {
       "counter": "{index} من {total}",
@@ -484,7 +490,9 @@
       "reactWith": "تفاعل بـ {emoji}",
       "nothingToCopy": "لا شيء للنسخ",
       "copied": "تم النسخ",
-      "copyFailed": "فشل النسخ"
+      "copyFailed": "فشل النسخ",
+      "edit": "تعديل الرسالة",
+      "forward": "إعادة توجيه"
     },
     "replyQuote": {
       "photo": "[صورة]",
@@ -547,6 +555,52 @@
       "contactCreated": "تمت إضافة جهة الاتصال وفتح المحادثة",
       "chatFailed": "تعذّر بدء المحادثة.",
       "incompleteNumber": "الرقم ينقصه رمز الدولة."
+    },
+    "edit": {
+      "title": "تعديل الرسالة",
+      "descInPlace": "الإرسال فشل، فالرسالة موصلتش للعميل. الحفظ بيغيّر النص ويبعتها تاني — نفس الفقاعة، بدون نسخة مكررة.",
+      "descCorrection": "الرسالة وصلت للعميل فعلاً، والواتساب مش بيسمح بتعديل رسالة بعد وصولها. اللي هيحصل: هتتبعت رسالة تصحيح مقتبسة من الأصل.",
+      "correctionNotice": "التعديل متاح من تطبيق واتساب خلال ١٥ دقيقة بس، ومفيش صلاحية تعديل في WhatsApp Cloud API — علشان كده التصحيح هو الحل الرسمي.",
+      "placeholder": "نص الرسالة",
+      "counter": "{count}/{max} حرف",
+      "previewLabel": "هتتبعت كتصحيح",
+      "cancel": "إلغاء",
+      "save": "حفظ وإعادة الإرسال",
+      "sendCorrection": "إرسال التصحيح",
+      "savedInPlace": "تم تعديل الرسالة وإعادة إرسالها",
+      "sentCorrection": "تم إرسال التصحيح",
+      "failed": "تعذّر التعديل: {reason}",
+      "errors": {
+        "empty": "اكتب النص المصحّح أولاً",
+        "too_long": "النص أطول من الحد (٤٠٩٦ حرف)",
+        "inbound": "رسالة العميل مش ممكن تتعدل",
+        "not_found": "الرسالة مش موجودة"
+      }
+    },
+    "forward": {
+      "title": "إعادة توجيه",
+      "desc": "نفس المحتوى هيتبعت للمحادثات اللي هتختارها (حتى {max} محادثة).",
+      "search": "ابحث بالاسم أو الرقم",
+      "loading": "جاري التحميل…",
+      "empty": "مفيش محادثات تانية",
+      "noMatch": "مفيش نتائج",
+      "unknownContact": "بدون اسم",
+      "selected": "مختار {count} من {max}",
+      "send": "توجيه",
+      "cancel": "إلغاء",
+      "sent": "تم التوجيه لـ {count} محادثة",
+      "partial": "تم لـ {sent}، وفشل {failed}",
+      "failed": "تعذّر التوجيه: {reason}",
+      "noContent": "الرسالة دي مفيهاش نص يتوجه.",
+      "mediaUnavailable": "المرفق مش متاح للتوجيه (لينك منتهي أو معرّف ميديا من ميتا).",
+      "unsupported": "نوع الرسالة ده مش بيتوجه.",
+      "errors": {
+        "no_targets": "اختار محادثة واحدة على الأقل",
+        "media_unavailable": "المرفق مش متاح للتوجيه",
+        "no_content": "الرسالة دي مفيهاش حاجة تتوجه",
+        "unsupported": "نوع الرسالة ده مش بيتوجه",
+        "not_found": "الرسالة أو المحادثة مش موجودة"
+      }
     }
   },
   "Contacts": {
@@ -3127,6 +3181,15 @@
       "submitFailed": "تعذّر إرسال القالب.",
       "metaApiStatus": "خطأ Meta API: {status}",
       "syncFailed": "تعذّرت مزامنة القوالب"
+    },
+    "inbox": {
+      "editEmpty": "نص الرسالة مطلوب",
+      "editTooLong": "الرسالة لازم تكون {max} حرف أو أقل",
+      "editInbound": "مش ممكن تعديل رسالة واردة من العميل",
+      "forwardNoTargets": "اختار محادثة واحدة على الأقل للتوجيه",
+      "forwardNoContent": "الرسالة دي مفيهاش حاجة تتوجه",
+      "forwardMediaUnavailable": "مرفق الرسالة مش متاح للتوجيه",
+      "forwardUnsupported": "نوع الرسالة ده مش بيتوجه"
     }
   },
   "AccountBlocked": {

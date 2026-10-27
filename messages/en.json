@@ -461,7 +461,13 @@
       "downloadFailed": "Couldn't download the attachment",
       "viewImage": "View image",
       "expandVideo": "Expand video",
-      "imageAlt": "Shared image"
+      "imageAlt": "Shared image",
+      "forwarded": "Forwarded",
+      "forwardedTitle": "Forwarded from another conversation",
+      "edited": "Edited",
+      "editedTitle": "Corrected after a failed send and re-sent",
+      "corrected": "Correction sent",
+      "correctedTitle": "A correction message was sent for this one"
     },
     "mediaViewer": {
       "counter": "{index} of {total}",
@@ -484,7 +490,9 @@
       "reactWith": "React with {emoji}",
       "nothingToCopy": "Nothing to copy",
       "copied": "Copied",
-      "copyFailed": "Copy failed"
+      "copyFailed": "Copy failed",
+      "edit": "Edit message",
+      "forward": "Forward"
     },
     "replyQuote": {
       "photo": "[Photo]",
@@ -547,6 +555,52 @@
       "contactCreated": "Contact added and conversation opened",
       "chatFailed": "Could not start the conversation.",
       "incompleteNumber": "This number is missing a country code."
+    },
+    "edit": {
+      "title": "Edit message",
+      "descInPlace": "This send failed, so the customer never received it. Saving rewrites the text and re-sends it — one bubble, no duplicate.",
+      "descCorrection": "This message already reached the customer, and WhatsApp does not allow editing a delivered message. A correction quoting the original will be sent instead.",
+      "correctionNotice": "Editing is only possible from the WhatsApp app within 15 minutes; the Cloud API has no edit permission. A correction is the official workaround.",
+      "placeholder": "Message text",
+      "counter": "{count}/{max} characters",
+      "previewLabel": "Will be sent as a correction",
+      "cancel": "Cancel",
+      "save": "Save and resend",
+      "sendCorrection": "Send correction",
+      "savedInPlace": "Message edited and re-sent",
+      "sentCorrection": "Correction sent",
+      "failed": "Could not edit: {reason}",
+      "errors": {
+        "empty": "Type the corrected text first",
+        "too_long": "That is longer than the 4096-character limit",
+        "inbound": "A customer's message cannot be edited",
+        "not_found": "Message not found"
+      }
+    },
+    "forward": {
+      "title": "Forward message",
+      "desc": "The same content is sent to the chats you pick (up to {max}).",
+      "search": "Search by name or number",
+      "loading": "Loading…",
+      "empty": "No other conversations yet",
+      "noMatch": "No matches",
+      "unknownContact": "No name",
+      "selected": "{count} of {max} selected",
+      "send": "Forward",
+      "cancel": "Cancel",
+      "sent": "Forwarded to {count} chat(s)",
+      "partial": "Sent to {sent}, failed for {failed}",
+      "failed": "Could not forward: {reason}",
+      "noContent": "This message has no text to forward.",
+      "mediaUnavailable": "This attachment can no longer be forwarded (expired link or a Meta media id).",
+      "unsupported": "This message type cannot be forwarded.",
+      "errors": {
+        "no_targets": "Pick at least one chat",
+        "media_unavailable": "The attachment is no longer available",
+        "no_content": "This message has nothing to forward",
+        "unsupported": "This message type cannot be forwarded",
+        "not_found": "Message or chat not found"
+      }
     }
   },
   "Contacts": {
@@ -3127,6 +3181,15 @@
       "submitFailed": "Failed to submit template.",
       "metaApiStatus": "Meta API error: {status}",
       "syncFailed": "Failed to sync templates"
+    },
+    "inbox": {
+      "editEmpty": "Message text is required",
+      "editTooLong": "Message must be {max} characters or fewer",
+      "editInbound": "An incoming message cannot be edited",
+      "forwardNoTargets": "Pick at least one conversation to forward to",
+      "forwardNoContent": "This message has nothing to forward",
+      "forwardMediaUnavailable": "This message's attachment is no longer available to forward",
+      "forwardUnsupported": "This message type cannot be forwarded"
     }
   },
   "AccountBlocked": {

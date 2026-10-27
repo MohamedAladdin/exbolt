@@ -289,6 +289,19 @@ export interface Message {
   error_code?: number | null;
   error_title?: string | null;
   error_details?: string | null;
+  /**
+   * Edit trail (migration 066). `edited_at` is stamped on a message whose
+   * text was replaced in place (a failed send corrected and re-sent) or
+   * when a correction was issued for it — the WhatsApp Cloud API has no
+   * edit endpoint, so an already-delivered message can only be followed
+   * by `correction_message_id`.
+   */
+  edited_at?: string | null;
+  correction_message_id?: string | null;
+  /** Source message this one was forwarded from (inbox → forward). */
+  forwarded_from_message_id?: string | null;
+  /** How many times this message has been forwarded through the inbox. */
+  forward_count?: number;
 }
 
 export type ReactionActor = 'customer' | 'agent';

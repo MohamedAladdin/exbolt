@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { CornerUpLeft, Copy, SmilePlus } from "lucide-react";
+import { CornerUpLeft, Copy, SmilePlus, PencilLine, Forward } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -20,6 +20,14 @@ interface MessageActionsProps {
   message: Message;
   onReply: () => void;
   onReact: (emoji: string) => void;
+  /**
+   * Opens the correction dialog. Only meaningful on our own messages —
+   * an inbound message cannot be edited (the customer wrote it), so the
+   * button is not rendered for those.
+   */
+  onEdit?: () => void;
+  /** Opens the forward picker. Available on every message. */
+  onForward?: () => void;
   children: ReactNode;
 }
 
@@ -32,6 +40,8 @@ export function MessageActions({
   message,
   onReply,
   onReact,
+  onEdit,
+  onForward,
   children,
 }: MessageActionsProps) {
   const t = useTranslations("Inbox.actions");
@@ -136,6 +146,34 @@ export function MessageActions({
         >
           <CornerUpLeft className="h-3.5 w-3.5" />
         </button>
+        {onForward && (
+          <button
+            type="button"
+            onClick={() => {
+              onForward();
+              setTouchOpen(false);
+            }}
+            className="flex h-5 w-5 items-center justify-center rounded-full text-popover-foreground hover:bg-muted hover:text-foreground"
+            aria-label={t("forward")}
+            title={t("forward")}
+          >
+            <Forward className="h-3.5 w-3.5 rtl:-scale-x-100" />
+          </button>
+        )}
+        {isAgent && onEdit && (
+          <button
+            type="button"
+            onClick={() => {
+              onEdit();
+              setTouchOpen(false);
+            }}
+            className="flex h-5 w-5 items-center justify-center rounded-full text-popover-foreground hover:bg-muted hover:text-foreground"
+            aria-label={t("edit")}
+            title={t("edit")}
+          >
+            <PencilLine className="h-3.5 w-3.5" />
+          </button>
+        )}
         <button
           type="button"
           onClick={handleCopy}

@@ -105,6 +105,20 @@ export interface SendMessageResult {
   whatsappMessageId: string;
 }
 
+export interface SendMessageOptions {
+  /**
+   * Reuse an existing row instead of inserting a new one. Used by the
+   * inbox "edit" action on a message that FAILED: nothing was delivered,
+   * so the corrected text replaces the old row in place — no duplicate
+   * bubble — and `edited_at` records the touch.
+   *
+   * The row must belong to the same conversation; the update is scoped
+   * by `conversation_id` so a caller cannot reach into another thread.
+   */
+  replaceMessageId?: string;
+}
+
+
 /**
  * Send a message in an existing conversation and persist it.
  *
@@ -195,7 +209,8 @@ export function validateSendMessageParams(params: {
 export async function sendMessageToConversation(
   db: SupabaseClient,
   accountId: string,
-  params: SendMessageParams
+  params: SendMessageParams,
+  options: SendMessageOptions = {}
 ): Promise<SendMessageResult> {
   const {
     conversationId,
@@ -507,30 +522,55 @@ export async function sendMessageToConversation(
           )
         : (contentText ?? null);
 
-  const { data: messageRecord, error: msgError } = await db
-    .from('messages')
-    .insert({
-      conversation_id: conversationId,
-      sender_type: 'agent',
-      sender_id: senderId ?? null,
-      content_type: messageType,
-      content_text: persistedText,
-      media_url:
-        messageType === 'template'
-          ? templateHeaderMediaUrl(templateRow, templateMessageParams)
-          : mediaUrl || null,
-      template_name: templateName || null,
-      interactive_payload:
-        messageType === 'interactive' ? interactivePayload : null,
-      message_id: waMessageId,
-      status: 'sent',
-      reply_to_message_id: replyToMessageId || null,
-    })
-    .select()
-    .single();
+  const persistedRow = {
+    sender_type: 'agent',
+    sender_id: senderId ?? null,
+    content_type: messageType,
+    content_text: persistedText,
+    media_url:
+      messageType === 'template'
+        ? templateHeaderMediaUrl(templateRow, templateMessageParams)
+        : mediaUrl || null,
+    template_name: templateName || null,
+    interactive_payload:
+      messageType === 'interactive' ? interactivePayload : null,
+    message_id: waMessageId,
+    status: 'sent' as const,
+    reply_to_message_id: replyToMessageId || null,
+  };
+
+  // Two write shapes: the normal append, and the "edit a failed send"
+  // replace — where the corrected text takes over the existing row so
+  // the thread shows one bubble instead of a failed twin.
+  const { data: messageRecord, error: msgError } = options.replaceMessageId
+    ? await db
+        .from('messages')
+        .update({
+          ...persistedRow,
+          edited_at: new Date().toISOString(),
+          // The old failure reason described a send that no longer
+          // exists; keeping it would show a red reason on a healthy row.
+          error_code: null,
+          error_title: null,
+          error_details: null,
+        })
+        .eq('id', options.replaceMessageId)
+        .eq('conversation_id', conversationId)
+        .select()
+        .single()
+    : await db
+        .from('messages')
+        .insert({ conversation_id: conversationId, ...persistedRow })
+        .select()
+        .single();
 
   if (msgError) {
-    console.error('[send-message] error inserting sent message:', msgError);
+    console.error(
+      options.replaceMessageId
+        ? '[send-message] error updating edited message:'
+        : '[send-message] error inserting sent message:',
+      msgError
+    );
     throw new SendMessageError(
       'db_error',
       `Message sent to Meta but failed to save to DB: ${msgError.message}`,

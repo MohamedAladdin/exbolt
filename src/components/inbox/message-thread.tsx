@@ -47,6 +47,8 @@ import {
   type SenderProfileRow,
 } from "@/lib/inbox/sender-names";
 import { MessageActions } from "./message-actions";
+import { MessageEditDialog } from "./message-edit-dialog";
+import { MessageForwardDialog } from "./message-forward-dialog";
 import { MediaLightbox } from "./media-lightbox";
 import { collectMediaGallery } from "@/lib/media/gallery";
 import {
@@ -280,6 +282,12 @@ export function MessageThread({
     conversationId: string;
     messageId: string;
   } | null>(null);
+
+  // Edit / forward targets. Both dialogs take the whole message so they
+  // can decide their own copy (a failed send is corrected in place, a
+  // delivered one gets a correction message) — see lib/whatsapp/message-edit.
+  const [editTarget, setEditTarget] = useState<Message | null>(null);
+  const [forwardTarget, setForwardTarget] = useState<Message | null>(null);
 
   // Profiles are bounded by RLS to rows the current user is allowed to
   // see — today that's just the current user, but the dropdown keeps the
@@ -629,6 +637,16 @@ export function MessageThread({
     }
     el.scrollTop = el.scrollHeight;
   }, [messages]);
+
+  // The edit dialog has already applied the change server-side (in place
+  // for a failed send, a correction message otherwise); patch the local
+  // row so the bubble flips immediately even if realtime is down.
+  const handleEditSaved = useCallback(
+    (messageId: string, patch: Partial<Message>) => {
+      onUpdateMessage(messageId, patch);
+    },
+    [onUpdateMessage]
+  );
 
   const handleSend = useCallback(
     async (text: string, replyToId?: string) => {
@@ -1310,6 +1328,8 @@ export function MessageThread({
                         key={msg.id}
                         message={msg}
                         onReply={() => handleStartReply(msg)}
+                        onEdit={() => setEditTarget(msg)}
+                        onForward={() => setForwardTarget(msg)}
                         onReact={(emoji) => {
                           if (emoji) void postReaction(msg.id, emoji);
                         }}
@@ -1373,6 +1393,22 @@ export function MessageThread({
         open={templateModalOpen}
         onOpenChange={setTemplateModalOpen}
         onSelect={handleSendTemplate}
+      />
+
+      {/* Correct / forward. Both are mounted for the thread's lifetime and
+          keyed off a target message so the dialogs reset between opens. */}
+      <MessageEditDialog
+        message={editTarget}
+        onClose={() => setEditTarget(null)}
+        onSaved={handleEditSaved}
+      />
+      <MessageForwardDialog
+        message={forwardTarget}
+        onClose={() => setForwardTarget(null)}
+        onForwarded={() => {
+          // New rows land through realtime; nothing else to patch here.
+          setForwardTarget(null);
+        }}
       />
 
       {/* Full-size viewer for the thread's images/videos. Renders nothing

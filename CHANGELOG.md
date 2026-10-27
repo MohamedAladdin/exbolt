@@ -9,6 +9,33 @@ Versions follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Pre-1.0, `MINOR` bumps cover new modules; `PATCH` bumps cover bug fixes
 and polish.
 
+## [0.9.0] — 2026-10-27
+
+Two inbox actions that the WhatsApp Cloud API does not offer: **edit a
+message** and **forward a message**. Full write-up:
+`docs/inbox-edit-and-forward.md`.
+
+> **Migration required:** apply
+> `supabase/migrations/066_message_edit_and_forward.sql` before deploying —
+> it adds `messages.edited_at`, `correction_message_id`,
+> `forwarded_from_message_id` and `forward_count`.
+
+### Added
+
+- **Edit.** A failed send (nothing was delivered) is rewritten in place and
+  re-sent through the normal send core — one bubble, `edited_at` stamped.
+  A message that already reached the customer gets a **correction** that
+  quotes it, because Meta's Messages API has no edit endpoint at all
+  (the feature request is still open on Meta's developer community).
+  Inbound messages are never editable.
+- **Forward.** Pick up to five chats and re-send the message into them
+  (`POST /api/whatsapp/forward`). Text, templates and every media kind are
+  supported; media re-sends by its durable `chat-media` URL. Forwarded
+  rows carry a forward marker, the source counts `forward_count`, and a
+  partial batch reports per-target failures instead of failing the whole
+  action.
+- Bubble markers for «تم التوجيه», «عُدّلت» and «صُحّحت» in both locales.
+
 ## [0.8.1] — 2026-07-10
 
 Fixes inbound chats fragmenting into multiple threads for the same
