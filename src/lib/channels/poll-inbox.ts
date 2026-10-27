@@ -133,6 +133,26 @@ interface PollConfigRow {
   channel: MessagingChannel;
   external_id: string;
   access_token: string;
+  last_error: string | null;
+}
+
+/**
+ * A channel whose Graph edge keeps failing (Instagram returned HTTP 500 after
+ * 30s for a healthy-looking account) must not eat the poll budget every tick,
+ * or the 10-second cadence collapses. Failures are stamped into `last_error`
+ * and the config is skipped for 15 minutes; a success clears the stamp.
+ */
+const POLL_ERROR_PREFIX = 'poll:';
+const POLL_BREAKER_MS = 15 * 60 * 1000;
+
+function isCoolingDown(lastError: string | null): boolean {
+  if (!lastError?.startsWith(POLL_ERROR_PREFIX)) return false;
+  const at = Date.parse(lastError.slice(POLL_ERROR_PREFIX.length, POLL_ERROR_PREFIX.length + 24));
+  return Number.isFinite(at) && Date.now() - at < POLL_BREAKER_MS;
+}
+
+function pollError(message: string): string {
+  return `${POLL_ERROR_PREFIX}${new Date().toISOString()}: ${message}`.slice(0, 300);
 }
 
 export interface PollInboxResult {
@@ -140,6 +160,7 @@ export interface PollInboxResult {
   conversations: number;
   messages: number;
   processed: number;
+  skipped: number;
   errors: string[];
 }
 
@@ -169,12 +190,13 @@ export async function pollMessagingInbox(opts?: {
     conversations: 0,
     messages: 0,
     processed: 0,
+    skipped: 0,
     errors: [],
   };
 
   const { data, error } = await db
     .from('channel_configs')
-    .select('id, account_id, channel, external_id, access_token')
+    .select('id, account_id, channel, external_id, access_token, last_error')
     .eq('is_active', true)
     .in('channel', ['messenger', 'instagram']);
 
@@ -184,17 +206,24 @@ export async function pollMessagingInbox(opts?: {
   }
 
   for (const row of (data ?? []) as PollConfigRow[]) {
+    if (isCoolingDown(row.last_error)) {
+      result.skipped = (result.skipped ?? 0) + 1;
+      continue;
+    }
     result.configs += 1;
 
     let token: string;
     try {
       token = decrypt(row.access_token);
     } catch (err) {
-      result.errors.push(
-        `${row.channel}:${row.external_id} token decrypt failed: ${
-          err instanceof Error ? err.message : 'unknown'
-        }`
-      );
+      const message = `token decrypt failed: ${
+        err instanceof Error ? err.message : 'unknown'
+      }`;
+      result.errors.push(`${row.channel}:${row.external_id} ${message}`);
+      await db
+        .from('channel_configs')
+        .update({ last_error: pollError(message) })
+        .eq('id', row.id);
       continue;
     }
 
@@ -208,30 +237,37 @@ export async function pollMessagingInbox(opts?: {
 
     let conversations: GraphConversation[] = [];
     try {
-      const res = await doFetch(url, { signal: AbortSignal.timeout(25000) });
+      const res = await doFetch(url, { signal: AbortSignal.timeout(10000) });
       const payload = (await res.json().catch(() => ({}))) as {
         data?: GraphConversation[];
         error?: { message?: string };
       };
       if (!res.ok) {
-        result.errors.push(
-          `${row.channel}:${row.external_id} graph ${res.status}: ${
-            payload.error?.message ?? 'unknown error'
-          }`
-        );
+        const message = `graph ${res.status}: ${payload.error?.message ?? 'unknown error'}`;
+        result.errors.push(`${row.channel}:${row.external_id} ${message}`);
+        await db
+          .from('channel_configs')
+          .update({ last_error: pollError(message) })
+          .eq('id', row.id);
         continue;
       }
       conversations = payload.data ?? [];
     } catch (err) {
-      result.errors.push(
-        `${row.channel}:${row.external_id} fetch failed: ${
-          err instanceof Error ? err.message : 'unknown'
-        }`
-      );
+      const message = `fetch failed: ${err instanceof Error ? err.message : 'unknown'}`;
+      result.errors.push(`${row.channel}:${row.external_id} ${message}`);
+      await db
+        .from('channel_configs')
+        .update({ last_error: pollError(message) })
+        .eq('id', row.id);
       continue;
     }
 
     result.conversations += conversations.length;
+
+    // The call succeeded — clear a breaker stamp left by an earlier failure.
+    if (row.last_error?.startsWith(POLL_ERROR_PREFIX)) {
+      await db.from('channel_configs').update({ last_error: null }).eq('id', row.id);
+    }
 
     const body = graphConversationsToWebhook({
       channel: row.channel,
