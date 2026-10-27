@@ -198,6 +198,13 @@ async function persistEvent(
     ? await mirrorRemoteMedia(db, accountId, primary)
     : null;
 
+  // The message's own timestamp, not the insert time: the Graph poller
+  // backfills history, and a `now()` default would both corrupt the thread
+  // order and make old conversations jump to the top of the inbox.
+  const eventAt = Number.isFinite(Date.parse(event.createdAt))
+    ? new Date(event.createdAt).toISOString()
+    : new Date().toISOString();
+
   const { error: insertError } = await db.from('messages').insert({
     conversation_id: conversationId,
     sender_type: 'customer',
@@ -206,6 +213,7 @@ async function persistEvent(
     media_url: mediaUrl,
     message_id: event.messageId,
     status: 'delivered',
+    created_at: eventAt,
   });
 
   if (insertError) {
@@ -219,9 +227,23 @@ async function persistEvent(
 
   // Same DB-side bump the WhatsApp path uses — one statement, so two
   // concurrent inbounds cannot lose the unread increment.
-  const { error: bumpError } = await db.rpc('bump_conversation_on_inbound', {
+  // Only the newest message may move `last_message_at` and raise the unread
+  // badge. A backfilled older message still lands in the thread, in order.
+  const { data: convRow } = await db
+    .from('conversations')
+    .select('last_message_at')
+    .eq('id', conversationId)
+    .maybeSingle();
+  const lastAt = convRow?.last_message_at
+    ? Date.parse(convRow.last_message_at as string)
+    : 0;
+  const isNewest = Date.parse(eventAt) >= (Number.isFinite(lastAt) ? lastAt : 0);
+
+  const { error: bumpError } = await db.rpc('bump_conversation_on_inbound_at', {
     p_conversation_id: conversationId,
     p_last_message_text: preview,
+    p_at: eventAt,
+    p_count_unread: isNewest,
   });
   if (bumpError) {
     console.error('[channels] conversation bump failed:', bumpError.message);
