@@ -48,7 +48,9 @@ function makeDb(script: Script): SupabaseClient {
     eq: () => builder,
     order: () => builder,
     limit: () => {
-      // Only the conversation lookup terminates on `.limit(1)`.
+      // Only the conversation lookup terminates on `.limit(1)`. Everywhere
+      // else — notably the `.order().order().limit(1).maybeSingle()` config
+      // read — `limit` is just another link in the chain.
       if (table === 'conversations' && mode === 'select') {
         const row = script.existingConversationByCall
           ? (script.existingConversationByCall[convLookupCalls] ?? null)
@@ -56,7 +58,7 @@ function makeDb(script: Script): SupabaseClient {
         convLookupCalls++;
         return Promise.resolve({ data: row ? [row] : [], error: null });
       }
-      return Promise.resolve({ data: [], error: null });
+      return builder;
     },
     in: () => {
       const data = script.contactCandidatesByCall

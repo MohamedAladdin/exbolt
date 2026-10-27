@@ -231,6 +231,10 @@ function sendPathDb(
       const builder: Record<string, unknown> = {
         select: () => builder,
         eq: () => builder,
+        // Deterministic pick of the default number: .order().order().limit(1) is
+        // applied before the terminal .single()/.maybeSingle().
+        order: () => builder,
+        limit: () => builder,
         insert: (row: Record<string, unknown>) => {
           if (table === 'messages') captured.message = row;
           return builder;

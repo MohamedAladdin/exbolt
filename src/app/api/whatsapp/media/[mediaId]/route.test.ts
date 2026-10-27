@@ -27,6 +27,8 @@ vi.mock('@/lib/supabase/server', () => ({
       const chain = {
         select: () => chain,
         eq: () => chain,
+        order: () => chain,
+        limit: () => chain,
         maybeSingle: async () => ({
           data: table === 'profiles' && h.accountId ? { account_id: h.accountId } : null,
         }),

@@ -49,6 +49,9 @@ export async function loadAccountMetaCredentials(
     .from('whatsapp_config')
     .select('phone_number_id, access_token')
     .eq('account_id', accountId)
+    .order('is_default', { ascending: false })
+    .order('created_at', { ascending: true })
+    .limit(1)
     .single()
   if (configErr || !config) {
     throw new Error(t('send.notConfigured'))

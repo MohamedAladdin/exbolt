@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 
 import { getCurrentAccount, requireRole, toErrorResponse } from '@/lib/auth/account'
-import { requireFeature } from '@/lib/plans/guard'
+import { requireFeature, requireWithinLimit } from '@/lib/plans/guard'
+import { countActiveChannels } from '@/lib/plans/usage'
 import { supabaseAdmin } from '@/lib/automations/admin-client'
 import { encrypt } from '@/lib/whatsapp/encryption'
 import { isMessagingChannel, type MessagingChannel } from '@/lib/channels/types'
@@ -121,6 +122,27 @@ export async function POST(request: Request) {
       },
       { status: 502 },
     )
+  }
+
+  // Plan gate: every channel is a billable slot. Re-connecting a channel that
+  // already exists is an update (no new slot), so only a genuinely new channel
+  // is checked against `limits.channels`.
+  const { data: existingChannels } = await supabaseAdmin()
+    .from('channel_configs')
+    .select('id, channel')
+    .eq('account_id', ctx.accountId)
+  const alreadyConnected = (
+    (existingChannels ?? []) as { channel?: string }[]
+  ).some((row) => row.channel === channel)
+  if (!alreadyConnected) {
+    try {
+      await requireWithinLimit(
+        'channels',
+        await countActiveChannels(supabaseAdmin(), ctx.accountId)
+      )
+    } catch (err) {
+      return toErrorResponse(err)
+    }
   }
 
   // Subscribe the Page to this app's message webhook. Idempotent — Meta

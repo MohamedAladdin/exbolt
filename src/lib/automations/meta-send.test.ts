@@ -16,6 +16,10 @@ vi.mock('./admin-client', () => ({
         select: () => builder,
         eq: () => builder,
         update: () => builder,
+        // Deterministic pick of the default number: .order().order().limit(1) is
+        // applied before the terminal .single()/.maybeSingle().
+        order: () => builder,
+        limit: () => builder,
         insert: (row: Record<string, unknown>) => {
           if (table === 'messages') state.insertedMessage = row
           return builder

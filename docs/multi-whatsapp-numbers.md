@@ -4,6 +4,31 @@ Status: **proposed, not started.** Today an account can hold exactly **one**
 WhatsApp number, so a GROWTH customer cannot use the second number the plan
 sells.
 
+## 0. Plan gating — wired first, not last
+
+Every channel is a billable slot, so a second number must be refused by the
+server when the plan is full. The mechanism exists but is **not wired today**:
+`assertWithinLimit()` in `src/lib/plans/guard.ts` has **zero call sites** (checked
+on `feat/meta-connect`), and only feature flags (`requireFeature`) are enforced.
+
+Rules for this work:
+
+- `limits.channels` counts **every active channel**: each WhatsApp number +
+  Messenger + Instagram. GROWTH (`channels: 4`) therefore allows a second
+  WhatsApp number only if the account has 3 or fewer channels in use;
+  CORE (`channels: 1`) never allows one; SCALE (`channels: null`) is unlimited.
+- The **add-number endpoint** calls
+  `assertWithinLimit(entitlements, 'channels', currentActiveChannels + 1)`
+  before touching `whatsapp_config`. A 402 `PlanError` is the only refusal
+  path — never a silent no-op.
+- Counting queries `channel_configs` (active) + `whatsapp_config` (active) in one
+  place, so the number cannot drift between the UI and the server.
+- The UI **disables** “إضافة رقم” and shows the upgrade hint when the count is
+  at the limit, but that is cosmetic: the server check is the source of truth.
+- Disconnecting a number frees its slot immediately (the row goes
+  `is_active = false`), and the count follows.
+- Existing single-number accounts are unaffected: they already fit CORE.
+
 ## 1. Why it is blocked today
 
 `supabase/migrations/017_account_sharing.sql`:

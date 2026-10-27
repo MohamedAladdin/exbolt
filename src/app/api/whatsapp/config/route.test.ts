@@ -39,7 +39,7 @@ function makeSupabaseMock() {
 
     const b: Record<string, unknown> = {}
     const chain = () => b
-    for (const m of ['select', 'eq', 'neq']) b[m] = vi.fn(chain)
+    for (const m of ['select', 'eq', 'neq', 'order', 'limit']) b[m] = vi.fn(chain)
     b.insert = vi.fn((row: Record<string, unknown>) => {
       if (table === 'whatsapp_config') configInserts.push(row)
       return b
@@ -83,7 +83,7 @@ vi.mock('@supabase/supabase-js', () => ({
     from: vi.fn(() => {
       serviceRole.lookups += 1
       const b: Record<string, unknown> = {}
-      for (const m of ['select', 'eq', 'neq']) b[m] = vi.fn(() => b)
+      for (const m of ['select', 'eq', 'neq', 'order', 'limit']) b[m] = vi.fn(() => b)
       b.maybeSingle = vi.fn(async () => ({ data: null, error: null }))
       return b
     }),

@@ -12,6 +12,9 @@ import { AiError, type AiProvider } from '@/lib/ai/types'
 import { normalizeOpenAiCompatibleBaseUrl } from '@/lib/ai/providers/openai-compatible'
 import { canReuseStoredAiKey } from '@/lib/ai/stored-key'
 import { getT } from '@/lib/i18n/translate'
+import { supabaseAdmin } from '@/lib/automations/admin-client'
+import { requireWithinLimit } from '@/lib/plans/guard'
+import { countAiAgents } from '@/lib/plans/usage'
 
 const t = getT('Api')
 
@@ -142,6 +145,20 @@ export async function POST(request: Request) {
       .select('id, provider, model, base_url, api_key')
       .eq('account_id', accountId)
       .maybeSingle()
+
+    // Plan gate: `ai_agents` counts running agents, not draft-only configs, so
+    // it is checked when the account enables auto-reply for the first time.
+    // Re-saving an existing config is never blocked by the limit.
+    if (!existing && autoReplyEnabled) {
+      try {
+        await requireWithinLimit(
+          'ai_agents',
+          await countAiAgents(supabaseAdmin(), accountId)
+        )
+      } catch (err) {
+        return toErrorResponse(err)
+      }
+    }
 
     let apiKeyPlain: string
     let baseUrl: string | null = null

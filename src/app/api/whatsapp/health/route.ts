@@ -32,6 +32,9 @@ export async function GET() {
       .from('whatsapp_config')
       .select('phone_number_id, access_token, status')
       .eq('account_id', accountId)
+      .order('is_default', { ascending: false })
+      .order('created_at', { ascending: true })
+      .limit(1)
       .maybeSingle()
 
     if (!config || config.status !== 'connected' || !config.phone_number_id) {

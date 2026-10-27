@@ -146,6 +146,9 @@ export async function POST() {
       .from('whatsapp_config')
       .select('*')
       .eq('account_id', accountId)
+      .order('is_default', { ascending: false })
+      .order('created_at', { ascending: true })
+      .limit(1)
       .single()
 
     if (configError || !config) {

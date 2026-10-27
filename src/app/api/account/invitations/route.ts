@@ -27,6 +27,9 @@ import {
   inviteUrl,
 } from "@/lib/auth/invitations";
 import { isAccountRole } from "@/lib/auth/roles";
+import { requireWithinLimit } from "@/lib/plans/guard";
+import { countTeamSeats } from "@/lib/plans/usage";
+import { supabaseAdmin } from "@/lib/automations/admin-client";
 import {
   checkRateLimit,
   rateLimitResponse,
@@ -215,6 +218,17 @@ export async function POST(request: Request) {
         );
       }
       label = trimmed === "" ? null : trimmed;
+    }
+
+    // Plan gate: an invitation becomes a seat, so it must fit `team_members`
+    // (members + still-pending invitations).
+    try {
+      await requireWithinLimit(
+        "team_members",
+        await countTeamSeats(supabaseAdmin(), ctx.accountId)
+      );
+    } catch (err) {
+      return toErrorResponse(err);
     }
 
     const { token, hash } = generateInviteToken();

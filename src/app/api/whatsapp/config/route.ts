@@ -7,6 +7,8 @@ import {
   requireRole,
   toErrorResponse,
 } from '@/lib/auth/account'
+import { requireWithinLimit } from '@/lib/plans/guard'
+import { countActiveChannels } from '@/lib/plans/usage'
 import {
   getSubscribedApps,
   listWabaPhoneNumbers,
@@ -135,6 +137,9 @@ export async function GET() {
       .from('whatsapp_config')
       .select('phone_number_id, waba_id, access_token, status')
       .eq('account_id', accountId)
+      .order('is_default', { ascending: false })
+      .order('created_at', { ascending: true })
+      .limit(1)
       .maybeSingle()
 
     if (configError) {
@@ -393,7 +398,23 @@ export async function POST(request: Request) {
       .from('whatsapp_config')
       .select('id, registered_at, phone_number_id, verify_token')
       .eq('account_id', accountId)
+      .order('is_default', { ascending: false })
+      .order('created_at', { ascending: true })
+      .limit(1)
       .maybeSingle()
+
+    // Plan gate: a new number takes a channel slot; re-saving the account's
+    // existing number is an update and must keep working at any plan size.
+    if (!existing) {
+      try {
+        await requireWithinLimit(
+          'channels',
+          await countActiveChannels(supabaseAdmin(), accountId)
+        )
+      } catch (err) {
+        return toErrorResponse(err)
+      }
+    }
 
     // Encrypt sensitive tokens before storing
     let encryptedAccessToken: string

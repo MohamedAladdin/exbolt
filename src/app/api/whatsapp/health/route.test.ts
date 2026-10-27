@@ -17,6 +17,9 @@ vi.mock('@/lib/auth/account', async () => {
           const b: Record<string, unknown> = {}
           b.select = () => b
           b.eq = () => b
+          // Deterministic pick of the default number: .order().order().limit(1)
+          b.order = () => b
+          b.limit = () => b
           b.maybeSingle = async () => ({ data: storedConfig, error: null })
           return b
         },

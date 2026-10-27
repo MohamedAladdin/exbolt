@@ -42,6 +42,8 @@ import {
   deliverBroadcast,
   BroadcastError,
 } from '@/lib/whatsapp/broadcast-core';
+import { entitlementsFor } from '@/lib/plans/guard';
+import { countBroadcastMessagesThisMonth } from '@/lib/plans/usage';
 
 export async function POST(request: Request) {
   try {
@@ -58,6 +60,25 @@ export async function POST(request: Request) {
     const templateName =
       typeof body.template_name === 'string' ? body.template_name : '';
     const recipients = Array.isArray(body.recipients) ? body.recipients : [];
+
+    // Plan gate: `broadcast_monthly` is a monthly recipient budget, not a
+    // cap on campaigns. Refuse before anything is inserted, and report the
+    // numbers so the caller knows what is left.
+    const entitlements = await entitlementsFor(ctx.supabase, ctx.accountId);
+    const monthly = entitlements.limits.broadcast_monthly;
+    if (typeof monthly === 'number') {
+      const used = await countBroadcastMessagesThisMonth(
+        ctx.supabase,
+        ctx.accountId
+      );
+      if (used + recipients.length > monthly) {
+        throw new BroadcastError(
+          'plan_limit_reached',
+          `The ${entitlements.plan.name} plan allows ${monthly} broadcast messages per month — ${used} used, ${recipients.length} requested.`,
+          402
+        );
+      }
+    }
 
     const auditUserId = await resolveAuditUserId(ctx.supabase, ctx.accountId);
 

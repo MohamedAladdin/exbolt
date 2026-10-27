@@ -137,6 +137,9 @@ function planDb(fx: PlanFixture, writes: PlanWrites = {}): SupabaseClient {
         select: () => b,
         eq: () => b,
         order: () => b,
+        // Deterministic pick of the default number: .order().order().limit(1)
+        // is applied before the terminal .single().
+        limit: () => b,
         range: (from: number, to: number) => {
           range = [from, to];
           writes.ranges = [...(writes.ranges ?? []), range];

@@ -152,6 +152,9 @@ async function sendViaMeta(input: SendInput): Promise<{ whatsapp_message_id: str
     .from('whatsapp_config')
     .select('*')
     .eq('account_id', input.accountId)
+    .order('is_default', { ascending: false })
+    .order('created_at', { ascending: true })
+    .limit(1)
     .single()
   if (configErr || !config) {
     throw new Error(t('send.notConfigured'))

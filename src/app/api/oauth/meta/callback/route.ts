@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
 import { toErrorResponse } from '@/lib/auth/account';
-import { requireFeature } from '@/lib/plans/guard';
+import { requireFeature, requireWithinLimit } from '@/lib/plans/guard';
+import { supabaseAdmin } from '@/lib/automations/admin-client';
+import { channelSlotState } from '@/lib/plans/usage';
 import { isMessagingChannel, type Channel } from '@/lib/channels/types';
 import { encrypt } from '@/lib/whatsapp/encryption';
 import { isNumericMetaId } from '@/lib/whatsapp/waba-pairing';
@@ -170,6 +172,23 @@ export async function GET(request: Request) {
       return errorRedirect(origin, 'whatsapp', 'setup');
     }
 
+    try {
+      const slot = await channelSlotState(
+        supabaseAdmin(),
+        ctx.accountId,
+        'whatsapp',
+        phoneNumberId
+      );
+      if (!slot.connected) {
+        await requireWithinLimit('channels', slot.used);
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name === 'PlanError') {
+        return errorRedirect(origin, 'whatsapp', 'plan');
+      }
+      throw err;
+    }
+
     const result = await connectWhatsAppNumber({
       accountId: ctx.accountId,
       userId: ctx.userId,
@@ -226,6 +245,23 @@ export async function GET(request: Request) {
   }
 
   if (candidates.length === 1) {
+    try {
+      const slot = await channelSlotState(
+        supabaseAdmin(),
+        ctx.accountId,
+        messagingChannel,
+        candidates[0].id
+      );
+      if (!slot.connected) {
+        await requireWithinLimit('channels', slot.used);
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name === 'PlanError') {
+        return errorRedirect(origin, tab, 'plan');
+      }
+      throw err;
+    }
+
     const result = await connectMessagingChannel({
       accountId: ctx.accountId,
       channel: messagingChannel,

@@ -140,6 +140,9 @@ export async function PATCH(
         .from('whatsapp_config')
         .select('*')
         .eq('account_id', accountId)
+        .order('is_default', { ascending: false })
+        .order('created_at', { ascending: true })
+        .limit(1)
         .single()
       if (configError || !config) {
         return NextResponse.json(
@@ -268,6 +271,9 @@ export async function DELETE(
         .from('whatsapp_config')
         .select('*')
         .eq('account_id', accountId)
+        .order('is_default', { ascending: false })
+        .order('created_at', { ascending: true })
+        .limit(1)
         .single()
       if (configError || !config || !config.waba_id) {
         return NextResponse.json(

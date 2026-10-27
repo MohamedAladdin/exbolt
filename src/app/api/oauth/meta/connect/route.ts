@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
 import { toErrorResponse } from '@/lib/auth/account';
-import { requireFeature } from '@/lib/plans/guard';
+import { requireFeature, requireWithinLimit } from '@/lib/plans/guard';
+import { channelSlotState } from '@/lib/plans/usage';
+import { supabaseAdmin } from '@/lib/automations/admin-client';
 import { isMessagingChannel } from '@/lib/channels/types';
 import { decrypt } from '@/lib/whatsapp/encryption';
 import { connectMessagingChannel } from '@/lib/oauth/connect';
@@ -101,6 +103,25 @@ export async function POST(request: Request) {
   }
 
   if (!page) return finish(origin, { error: 'state' });
+
+  // Plan gate: choosing a Page here is the same billable slot as connecting it
+  // from Settings; an already-connected Page is an update.
+  try {
+    const slot = await channelSlotState(
+      supabaseAdmin(),
+      ctx.accountId,
+      channel,
+      pageId
+    );
+    if (!slot.connected) {
+      await requireWithinLimit('channels', slot.used);
+    }
+  } catch (err) {
+    if (err instanceof Error && err.name === 'PlanError') {
+      return finish(origin, { error: 'plan' });
+    }
+    throw err;
+  }
 
   const result = await connectMessagingChannel({
     accountId: ctx.accountId,
