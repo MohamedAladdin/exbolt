@@ -10,6 +10,8 @@ import {
   buildChannelConfigRow,
   isMetaOAuthConfigured,
   listPages,
+  metaAppId,
+  metaAppSecret,
   metaOAuthRedirectUri,
   settingsTabForChannel,
   signState,
@@ -371,5 +373,37 @@ describe('settingsTabForChannel', () => {
     expect(settingsTabForChannel('whatsapp')).toBe('whatsapp');
     expect(settingsTabForChannel('messenger')).toBe('channels');
     expect(settingsTabForChannel('instagram')).toBe('channels');
+  });
+});
+
+describe('OAuth credentials precedence', () => {
+  it('falls back to the deployment app id when no dedicated one is set', () => {
+    vi.stubEnv('META_OAUTH_APP_ID', '');
+    expect(metaAppId()).toBe(APP_ID);
+  });
+
+  it('prefers META_OAUTH_APP_ID so a customer app on META_APP_ID is never re-pointed', () => {
+    vi.stubEnv('META_OAUTH_APP_ID', '999999');
+    expect(metaAppId()).toBe('999999');
+  });
+
+  it('prefers META_OAUTH_APP_SECRET over the comma-separated rotation list', () => {
+    vi.stubEnv('META_APP_SECRET', 'customer-secret,platform-secret');
+    vi.stubEnv('META_OAUTH_APP_SECRET', 'oauth-secret');
+    expect(metaAppSecret()).toBe('oauth-secret');
+  });
+
+  it('uses the first entry of the rotation list when no dedicated secret is set', () => {
+    vi.stubEnv('META_APP_SECRET', 'customer-secret,platform-secret');
+    vi.stubEnv('META_OAUTH_APP_SECRET', '');
+    expect(metaAppSecret()).toBe('customer-secret');
+  });
+
+  it('reports unconfigured when neither credential pair exists', () => {
+    vi.stubEnv('META_APP_ID', '');
+    vi.stubEnv('META_OAUTH_APP_ID', '');
+    vi.stubEnv('META_APP_SECRET', '');
+    vi.stubEnv('META_OAUTH_APP_SECRET', '');
+    expect(isMetaOAuthConfigured()).toBe(false);
   });
 });

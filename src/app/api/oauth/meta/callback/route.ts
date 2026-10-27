@@ -116,7 +116,7 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         error:
-          'Self-service Meta connection is not configured on this server. Set META_APP_ID and META_APP_SECRET, or use the manual setup.',
+          'Self-service Meta connection is not configured on this server. Set META_OAUTH_APP_ID and META_OAUTH_APP_SECRET (or META_APP_ID / META_APP_SECRET), or use the manual setup.',
         code: 'meta_oauth_not_configured',
       },
       { status: 503 }

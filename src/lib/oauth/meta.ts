@@ -105,11 +105,21 @@ export class MetaOAuthError extends Error {
 // ---------------------------------------------------------------------------
 
 export function metaAppId(): string | null {
-  const value = process.env.META_APP_ID?.trim();
+  // Dedicated OAuth credentials win. The deployment's META_APP_ID stays
+  // whatever it is (a customer's own app, on this box) so adding the
+  // self-service flow never re-points resumable template uploads or the
+  // subscribed-apps diagnostics at a different app.
+  // Note: an env var set to an empty string must fall through, so this is an
+  // explicit non-empty check rather than `??`.
+  const value =
+    process.env.META_OAUTH_APP_ID?.trim() ||
+    process.env.META_APP_ID?.trim();
   return value ? value : null;
 }
 
 export function metaAppSecret(): string | null {
+  const dedicated = process.env.META_OAUTH_APP_SECRET?.trim();
+  if (dedicated) return dedicated;
   const value = process.env.META_APP_SECRET?.trim();
   // META_APP_SECRET may hold a comma-separated rotation list (see
   // docs/meta-app-rotation.md); the OAuth exchange uses the first entry.

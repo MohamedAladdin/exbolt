@@ -31,12 +31,24 @@ chooser re-reads the Page list server-side.
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `META_APP_ID` | yes | Facebook app id (dialog `client_id`) |
-| `META_APP_SECRET` | yes | code → token exchange. A comma-separated list is accepted; the first entry is used |
+| `META_OAUTH_APP_ID` | recommended | Facebook app id used **only** by this flow (dialog `client_id`). When unset the code falls back to `META_APP_ID` |
+| `META_OAUTH_APP_SECRET` | recommended | App secret for the code → token exchange, used **only** by this flow. When unset the code falls back to the first entry of `META_APP_SECRET` |
+| `META_APP_ID` | fallback | Facebook app id (dialog `client_id`) |
+| `META_APP_SECRET` | fallback | code → token exchange. A comma-separated list is accepted; the first entry is used |
 | `META_OAUTH_REDIRECT_URI` | no | Defaults to `https://bolt.excal.uk/api/oauth/meta/callback`. Must match a Valid OAuth Redirect URI **exactly** |
 | `META_ES_CONFIG_ID` | WhatsApp only | Embedded Signup configuration id (see below) |
 | `META_GRAPH_VERSION` | no | Defaults to `v23.0` |
 | `ENCRYPTION_KEY` | yes | 64 hex chars. Encrypts tokens **and** signs the OAuth `state` |
+
+**Why the bare `META_OAUTH_*` pair exists:** on a deployment whose `META_APP_ID`
+still belongs to a customer's own Meta app (this was true for Hemokior), pointing
+`META_APP_ID` at our Tech-Provider app re-points things that are **app-scoped** —
+resumable template-header uploads (`meta-api.ts`) and the subscribed-apps
+diagnostics (`/api/whatsapp/config`). Setting `META_OAUTH_APP_ID` /
+`META_OAUTH_APP_SECRET` leaves the whole existing wiring untouched: the
+self-service flow uses our app, while inbound signatures, sending and template
+upload keep using the deployment values. Existing channel rows are never touched —
+only new connections are created.
 
 With `META_APP_ID` or `META_APP_SECRET` missing, `/api/oauth/meta/start` and
 the callback answer `503` with `code: "meta_oauth_not_configured"` and the
