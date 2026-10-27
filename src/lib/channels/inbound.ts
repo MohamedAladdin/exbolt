@@ -36,6 +36,8 @@ export interface InboundAttachment {
 
 export interface MessagingInboundEvent {
   channel: MessagingChannel;
+  /** Display name when the caller already knows it (Graph participants). */
+  senderName?: string | null;
   /** Page id (messenger) or IG business account id (instagram). */
   externalId: string;
   /** PSID / IGSID of the person who wrote — the addressing id. */
@@ -57,7 +59,7 @@ interface RawMessagingEntry {
 }
 
 interface RawMessagingItem {
-  sender?: { id?: string };
+  sender?: { id?: string; name?: string };
   recipient?: { id?: string };
   timestamp?: number;
   message?: {
@@ -133,6 +135,7 @@ export function parseMessagingWebhook(
       events.push({
         channel,
         externalId,
+        senderName: item.sender?.name?.trim() || null,
         senderId,
         messageId: message?.mid ?? postback?.mid ?? null,
         createdAt: toIso(item.timestamp ?? entry.time),

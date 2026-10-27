@@ -47,6 +47,7 @@ export interface GraphMessage {
 export interface GraphConversation {
   id?: string;
   updated_time?: string;
+  participants?: { data?: { id?: string; name?: string; username?: string }[] };
   messages?: { data?: GraphMessage[] };
 }
 
@@ -90,6 +91,15 @@ export function graphConversationsToWebhook(args: {
   const messaging: Record<string, unknown>[] = [];
 
   for (const conversation of conversations) {
+    // The conversations edge carries each participant's name; the user-profile
+    // endpoint needs permissions this app does not have yet, so this is the
+    // only cheap source of a real display name.
+    const participants = conversation.participants?.data ?? [];
+    const nameFor = (id: string) => {
+      const p = participants.find((x) => x.id === id);
+      return p?.name?.trim() || (p?.username ? `@${p.username}` : null);
+    };
+
     for (const message of conversation.messages?.data ?? []) {
       const senderId = message.from?.id;
       if (!senderId || senderId === externalId) continue;
@@ -106,7 +116,7 @@ export function graphConversationsToWebhook(args: {
       const created = message.created_time ? Date.parse(message.created_time) : NaN;
 
       messaging.push({
-        sender: { id: senderId },
+        sender: { id: senderId, name: nameFor(senderId) ?? undefined },
         recipient: { id: externalId },
         timestamp: Number.isFinite(created) ? created : Date.now(),
         message: {
@@ -230,14 +240,14 @@ export async function pollMessagingInbox(opts?: {
     const url = new URL(graphUrl(`${row.external_id}/conversations`));
     url.searchParams.set(
       'fields',
-      `updated_time,messages.limit(${perConversation}){id,created_time,from,message,attachments}`
+      `updated_time,participants,messages.limit(${perConversation}){id,created_time,from,message,attachments}`
     );
     url.searchParams.set('limit', String(perConfig));
     url.searchParams.set('access_token', token);
 
     let conversations: GraphConversation[] = [];
     try {
-      const res = await doFetch(url, { signal: AbortSignal.timeout(10000) });
+      const res = await doFetch(url, { signal: AbortSignal.timeout(6000) });
       const payload = (await res.json().catch(() => ({}))) as {
         data?: GraphConversation[];
         error?: { message?: string };

@@ -180,7 +180,10 @@ async function persistEvent(
     senderId: event.senderId,
     accessToken,
     externalId: config.external_id,
-    fallbackName: event.text,
+    // NOT the message body: that is what printed a customer's first line as
+    // their contact name. The poll supplies the real participant name; the
+    // webhook path falls back to the profile lookup or the PSID.
+    fallbackName: event.senderName ?? null,
   });
   if (!contact) return false;
 
