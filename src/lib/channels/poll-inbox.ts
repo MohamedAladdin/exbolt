@@ -143,8 +143,8 @@ export interface PollInboxResult {
   errors: string[];
 }
 
-const DEFAULT_CONVERSATIONS_PER_CONFIG = 20;
-const DEFAULT_MESSAGES_PER_CONVERSATION = 10;
+const DEFAULT_CONVERSATIONS_PER_CONFIG = 8;
+const DEFAULT_MESSAGES_PER_CONVERSATION = 5;
 
 /**
  * Poll every active Messenger/Instagram channel once.
@@ -208,7 +208,7 @@ export async function pollMessagingInbox(opts?: {
 
     let conversations: GraphConversation[] = [];
     try {
-      const res = await doFetch(url, { signal: AbortSignal.timeout(15000) });
+      const res = await doFetch(url, { signal: AbortSignal.timeout(25000) });
       const payload = (await res.json().catch(() => ({}))) as {
         data?: GraphConversation[];
         error?: { message?: string };
