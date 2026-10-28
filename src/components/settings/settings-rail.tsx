@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
+import { useEntitlements } from '@/hooks/use-entitlements';
 import {
   RAIL_GROUPS,
   SECTION_META,
@@ -34,7 +35,18 @@ export function SettingsRail({
 }) {
   const t = useTranslations('Settings');
   const { canManageMembers } = useAuth();
+  const { entitlements } = useEntitlements();
   const activeRef = useRef<HTMLButtonElement>(null);
+
+  // Fail open while entitlements are still loading: the rail is
+  // navigation, not a permission, and a tab that appears a beat late
+  // reads as a bug. The panel and the API are the real gates.
+  const featureAllowed = (feature?: string) => {
+    if (!feature) return true;
+    if (!entitlements) return true;
+    if (!entitlements.entitled) return false;
+    return entitlements.features[feature as keyof typeof entitlements.features] !== false;
+  };
 
   // When horizontal (mobile), keep the active chip in view. On desktop
   // the rail is a static column, so skip.
@@ -61,7 +73,8 @@ export function SettingsRail({
         const items = SETTINGS_SECTIONS.filter(
           (s) =>
             SECTION_META[s].group === group &&
-            (!SECTION_META[s].adminOnly || canManageMembers),
+            (!SECTION_META[s].adminOnly || canManageMembers) &&
+            featureAllowed(SECTION_META[s].feature),
         );
         return (
           <div

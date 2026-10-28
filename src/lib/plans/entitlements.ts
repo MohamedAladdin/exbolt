@@ -39,6 +39,8 @@ export const FEATURES = [
   'webhooks',
   'team_roles',
   'branches',
+  // Accountability trail: CORE off, GROWTH + SCALE on (migration 071).
+  'audit_log',
 ] as const;
 
 export type Feature = (typeof FEATURES)[number];
@@ -121,6 +123,7 @@ export const DEFAULT_FEATURES: Record<Feature, boolean> = {
   webhooks: false,
   team_roles: false,
   branches: false,
+  audit_log: false,
 };
 
 export const DEFAULT_LIMITS: Limits = {

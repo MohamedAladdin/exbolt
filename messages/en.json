@@ -328,6 +328,15 @@
         "days": "{value} d {remainder} h",
         "daysOnly": "{value} d"
       }
+    },
+    "changes": {
+      "title": "Change log",
+      "description": "Who changed what",
+      "open": "Open log",
+      "loading": "Loading…",
+      "empty": "No system changes yet.",
+      "unavailable": "The log is not available on this account yet.",
+      "unknownActor": "Unknown"
     }
   },
   "Inbox": {
@@ -2481,7 +2490,8 @@
         "api": "Full API",
         "webhooks": "Webhooks",
         "team_roles": "Members, roles & permissions",
-        "branches": "Multiple branches"
+        "branches": "Multiple branches",
+        "audit_log": "Activity log"
       }
     },
     "activity": {
@@ -2641,7 +2651,10 @@
         "created_by": "Created by"
       },
       "adminOnly": "The activity log is for admins",
-      "adminOnlyHint": "Ask an account admin if you need the details of a specific change."
+      "adminOnlyHint": "Ask an account admin if you need the details of a specific change.",
+      "lockedTitle": "The activity log ships with Growth and Scale",
+      "lockedHint": "Changes are already being recorded for this account; viewing them is what your plan does not include. Upgrade and the full trail is there from day one.",
+      "lockedCta": "See plans"
     }
   },
   "SignupPage": {

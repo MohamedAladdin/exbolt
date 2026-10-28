@@ -1,3 +1,4 @@
+import type { Feature } from '@/lib/plans/entitlements';
 import {
   Coins,
   CreditCard,
@@ -57,6 +58,8 @@ export interface SectionMeta {
   group: 'top' | 'account' | 'workspace';
   /** Hidden unless the caller is admin+. */
   adminOnly?: boolean;
+  /** Hidden unless the account's plan includes this feature. */
+  feature?: Feature;
 }
 
 /**
@@ -85,6 +88,9 @@ export const SECTION_META: Record<SettingsSection, SectionMeta> = {
     icon: History,
     group: 'workspace',
     adminOnly: true,
+    // GROWTH + SCALE (migration 071). CORE tenants never see the tab;
+    // the API refuses them with 402 regardless of what the rail shows.
+    feature: 'audit_log',
   },
   api: { id: 'api', label: 'API keys', icon: KeyRound, group: 'workspace' },
 };

@@ -30,6 +30,7 @@ import { PipelineCard } from '@/components/dashboard/pipeline-card'
 import { ReplyQueueCard } from '@/components/dashboard/reply-queue-card'
 import { SetupChecklist } from '@/components/dashboard/setup-checklist'
 import { TeamCard } from '@/components/dashboard/team-card'
+import { ChangesCard } from '@/components/dashboard/changes-card'
 
 const POLL_MS = 60_000
 const REALTIME_DEBOUNCE_MS = 2_000
@@ -169,6 +170,9 @@ function DashboardPageInner() {
             <div className="lg:col-span-2 2xl:col-span-1">
               <CampaignsCard data={data} />
             </div>
+            {/* Renders only for admin+ on a plan that includes the trail,
+                so a closed gate leaves the grid untouched. */}
+            <ChangesCard />
           </div>
 
           <ActivityFeed items={activity} loading={activityLoading} />

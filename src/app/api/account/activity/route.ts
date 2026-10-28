@@ -21,7 +21,8 @@
 
 import { NextResponse } from "next/server";
 
-import { requireRole, toErrorResponse } from "@/lib/auth/account";
+import { toErrorResponse } from "@/lib/auth/account";
+import { requireFeature } from "@/lib/plans/guard";
 import { isActivityCategory } from "@/lib/audit/activity";
 import {
   checkRateLimit,
@@ -42,7 +43,10 @@ const UUID_RE =
 
 export async function GET(request: Request) {
   try {
-    const ctx = await requireRole("admin");
+    // Role AND plan: the trail ships with GROWTH and SCALE (migration
+    // 071). Hiding the settings tab is a courtesy, not a control — this
+    // is the line that actually refuses a CORE account, with 402.
+    const ctx = await requireFeature("audit_log", "admin");
 
     const limit = checkRateLimit(
       `activity:read:${ctx.userId}`,

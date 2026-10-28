@@ -9,6 +9,38 @@ Versions follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Pre-1.0, `MINOR` bumps cover new modules; `PATCH` bumps cover bug fixes
 and polish.
 
+## [0.11.0] — 2026-10-28
+
+**Activity log, second pass:** sold as a plan feature, kept for six months,
+and surfaced on the dashboard. Full write-up: `docs/activity-log.md`.
+
+> **Migration required:** apply
+> `supabase/migrations/071_activity_log_retention_and_feature.sql` after 070 —
+> it adds the `audit_log` plan key (CORE off, GROWTH/SCALE on), the retention
+> index and `purge_account_activity()`.
+
+### Added
+
+- **Plan gate `audit_log`.** The settings tab and `GET /api/account/activity`
+  are closed on any plan without the feature. The API re-checks with
+  `requireFeature('audit_log', 'admin')` and answers **402** — hiding the tab
+  is a courtesy, not the control. A deep link on CORE shows an upgrade note
+  instead of an empty table.
+- **Retention: 180 days.** `purge_account_activity()` deletes older rows in
+  batches and returns the count, served by a new `created_at` index. Called
+  daily by the cron pinger (`/api/admin/cron/activity-retention`, same shared
+  secret as the other crons); with no secret configured it returns 503 so an
+  unscheduled box is loud instead of silently unlimited.
+- **Dashboard widget** — *Change log*: the newest six events with actor and
+  time, admin+ only, no dead tile when the plan or role gate is closed.
+
+### Changed
+
+- The three cron routes now share `src/lib/cron/auth.ts` (constant-time
+  compare) instead of each carrying its own copy of the secret check.
+- A write with no session is shown as **Automatic** rather than "Unknown" —
+  cron and webhook events have no actor by definition.
+
 ## [0.10.0] — 2026-10-28
 
 **Activity log** — an append-only, per-account audit trail that answers

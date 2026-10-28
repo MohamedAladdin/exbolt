@@ -24,6 +24,7 @@ import { MembersTab } from '@/components/settings/members-tab';
 import { ActivityLog } from '@/components/settings/activity-log';
 import { ApiKeysSettings } from '@/components/settings/api-keys-settings';
 import { RequireRole } from '@/components/auth/require-role';
+import { FeatureGate } from '@/components/plans/feature-gate';
 import {
   resolveSection,
   type SettingsSection,
@@ -107,7 +108,29 @@ function SettingsPageInner() {
           </div>
         }
       >
-        <ActivityLog />
+        {/* Plan gate: CORE does not include the trail (migration 071). */}
+        <FeatureGate
+          feature="audit_log"
+          fallback={
+            <div className="border-border bg-card rounded-xl border border-dashed p-8 text-center">
+              <p className="text-foreground text-sm font-medium">
+                {t('activity.lockedTitle')}
+              </p>
+              <p className="text-muted-foreground mx-auto mt-1 max-w-[52ch] text-xs">
+                {t('activity.lockedHint')}
+              </p>
+              <button
+                type="button"
+                onClick={() => go('plan')}
+                className="text-primary mt-3 text-xs font-medium underline decoration-dotted underline-offset-2"
+              >
+                {t('activity.lockedCta')}
+              </button>
+            </div>
+          }
+        >
+          <ActivityLog />
+        </FeatureGate>
       </RequireRole>
     ),
     api: <ApiKeysSettings />,

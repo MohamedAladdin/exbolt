@@ -97,6 +97,8 @@ export function ActivityLog() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [failed, setFailed] = useState(false);
+  /** The plan lost `audit_log` while this tab was open (downgrade). */
+  const [locked, setLocked] = useState(false);
 
   // Debounce the search box: every keystroke would otherwise be a
   // request, and the log is the one screen an admin scrubs through.
@@ -139,8 +141,12 @@ export function ActivityLog() {
         setNextCursor(data.nextCursor);
         if (data.actors.length > 0) setActors(data.actors);
       })
-      .catch(() => {
-        if (alive) setFailed(true);
+      .catch((err: Error) => {
+        if (!alive) return;
+        // 402 = the plan no longer includes the trail; say so instead of
+        // offering a "retry" that can never succeed.
+        if (err.message === 'HTTP 402') setLocked(true);
+        else setFailed(true);
       })
       .finally(() => {
         if (alive) setLoading(false);
@@ -312,6 +318,14 @@ export function ActivityLog() {
           <Loader2 className="size-4 animate-spin" />
           {t('loading')}
         </div>
+      ) : locked ? (
+        <div className="border-border bg-card rounded-xl border border-dashed p-10 text-center">
+          <Lock className="text-muted-foreground/60 mx-auto mb-2 size-5" />
+          <p className="text-foreground text-sm font-medium">{t('lockedTitle')}</p>
+          <p className="text-muted-foreground mx-auto mt-1 max-w-[46ch] text-xs">
+            {t('lockedHint')}
+          </p>
+        </div>
       ) : failed ? (
         <div className="border-border bg-card rounded-xl border p-10 text-center text-sm text-muted-foreground">
           {t('loadFailed')}
@@ -385,7 +399,9 @@ export function ActivityLog() {
                             <span dir="auto">
                               {event.actor_name ||
                                 event.actor_email ||
-                                t('unknownActor')}
+                                (event.source === 'system'
+                                  ? t('system')
+                                  : t('unknownActor'))}
                             </span>
                           </span>
                           {event.actor_role && tRoles.has(event.actor_role) ? (
