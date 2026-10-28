@@ -230,6 +230,15 @@ BEGIN
     END;
   END IF;
 
+  -- Deleting a tenant cascades into every child table, and a cascade
+  -- fires these triggers AFTER the `accounts` row is gone. Filing an
+  -- event against a tenant that no longer exists would abort the delete
+  -- with a foreign-key error, so stay silent: the whole trail is being
+  -- removed with the account anyway.
+  IF NOT EXISTS (SELECT 1 FROM accounts WHERE id = v_account) THEN
+    RETURN NULL;
+  END IF;
+
   IF v_actor IS NOT NULL THEN
     SELECT full_name, email, account_role
       INTO v_actor_name, v_actor_email, v_actor_role
@@ -237,17 +246,22 @@ BEGIN
      WHERE user_id = v_actor;
   END IF;
 
-  INSERT INTO account_activity_log (
-    account_id, actor_user_id, actor_name, actor_email, actor_role,
-    source, action, category, target_type, target_id, target_label,
-    changes, metadata
-  ) VALUES (
-    v_account, v_actor, v_actor_name, v_actor_email, v_actor_role,
-    CASE WHEN v_actor IS NULL THEN 'system' ELSE 'app' END,
-    v_action, TG_ARGV[3], TG_ARGV[4], v_target_id, v_label,
-    v_changes,
-    jsonb_build_object('table', TG_TABLE_NAME, 'op', TG_OP)
-  );
+  BEGIN
+    INSERT INTO account_activity_log (
+      account_id, actor_user_id, actor_name, actor_email, actor_role,
+      source, action, category, target_type, target_id, target_label,
+      changes, metadata
+    ) VALUES (
+      v_account, v_actor, v_actor_name, v_actor_email, v_actor_role,
+      CASE WHEN v_actor IS NULL THEN 'system' ELSE 'app' END,
+      v_action, TG_ARGV[3], TG_ARGV[4], v_target_id, v_label,
+      v_changes,
+      jsonb_build_object('table', TG_TABLE_NAME, 'op', TG_OP)
+    );
+  EXCEPTION WHEN foreign_key_violation THEN
+    -- Race: the tenant was deleted between the check and the insert.
+    RETURN NULL;
+  END;
 
   RETURN NULL;
 END;
@@ -322,6 +336,13 @@ BEGIN
     RETURN NULL;
   END IF;
 
+  -- A member row is cascaded away when the whole account is deleted;
+  -- there is no tenant left to file the event against (see the same
+  -- guard in log_activity_row).
+  IF NOT EXISTS (SELECT 1 FROM accounts WHERE id = v_account) THEN
+    RETURN NULL;
+  END IF;
+
   IF v_actor IS NOT NULL THEN
     SELECT full_name, email, account_role
       INTO v_actor_name, v_actor_email, v_actor_role
@@ -329,16 +350,20 @@ BEGIN
      WHERE user_id = v_actor;
   END IF;
 
-  INSERT INTO account_activity_log (
-    account_id, actor_user_id, actor_name, actor_email, actor_role,
-    source, action, category, target_type, target_id, target_label,
-    changes, metadata
-  ) VALUES (
-    v_account, v_actor, v_actor_name, v_actor_email, v_actor_role,
-    CASE WHEN v_actor IS NULL THEN 'system' ELSE 'app' END,
-    v_action, 'members', 'member', v_target_id, v_label, v_changes,
-    jsonb_build_object('table', TG_TABLE_NAME, 'op', TG_OP)
-  );
+  BEGIN
+    INSERT INTO account_activity_log (
+      account_id, actor_user_id, actor_name, actor_email, actor_role,
+      source, action, category, target_type, target_id, target_label,
+      changes, metadata
+    ) VALUES (
+      v_account, v_actor, v_actor_name, v_actor_email, v_actor_role,
+      CASE WHEN v_actor IS NULL THEN 'system' ELSE 'app' END,
+      v_action, 'members', 'member', v_target_id, v_label, v_changes,
+      jsonb_build_object('table', TG_TABLE_NAME, 'op', TG_OP)
+    );
+  EXCEPTION WHEN foreign_key_violation THEN
+    RETURN NULL;
+  END;
 
   RETURN NULL;
 END;
