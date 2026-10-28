@@ -21,7 +21,9 @@ import { FieldsAndTagsPanel } from '@/components/settings/fields-and-tags-panel'
 import { DealsSettings } from '@/components/settings/deals-settings';
 import { InboxSettings } from '@/components/settings/inbox-settings';
 import { MembersTab } from '@/components/settings/members-tab';
+import { ActivityLog } from '@/components/settings/activity-log';
 import { ApiKeysSettings } from '@/components/settings/api-keys-settings';
+import { RequireRole } from '@/components/auth/require-role';
 import {
   resolveSection,
   type SettingsSection,
@@ -88,6 +90,26 @@ function SettingsPageInner() {
     inbox: <InboxSettings />,
     deals: <DealsSettings />,
     members: <MembersTab />,
+    // The audit trail names colleagues and shows what they changed, so
+    // it stays admin+ — same gate as the API and the RLS policy. A
+    // deep link from an agent gets the explanation, not an empty table.
+    activity: (
+      <RequireRole
+        min="admin"
+        fallback={
+          <div className="border-border bg-card rounded-xl border p-8 text-center">
+            <p className="text-foreground text-sm font-medium">
+              {t('activity.adminOnly')}
+            </p>
+            <p className="text-muted-foreground mt-1 text-xs">
+              {t('activity.adminOnlyHint')}
+            </p>
+          </div>
+        }
+      >
+        <ActivityLog />
+      </RequireRole>
+    ),
     api: <ApiKeysSettings />,
   };
 

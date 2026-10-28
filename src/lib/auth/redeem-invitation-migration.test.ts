@@ -14,6 +14,11 @@ const tablesWithoutDomainData = new Set([
   "account_invitations",
   "member_presence",
   "pending_message_statuses",
+  // The audit trail describes events INSIDE the account that produced
+  // them, so it must not be moved to the new account, and an existing
+  // log line must never block someone from joining a team — the rows
+  // cascade away with the old personal account.
+  "account_activity_log",
 ]);
 
 function accountScopedTables(): Set<string> {

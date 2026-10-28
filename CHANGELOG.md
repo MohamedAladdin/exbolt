@@ -9,6 +9,48 @@ Versions follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Pre-1.0, `MINOR` bumps cover new modules; `PATCH` bumps cover bug fixes
 and polish.
 
+## [0.10.0] — 2026-10-28
+
+**Activity log** — an append-only, per-account audit trail that answers
+"who changed this and when?" without a meeting. Built for teams where
+several admins share one account: every settings change, integration,
+template, automation, role change and inbox assignment lands in
+**Settings → Activity log**, with the actor's name, role and a
+field-by-field before → after diff.
+
+> **Migration required:** apply
+> `supabase/migrations/070_account_activity_log.sql` before deploying —
+> it creates `account_activity_log` and installs one trigger per audited
+> table.
+
+### Added
+
+- **Recorded in the database, not the app.** Triggers on `accounts`,
+  `whatsapp_config`, `channel_configs`, `api_keys`, `webhook_endpoints`,
+  `ai_configs`, `ai_knowledge_documents`, `message_templates`,
+  `quick_replies`, `custom_fields`, `tags`, `pipelines`, `automations`,
+  `flows`, `account_invitations`, `profiles` and conversation assignment
+  mean a write path added later is covered without anyone remembering to
+  instrument it. The actor is `auth.uid()` at write time; cron/webhook
+  writes are recorded as `system`.
+- **Secrets never land in the log.** Token/secret/API-key columns are
+  masked in SQL (`•••`), and long text is clipped to 280 characters.
+- **Members and assignments get their own actions**: invited, joined,
+  role changed, removed, plus "who took this conversation".
+- **`GET /api/account/activity`** — admin+, keyset pagination
+  (`before=<id>`), filters by category, actor and free text.
+- **Settings → Activity log** panel: day-grouped timeline, category
+  chips, actor filter, search, inline diffs.
+
+### Security
+
+- RLS: admins and owners read their own account's trail; there is no
+  insert/update/delete policy at all, so rows can only be written by the
+  SECURITY DEFINER triggers and can never be edited or deleted from the
+  app — not even by the owner.
+- The panel and the endpoint are both gated at admin+ (no route can leak
+  rows an RLS policy would hide).
+
 ## [0.9.0] — 2026-10-27
 
 Two inbox actions that the WhatsApp Cloud API does not offer: **edit a

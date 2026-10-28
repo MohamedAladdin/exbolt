@@ -2,6 +2,7 @@ import {
   Coins,
   CreditCard,
   FileText,
+  History,
   Inbox,
   KeyRound,
   LayoutGrid,
@@ -40,6 +41,7 @@ export const SETTINGS_SECTIONS = [
   'fields',
   'deals',
   'members',
+  'activity',
   'api',
 ] as const;
 
@@ -53,8 +55,15 @@ export interface SectionMeta {
   label: string;
   icon: LucideIcon;
   group: 'top' | 'account' | 'workspace';
+  /** Hidden unless the caller is admin+. */
+  adminOnly?: boolean;
 }
 
+/**
+ * `adminOnly` sections are hidden from the rail for agents/viewers —
+ * the API behind them is guarded anyway, but showing a tab that only
+ * answers 403 is worse than not showing it.
+ */
 export const SECTION_META: Record<SettingsSection, SectionMeta> = {
   overview: { id: 'overview', label: 'Overview', icon: LayoutGrid, group: 'top' },
   profile: { id: 'profile', label: 'Your profile', icon: User, group: 'account' },
@@ -70,6 +79,13 @@ export const SECTION_META: Record<SettingsSection, SectionMeta> = {
   fields: { id: 'fields', label: 'Fields & tags', icon: Tags, group: 'workspace' },
   deals: { id: 'deals', label: 'Deals & currency', icon: Coins, group: 'workspace' },
   members: { id: 'members', label: 'Team members', icon: UsersRound, group: 'workspace' },
+  activity: {
+    id: 'activity',
+    label: 'Activity log',
+    icon: History,
+    group: 'workspace',
+    adminOnly: true,
+  },
   api: { id: 'api', label: 'API keys', icon: KeyRound, group: 'workspace' },
 };
 

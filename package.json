@@ -1,8 +1,8 @@
 {
   "name": "exbolt",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "private": true,
-  "description": "Self-hostable CRM template for WhatsApp built on Next.js and Supabase — shared inbox, contacts, sales pipelines, broadcasts, and no-code automations.",
+  "description": "Self-hostable CRM template for WhatsApp built on Next.js and Supabase \u2014 shared inbox, contacts, sales pipelines, broadcasts, and no-code automations.",
   "license": "MIT",
   "author": "Arnas Donauskas",
   "homepage": "https://github.com/MohamedAladdin/exbolt",

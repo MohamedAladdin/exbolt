@@ -192,6 +192,12 @@ export const RATE_LIMITS = {
    *  (they still land in the inbox for a human). */
   aiAutoReplyAccount: { limit: 30, windowMs: 60_000 },
   whatsappAdmin: { limit: 30, windowMs: 60_000 },
+  /** Account activity log reads, per user. The panel refetches on
+   *  every filter change (category chip, actor, debounced search), so
+   *  this bucket has to absorb a person exploring the log rather than
+   *  a click-per-minute pattern — 120/min stays far below a script
+   *  scraping the trail while never 429-ing a human. */
+  auditRead: { limit: 120, windowMs: 60_000 },
   whatsappHealth: { limit: 30, windowMs: 60_000 },
   whatsappMedia: { limit: 240, windowMs: 60_000 },
   automationTrigger: { limit: 30, windowMs: 60_000 },
