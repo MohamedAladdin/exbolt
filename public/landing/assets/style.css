@@ -695,6 +695,117 @@ html[dir="rtl"] .channel-link svg.flip { transform: scaleX(-1); }
 .dark-list li { display: flex; gap: 11px; align-items: flex-start; color: #ccd4e2; font-size: 0.9rem; }
 .dark-list svg { width: 17px; height: 17px; color: #6f97ff; flex: 0 0 auto; margin-top: 4px; }
 
+
+/* ---------- about EXCAL LABS ---------- */
+
+.about { background: #fff; }
+.about-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 34px;
+  padding: clamp(30px, 5vw, 62px);
+  background:
+    radial-gradient(820px 460px at 88% -12%, rgba(10, 77, 255, 0.55), transparent 62%),
+    radial-gradient(520px 360px at 6% 110%, rgba(10, 77, 255, 0.18), transparent 60%),
+    #071022;
+  color: #fff;
+}
+.about-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: calc(100% / 8) 100%;
+  mask-image: linear-gradient(to bottom, black, transparent 80%);
+  pointer-events: none;
+}
+.about-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1.18fr 0.82fr;
+  gap: clamp(30px, 5vw, 64px);
+  align-items: center;
+}
+.about-kicker {
+  margin-top: 16px;
+  font-family: var(--font-en);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  color: #8fb0ff;
+}
+.about-card .h2 { color: #fff; margin-top: 10px; }
+.about-card .lede { color: #aeb9ca; margin-top: 18px; max-width: 56ch; }
+.about-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 20px; margin-top: 28px; }
+.btn-light { background: #fff; color: var(--ink); }
+.btn-light:hover { background: #eef2ff; transform: translateY(-1px); }
+.about-mail { font-family: var(--font-en); font-size: 0.8rem; color: #9db8ff; }
+.about-mail:hover { color: #fff; }
+.about-facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-inline-start: 1px solid rgba(255, 255, 255, 0.14);
+}
+.about-facts div {
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.about-facts div:nth-last-child(-n + 2) { border-bottom: 0; }
+.about-facts b {
+  display: block;
+  font-family: var(--font-en);
+  font-size: clamp(1.65rem, 2.6vw, 2.45rem);
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 1;
+  color: #fff;
+}
+.about-facts span {
+  display: block;
+  margin-top: 7px;
+  font-size: 0.74rem;
+  color: #96a2b6;
+}
+.about-services {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 34px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+.about-services-label {
+  margin-inline-end: 6px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #8794a9;
+}
+.about-chip {
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 999px;
+  padding: 6px 11px;
+  font-size: 0.72rem;
+  color: #d7deea;
+}
+@media (max-width: 1024px) {
+  .about-grid { grid-template-columns: 1fr; }
+  .about-facts { border-inline-start: 0; border-top: 1px solid rgba(255, 255, 255, 0.14); margin-top: 8px; }
+}
+@media (max-width: 620px) {
+  .about-card { border-radius: 24px; }
+  .about-facts div { padding: 16px 12px; }
+  .about-facts b { font-size: 1.65rem; }
+  .about-actions .btn { width: 100%; }
+  .about-services-label { width: 100%; margin-bottom: 4px; }
+}
+
 /* ---------- screens ---------- */
 
 .screens { background: var(--paper); border-block: 1px solid var(--line); }
