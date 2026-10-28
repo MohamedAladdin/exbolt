@@ -6,6 +6,7 @@ import { useLocale } from 'next-intl';
 import { useState, type ReactNode } from 'react';
 import {
   ArrowLeftRight,
+  ClipboardList,
   CreditCard,
   Globe2,
   Inbox,
@@ -27,6 +28,7 @@ import { adminT } from '@/lib/admin/copy';
 const NAV = [
   { href: '/admin', key: 'nav.overview', icon: LayoutDashboard },
   { href: '/admin/inquiries', key: 'nav.inquiries', icon: Inbox },
+  { href: '/admin/requests', key: 'nav.requests', icon: ClipboardList },
   { href: '/admin/landing', key: 'nav.landing', icon: Globe2 },
   { href: '/admin/accounts', key: 'nav.accounts', icon: Users },
   { href: '/admin/billing', key: 'nav.billing', icon: CreditCard },
@@ -37,9 +39,11 @@ const NAV = [
 
 export function AdminShell({
   email,
+  pendingRequests = 0,
   children,
 }: {
   email: string;
+  pendingRequests?: number;
   children: ReactNode;
 }) {
   const locale = useLocale();
@@ -97,7 +101,12 @@ export function AdminShell({
                   )}
                 >
                   <item.icon className="size-4" />
-                  {t(item.key)}
+                  <span className="flex-1">{t(item.key)}</span>
+                  {item.href === '/admin/requests' && pendingRequests > 0 ? (
+                    <span className="bg-primary text-primary-foreground ms-auto inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-semibold tabular-nums">
+                      {pendingRequests}
+                    </span>
+                  ) : null}
                 </Link>
               </li>
             );

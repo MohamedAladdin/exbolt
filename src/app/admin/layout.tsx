@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 
 import { AdminShell } from '@/components/admin/admin-shell';
 import { guardAdminPage } from '@/lib/admin/guard-page';
+import { countOpenRequests } from '@/lib/admin/queries';
 
 export const metadata: Metadata = {
   title: 'ExBolt · Control',
@@ -15,5 +16,10 @@ export default async function AdminLayout({
   children: ReactNode;
 }) {
   const admin = await guardAdminPage();
-  return <AdminShell email={admin.email}>{children}</AdminShell>;
+  const pendingRequests = await countOpenRequests();
+  return (
+    <AdminShell email={admin.email} pendingRequests={pendingRequests}>
+      {children}
+    </AdminShell>
+  );
 }

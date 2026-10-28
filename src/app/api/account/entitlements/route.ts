@@ -20,6 +20,7 @@ export async function GET() {
       plan: entitlements.plan,
       status: entitlements.status,
       billing_interval: entitlements.billing_interval,
+      started_at: entitlements.started_at,
       current_period_end: entitlements.current_period_end,
       trial_ends_at: entitlements.trial_ends_at,
       features: entitlements.features,

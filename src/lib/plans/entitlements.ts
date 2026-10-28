@@ -75,6 +75,7 @@ export interface Entitlements {
   plan: PlanSummary;
   status: SubscriptionStatus;
   billing_interval: 'monthly' | 'annual';
+  started_at: string | null;
   current_period_end: string | null;
   trial_ends_at: string | null;
   /** Feature switches after overrides. */
@@ -249,6 +250,7 @@ export function withinLimit(
 interface SubscriptionRow {
   status: SubscriptionStatus;
   billing_interval: 'monthly' | 'annual';
+  started_at: string | null;
   current_period_end: string | null;
   trial_ends_at: string | null;
   feature_overrides: unknown;
@@ -340,7 +342,7 @@ export async function getAccountEntitlements(
   const { data, error } = await db
     .from('account_subscriptions')
     .select(
-      'status, billing_interval, current_period_end, trial_ends_at, feature_overrides, limit_overrides, plan:plans(id, code, name, name_ar, tagline, price_monthly_usd, price_annual_usd, sort_order, features, limits)'
+      'status, billing_interval, started_at, current_period_end, trial_ends_at, feature_overrides, limit_overrides, plan:plans(id, code, name, name_ar, tagline, price_monthly_usd, price_annual_usd, sort_order, features, limits)'
     )
     .eq('account_id', accountId)
     .maybeSingle();
@@ -362,6 +364,7 @@ export async function getAccountEntitlements(
       plan: FALLBACK_PLAN,
       status: 'trial',
       billing_interval: 'monthly',
+      started_at: null,
       current_period_end: null,
       trial_ends_at: null,
       features: granted.features,
@@ -388,6 +391,7 @@ export async function getAccountEntitlements(
     plan,
     status: row.status,
     billing_interval: row.billing_interval,
+    started_at: row.started_at,
     current_period_end: row.current_period_end,
     trial_ends_at: row.trial_ends_at,
     features,

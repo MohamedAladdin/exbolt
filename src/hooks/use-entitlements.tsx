@@ -33,6 +33,7 @@ interface WireEntitlements {
   plan: Entitlements["plan"];
   status: Entitlements["status"];
   billing_interval: Entitlements["billing_interval"];
+  started_at: string | null;
   current_period_end: string | null;
   trial_ends_at: string | null;
   features: Record<string, boolean>;
@@ -46,6 +47,7 @@ function hydrate(wire: WireEntitlements): Entitlements {
     plan: wire.plan,
     status: wire.status,
     billing_interval: wire.billing_interval,
+    started_at: wire.started_at,
     current_period_end: wire.current_period_end,
     trial_ends_at: wire.trial_ends_at,
     features: wire.features as Entitlements["features"],

@@ -557,6 +557,33 @@ const D: Record<string, Entry> = {
   'landing.saving': { ar: 'بيحفظ…', en: 'Saving…' },
   'landing.saved': { ar: 'تم حفظ اللاندينج', en: 'Landing settings saved' },
   'landing.billingLink': { ar: 'تعديل الاشتراكات والفواتير', en: 'Billing & subscriptions' },
+
+  // ---------- tenant plan requests ----------
+  'nav.requests': { ar: 'طلبات العملاء', en: 'Customer requests' },
+  'requests.title': { ar: 'طلبات العملاء', en: 'Customer requests' },
+  'requests.subtitle': {
+    ar: 'طلبات تجديد أو تغيير الباقة الجاية من صفحة الباقة عند العميل. راجعها وحدّد حالتها.',
+    en: 'Renewal and plan-change requests submitted from the tenant plan page. Review and triage them here.',
+  },
+  'requests.search': { ar: 'بحث بالحساب أو الإيميل', en: 'Search account or email' },
+  'requests.empty': { ar: 'مفيش طلبات لسه', en: 'No requests yet' },
+  'requests.account': { ar: 'الحساب', en: 'Account' },
+  'requests.requester': { ar: 'مقدّم الطلب', en: 'Requested by' },
+  'requests.type': { ar: 'النوع', en: 'Type' },
+  'requests.plan': { ar: 'الباقة', en: 'Plan' },
+  'requests.interval': { ar: 'الفوترة', en: 'Billing' },
+  'requests.message': { ar: 'رسالة العميل', en: 'Customer message' },
+  'requests.notes': { ar: 'ملاحظات داخلية', en: 'Internal notes' },
+  'requests.saveNotes': { ar: 'حفظ الملاحظات', en: 'Save notes' },
+  'requests.saved': { ar: 'تم الحفظ', en: 'Saved' },
+  'requests.details': { ar: 'التفاصيل', en: 'Details' },
+  'requests.hide': { ar: 'إخفاء', en: 'Hide' },
+  'request.kind.renewal': { ar: 'تجديد', en: 'Renewal' },
+  'request.kind.change_plan': { ar: 'تغيير باقة', en: 'Plan change' },
+  'request.status.new': { ar: 'جديد', en: 'New' },
+  'request.status.in_review': { ar: 'تحت المراجعة', en: 'In review' },
+  'request.status.done': { ar: 'اتنفذ', en: 'Done' },
+  'request.status.declined': { ar: 'مرفوض', en: 'Declined' },
 };
 
 export type AdminLocale = 'ar' | 'en';

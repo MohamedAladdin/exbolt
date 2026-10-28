@@ -22,6 +22,7 @@ function entitlements(overrides: Partial<Entitlements> = {}): Entitlements {
     },
     status: 'active',
     billing_interval: 'monthly',
+    started_at: null,
     current_period_end: null,
     trial_ends_at: null,
     features: { ...DEFAULT_FEATURES },

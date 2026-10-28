@@ -865,3 +865,101 @@ export async function listInquiries(limit = 300): Promise<InquiryRow[]> {
   }
   return (data ?? []) as InquiryRow[];
 }
+
+// ------------------------------------------------------------
+// Tenant plan requests
+// ------------------------------------------------------------
+
+export interface AccountRequestRow {
+  id: string;
+  account_id: string;
+  user_id: string;
+  accountName: string | null;
+  requesterEmail: string | null;
+  requesterName: string | null;
+  kind: 'renewal' | 'change_plan';
+  current_plan_code: string | null;
+  requested_plan_code: string | null;
+  billing_interval: 'monthly' | 'annual';
+  message: string | null;
+  status: 'new' | 'in_review' | 'done' | 'declined';
+  admin_notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function listAccountRequests(limit = 300): Promise<AccountRequestRow[]> {
+  const { data, error } = await adminDb()
+    .from('account_requests')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error('[admin] listAccountRequests failed:', error.message);
+    return [];
+  }
+
+  const rows = (data ?? []) as Record<string, unknown>[];
+  const accountIds = [...new Set(rows.map((row) => String(row.account_id)))];
+  const userIds = [...new Set(rows.map((row) => String(row.user_id)))];
+
+  const [accounts, profiles] = await Promise.all([
+    accountIds.length
+      ? adminDb().from('accounts').select('id, name').in('id', accountIds)
+      : Promise.resolve({ data: [] as Record<string, unknown>[] }),
+    userIds.length
+      ? adminDb()
+          .from('profiles')
+          .select('user_id, email, full_name')
+          .in('user_id', userIds)
+      : Promise.resolve({ data: [] as Record<string, unknown>[] }),
+  ]);
+
+  const accountMap = new Map(
+    (accounts.data ?? []).map((row) => [String(row.id), String(row.name)])
+  );
+  const profileMap = new Map(
+    (profiles.data ?? []).map((row) => [
+      String(row.user_id),
+      {
+        email: row.email ? String(row.email) : null,
+        name: row.full_name ? String(row.full_name) : null,
+      },
+    ])
+  );
+
+  return rows.map((row) => {
+    const profile = profileMap.get(String(row.user_id));
+    return {
+      id: String(row.id),
+      account_id: String(row.account_id),
+      user_id: String(row.user_id),
+      accountName: accountMap.get(String(row.account_id)) ?? null,
+      requesterEmail: profile?.email ?? null,
+      requesterName: profile?.name ?? null,
+      kind: row.kind as AccountRequestRow['kind'],
+      current_plan_code: (row.current_plan_code as string | null) ?? null,
+      requested_plan_code: (row.requested_plan_code as string | null) ?? null,
+      billing_interval: row.billing_interval as AccountRequestRow['billing_interval'],
+      message: (row.message as string | null) ?? null,
+      status: row.status as AccountRequestRow['status'],
+      admin_notes: (row.admin_notes as string | null) ?? null,
+      created_at: String(row.created_at),
+      updated_at: String(row.updated_at),
+    };
+  });
+}
+
+export async function countOpenRequests(): Promise<number> {
+  const { count, error } = await adminDb()
+    .from('account_requests')
+    .select('id', { count: 'exact', head: true })
+    .in('status', ['new', 'in_review']);
+
+  if (error) {
+    console.error('[admin] countOpenRequests failed:', error.message);
+    return 0;
+  }
+  return count ?? 0;
+}

@@ -23,7 +23,8 @@ export interface AuditInput {
     | 'settings'
     | 'admin'
     | 'signup'
-    | 'inquiry';
+    | 'inquiry'
+    | 'request';
   targetId?: string | null;
   targetLabel?: string | null;
   details?: Record<string, unknown>;

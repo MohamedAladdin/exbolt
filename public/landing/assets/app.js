@@ -31,7 +31,10 @@
   const menuBtn = $("#menuBtn");
   const navLinks = $("#navLinks");
   if (menuBtn && navLinks) {
-    menuBtn.addEventListener("click", () => {
+    menuBtn.addEventListener("click", (event) => {
+      // Keep the document-level "click outside" handler from seeing this
+      // click after innerHTML swaps the icon (the original target is detached).
+      event.stopPropagation();
       const open = navLinks.classList.toggle("open");
       menuBtn.setAttribute("aria-expanded", String(open));
       menuBtn.innerHTML = open
@@ -44,8 +47,11 @@
         menuBtn.setAttribute("aria-expanded", "false");
       })
     );
-    document.addEventListener("click", (e) => {
-      if (!navLinks.contains(e.target) && !menuBtn.contains(e.target)) navLinks.classList.remove("open");
+    document.addEventListener("click", (event) => {
+      const path = event.composedPath();
+      if (path.includes(navLinks) || path.includes(menuBtn)) return;
+      navLinks.classList.remove("open");
+      menuBtn.setAttribute("aria-expanded", "false");
     });
   }
 
