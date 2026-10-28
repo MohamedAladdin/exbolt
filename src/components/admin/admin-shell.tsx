@@ -7,6 +7,8 @@ import { useState, type ReactNode } from 'react';
 import {
   ArrowLeftRight,
   CreditCard,
+  Globe2,
+  Inbox,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -24,6 +26,8 @@ import { adminT } from '@/lib/admin/copy';
 
 const NAV = [
   { href: '/admin', key: 'nav.overview', icon: LayoutDashboard },
+  { href: '/admin/inquiries', key: 'nav.inquiries', icon: Inbox },
+  { href: '/admin/landing', key: 'nav.landing', icon: Globe2 },
   { href: '/admin/accounts', key: 'nav.accounts', icon: Users },
   { href: '/admin/billing', key: 'nav.billing', icon: CreditCard },
   { href: '/admin/channels', key: 'nav.channels', icon: Plug },

@@ -145,6 +145,10 @@ export interface PlanRow {
   name: string;
   nameAr: string | null;
   tagline: string | null;
+  landingDescAr: string | null;
+  landingDescEn: string | null;
+  landingFeatures: string[];
+  isFeatured: boolean;
   priceMonthlyUsd: number;
   priceAnnualUsd: number | null;
   features: Record<string, unknown>;
@@ -685,6 +689,12 @@ export async function listPlans(): Promise<PlanRow[]> {
     name: row.name as string,
     nameAr: (row.name_ar as string | null) ?? null,
     tagline: (row.tagline as string | null) ?? null,
+    landingDescAr: (row.landing_desc_ar as string | null) ?? null,
+    landingDescEn: (row.landing_desc_en as string | null) ?? null,
+    landingFeatures: Array.isArray(row.landing_features)
+      ? (row.landing_features as string[])
+      : [],
+    isFeatured: row.is_featured === true,
     priceMonthlyUsd: toMoney(row.price_monthly_usd),
     priceAnnualUsd:
       row.price_annual_usd === null ? null : toMoney(row.price_annual_usd),
@@ -694,6 +704,34 @@ export async function listPlans(): Promise<PlanRow[]> {
     isActive: row.is_active !== false,
     subscribers: counts.get(row.id as string) ?? 0,
   }));
+}
+
+export interface LandingSettingsRow {
+  salesEmail: string;
+  salesPhone: string | null;
+  whatsappNumber: string | null;
+  responseTimeAr: string;
+  responseTimeEn: string;
+}
+
+export async function getLandingSettings(): Promise<LandingSettingsRow> {
+  const { data, error } = await adminDb()
+    .from('landing_settings')
+    .select('*')
+    .eq('id', 1)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[admin] getLandingSettings failed:', error.message);
+  }
+  const row = (data ?? {}) as Record<string, unknown>;
+  return {
+    salesEmail: String(row.sales_email ?? 'sales@excal.uk'),
+    salesPhone: row.sales_phone ? String(row.sales_phone) : null,
+    whatsappNumber: row.whatsapp_number ? String(row.whatsapp_number) : null,
+    responseTimeAr: String(row.response_time_ar ?? 'خلال يوم عمل'),
+    responseTimeEn: String(row.response_time_en ?? 'Within one business day'),
+  };
 }
 
 // ------------------------------------------------------------
@@ -789,4 +827,41 @@ export async function listEmails(
     sentAt: (row.sent_at as string | null) ?? null,
     createdAt: row.created_at as string,
   }));
+}
+
+// ------------------------------------------------------------
+// Landing-page enquiries
+// ------------------------------------------------------------
+
+export interface InquiryRow {
+  id: string;
+  name: string;
+  company: string | null;
+  email: string;
+  phone: string | null;
+  team_size: string | null;
+  plan: string | null;
+  message: string | null;
+  locale: string;
+  source: string;
+  page: string | null;
+  status: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Newest first. The landing page gets a handful a day, so 300 is plenty. */
+export async function listInquiries(limit = 300): Promise<InquiryRow[]> {
+  const { data, error } = await adminDb()
+    .from('inquiries')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error('[admin] listInquiries failed:', error.message);
+    return [];
+  }
+  return (data ?? []) as InquiryRow[];
 }

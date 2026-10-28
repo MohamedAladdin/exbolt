@@ -2,6 +2,20 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
+  // The public marketing site is served from /landing by next.config rewrites.
+  // It needs no session work, and skipping Supabase here keeps anonymous
+  // landing traffic fast and independent of the auth service.
+  const pathname = request.nextUrl.pathname;
+  if (
+    pathname === "/" ||
+    pathname === "/ar" ||
+    pathname === "/en" ||
+    pathname.startsWith("/landing/") ||
+    pathname.startsWith("/api/public/")
+  ) {
+    return NextResponse.next();
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   // Local dev with NEXT_PUBLIC_SUPABASE_FOLLOW_ORIGIN: the cookie NAME is

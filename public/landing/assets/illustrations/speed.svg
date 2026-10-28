@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 480" fill="none" role="img" aria-label="Fast replies illustration">
+  <defs>
+    <linearGradient id="sp-bolt" x1="250" y1="110" x2="360" y2="360" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2E7BFF"/><stop offset="1" stop-color="#0A4DFF"/>
+    </linearGradient>
+    <filter id="sp-shadow" x="-30%" y="-30%" width="160%" height="180%">
+      <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#0A2A80" flood-opacity=".18"/>
+    </filter>
+  </defs>
+
+  <!-- orbit -->
+  <circle cx="310" cy="240" r="172" stroke="#C9D8FF" stroke-width="1.5" stroke-dasharray="3 8"/>
+  <circle cx="310" cy="240" r="138" fill="#F1F5FF"/>
+  <circle cx="310" cy="240" r="138" stroke="#DCE6FF" stroke-width="2"/>
+
+  <!-- motion lines -->
+  <g stroke="#9FB9FF" stroke-width="3" stroke-linecap="round" opacity=".75">
+    <path d="M78 196h44"/><path d="M58 226h64"/><path d="M86 256h34"/>
+    <path d="M508 208h40"/><path d="M498 238h54"/><path d="M520 268h30"/>
+  </g>
+
+  <!-- bolt -->
+  <g filter="url(#sp-shadow)">
+    <path d="M336 104 235 258h66l-24 118 102-138h-66l23-134Z" fill="url(#sp-bolt)" stroke="#0A4DFF" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M322 132 250 246h46l-14 66" stroke="#fff" stroke-opacity=".35" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  <!-- stopwatch -->
+  <g transform="translate(430 96)">
+    <circle cx="0" cy="0" r="34" fill="#fff" stroke="#DCE6FF" stroke-width="2"/>
+    <circle cx="0" cy="0" r="24" stroke="#0A4DFF" stroke-width="2.5" stroke-dasharray="4 6"/>
+    <path d="M0-24v-9M0-33h12" stroke="#0A4DFF" stroke-width="3" stroke-linecap="round"/>
+    <path d="M0 0 11-10" stroke="#0A0F1A" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="0" cy="0" r="3" fill="#0A0F1A"/>
+  </g>
+
+  <!-- bubble left -->
+  <g filter="url(#sp-shadow)">
+    <path d="M60 96h176a18 18 0 0 1 18 18v74a18 18 0 0 1-18 18H104l-26 20v-20H60a18 18 0 0 1-18-18v-74a18 18 0 0 1 18-18Z" fill="#fff" stroke="#E4E8F0" stroke-width="1.5"/>
+    <rect x="66" y="122" width="120" height="9" rx="4.5" fill="#DCE6FF"/>
+    <rect x="66" y="142" width="146" height="9" rx="4.5" fill="#EDF1F8"/>
+    <rect x="66" y="162" width="86" height="9" rx="4.5" fill="#EDF1F8"/>
+    <circle cx="212" cy="168" r="12" fill="#0A4DFF"/>
+    <path d="m207 168 3.5 3.5 6-7" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- bubble right -->
+  <g filter="url(#sp-shadow)">
+    <path d="M386 300h168a16 16 0 0 1 16 16v58a16 16 0 0 1-16 16h-40v18l-22-18h-106a16 16 0 0 1-16-16v-58a16 16 0 0 1 16-16Z" fill="#0A0F1A"/>
+    <rect x="393" y="322" width="112" height="8" rx="4" fill="#3B465C"/>
+    <rect x="393" y="340" width="142" height="8" rx="4" fill="#2A3346"/>
+    <rect x="393" y="358" width="74" height="8" rx="4" fill="#2A3346"/>
+    <circle cx="544" cy="356" r="15" fill="#0A4DFF"/>
+    <path d="m537 356 4 4 8-9" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- dashed connector -->
+  <path d="M258 210c26-38 60-48 94-34" stroke="#0A4DFF" stroke-width="2" stroke-dasharray="5 7" stroke-linecap="round" opacity=".45"/>
+
+  <!-- small sparkles -->
+  <g fill="#FFB020">
+    <path d="M500 330l4 11 11 4-11 4-4 11-4-11-11-4 11-4 4-11Z"/>
+    <circle cx="116" cy="306" r="5"/>
+  </g>
+</svg>

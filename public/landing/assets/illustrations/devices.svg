@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 480" fill="none" role="img" aria-label="Responsive devices illustration">
+  <defs>
+    <linearGradient id="dv-screen" x1="120" y1="100" x2="420" y2="330" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F7F9FF"/><stop offset="1" stop-color="#EDF2FE"/>
+    </linearGradient>
+    <filter id="dv-shadow" x="-30%" y="-30%" width="160%" height="180%">
+      <feDropShadow dx="0" dy="16" stdDeviation="16" flood-color="#0A2A80" flood-opacity=".16"/>
+    </filter>
+  </defs>
+
+  <!-- halo -->
+  <circle cx="310" cy="238" r="190" stroke="#C9D8FF" stroke-width="1.5" stroke-dasharray="3 9"/>
+  <circle cx="310" cy="238" r="152" fill="#F1F5FF"/>
+  <circle cx="310" cy="238" r="152" stroke="#DCE6FF" stroke-width="2"/>
+
+  <!-- tablet behind -->
+  <g filter="url(#dv-shadow)" transform="translate(388 84)">
+    <rect width="156" height="214" rx="18" fill="#0A0F1A"/>
+    <rect x="9" y="9" width="138" height="196" rx="12" fill="#fff"/>
+    <rect x="20" y="24" width="56" height="7" rx="3.5" fill="#DCE6FF"/>
+    <rect x="20" y="42" width="116" height="44" rx="8" fill="#EAF0FF"/>
+    <rect x="20" y="94" width="116" height="34" rx="8" fill="#F2F5FC"/>
+    <rect x="20" y="136" width="116" height="34" rx="8" fill="#F2F5FC"/>
+    <rect x="20" y="178" width="70" height="7" rx="3.5" fill="#EDF1F8"/>
+  </g>
+
+  <!-- desktop -->
+  <g filter="url(#dv-shadow)" transform="translate(58 108)">
+    <rect width="342" height="222" rx="18" fill="#0A0F1A"/>
+    <rect x="10" y="10" width="322" height="202" rx="11" fill="url(#dv-screen)"/>
+    <!-- app chrome -->
+    <rect x="10" y="10" width="322" height="30" rx="11" fill="#fff"/>
+    <rect x="10" y="30" width="322" height="10" fill="#fff"/>
+    <circle cx="26" cy="25" r="3" fill="#FF6B5F"/><circle cx="36" cy="25" r="3" fill="#FFBD2E"/><circle cx="46" cy="25" r="3" fill="#28C840"/>
+    <rect x="150" y="21" width="80" height="8" rx="4" fill="#EDF1F8"/>
+    <!-- sidebar -->
+    <rect x="10" y="40" width="64" height="172" fill="#fff"/>
+    <rect x="22" y="54" width="38" height="8" rx="4" fill="#DCE6FF"/>
+    <rect x="22" y="74" width="30" height="6" rx="3" fill="#EDF1F8"/>
+    <rect x="22" y="88" width="34" height="6" rx="3" fill="#EDF1F8"/>
+    <rect x="22" y="102" width="28" height="6" rx="3" fill="#EDF1F8"/>
+    <!-- list -->
+    <rect x="82" y="52" width="96" height="46" rx="8" fill="#fff" stroke="#E4E8F0"/>
+    <rect x="90" y="60" width="44" height="6" rx="3" fill="#DCE6FF"/>
+    <rect x="90" y="74" width="74" height="5" rx="2.5" fill="#EDF1F8"/>
+    <rect x="82" y="106" width="96" height="46" rx="8" fill="#fff" stroke="#E4E8F0"/>
+    <rect x="90" y="114" width="52" height="6" rx="3" fill="#DCE6FF"/>
+    <rect x="90" y="128" width="64" height="5" rx="2.5" fill="#EDF1F8"/>
+    <rect x="82" y="160" width="96" height="46" rx="8" fill="#fff" stroke="#E4E8F0"/>
+    <rect x="90" y="168" width="38" height="6" rx="3" fill="#DCE6FF"/>
+    <rect x="90" y="182" width="70" height="5" rx="2.5" fill="#EDF1F8"/>
+    <!-- chat -->
+    <rect x="188" y="52" width="132" height="124" rx="10" fill="#fff" stroke="#E4E8F0"/>
+    <rect x="198" y="64" width="78" height="20" rx="9" fill="#EAF0FF"/>
+    <rect x="198" y="92" width="106" height="20" rx="9" fill="#0A4DFF"/>
+    <rect x="212" y="118" width="78" height="20" rx="9" fill="#EAF0FF"/>
+    <rect x="198" y="150" width="90" height="12" rx="6" fill="#F2F5FC"/>
+    <!-- compose -->
+    <rect x="130" y="186" width="190" height="16" rx="8" fill="#fff" stroke="#E4E8F0"/>
+    <circle cx="308" cy="194" r="6" fill="#0A4DFF"/>
+    <!-- stand -->
+    <path d="M150 222h42l6 22h-54l6-22Z" fill="#0A0F1A"/>
+    <rect x="130" y="244" width="82" height="8" rx="4" fill="#0A0F1A"/>
+  </g>
+
+  <!-- phone -->
+  <g filter="url(#dv-shadow)" transform="translate(300 238)">
+    <rect width="132" height="228" rx="24" fill="#0A0F1A"/>
+    <rect x="8" y="8" width="116" height="212" rx="18" fill="#fff"/>
+    <rect x="48" y="15" width="36" height="5" rx="2.5" fill="#DCE6FF"/>
+    <rect x="20" y="34" width="58" height="8" rx="4" fill="#0A0F1A" opacity=".8"/>
+    <rect x="20" y="54" width="92" height="36" rx="9" fill="#EAF0FF"/>
+    <rect x="20" y="98" width="92" height="36" rx="9" fill="#0A4DFF"/>
+    <rect x="34" y="142" width="78" height="28" rx="9" fill="#EAF0FF"/>
+    <rect x="20" y="184" width="92" height="18" rx="9" fill="#F2F5FC"/>
+    <circle cx="106" cy="202" r="9" fill="#0A4DFF"/>
+  </g>
+
+  <!-- sync arrows -->
+  <g stroke="#0A4DFF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" opacity=".8">
+    <path d="M446 280a58 58 0 0 1-46 18"/>
+    <path d="m400 288 8 10-11 7"/>
+  </g>
+  <g fill="#FFB020">
+    <path d="M470 122l4 10 10 4-10 4-4 10-4-10-10-4 10-4 4-10Z"/>
+    <circle cx="92" cy="82" r="5"/>
+  </g>
+</svg>

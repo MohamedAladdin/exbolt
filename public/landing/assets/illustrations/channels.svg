@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 480" fill="none" role="img" aria-label="Channels into one inbox illustration">
+  <defs>
+    <filter id="ch-shadow" x="-30%" y="-30%" width="160%" height="180%">
+      <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#0A2A80" flood-opacity=".16"/>
+    </filter>
+    <linearGradient id="ch-inbox" x1="330" y1="120" x2="520" y2="380" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0A4DFF"/><stop offset="1" stop-color="#0033CC"/>
+    </linearGradient>
+  </defs>
+
+  <circle cx="310" cy="238" r="188" stroke="#C9D8FF" stroke-width="1.5" stroke-dasharray="3 9"/>
+  <circle cx="310" cy="238" r="150" fill="#F1F5FF"/>
+  <circle cx="310" cy="238" r="150" stroke="#DCE6FF" stroke-width="2"/>
+
+  <!-- three channel tiles -->
+  <g filter="url(#ch-shadow)">
+    <g transform="translate(58 76)">
+      <rect width="112" height="100" rx="20" fill="#fff" stroke="#E4E8F0" stroke-width="1.5"/>
+      <circle cx="56" cy="50" r="26" fill="#E9F9F0"/>
+      <path d="M45 62c-1.5-3-2.4-6.4-2.4-10 0-7.4 6-13.4 13.4-13.4S69.4 44.6 69.4 52 63.4 65.4 56 65.4c-2 0-4-.4-5.8-1.2L43 66l2-4Z" stroke="#25D366" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M51 46c1 5 3.5 8 8 9" stroke="#25D366" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    <g transform="translate(44 196)">
+      <rect width="112" height="100" rx="20" fill="#fff" stroke="#E4E8F0" stroke-width="1.5"/>
+      <circle cx="56" cy="50" r="26" fill="#EAF2FF"/>
+      <path d="M56 27c-13.3 0-24 9.8-24 21.9 0 6.9 3.5 13 9 17v7.4l8.2-4.5c2.1.6 4.4 1 6.8 1 13.3 0 24-9.8 24-21.9S69.3 27 56 27Z" fill="#0078FF"/>
+      <path d="M58.5 35.5 46.5 52h7.3l-2.3 12.5L63.5 48h-7.3l2.3-12.5Z" fill="#fff"/>
+    </g>
+
+    <g transform="translate(58 316)">
+      <rect width="112" height="100" rx="20" fill="#fff" stroke="#E4E8F0" stroke-width="1.5"/>
+      <circle cx="56" cy="50" r="26" fill="#FFF0F5"/>
+      <rect x="41" y="35" width="30" height="30" rx="9" stroke="#E1306C" stroke-width="3"/>
+      <circle cx="56" cy="50" r="8" stroke="#E1306C" stroke-width="3"/>
+      <circle cx="66" cy="40" r="2.6" fill="#E1306C"/>
+    </g>
+  </g>
+
+  <!-- dotted connectors -->
+  <g stroke="#8FB0FF" stroke-width="2" stroke-dasharray="4 8" stroke-linecap="round">
+    <path d="M170 126c54 0 82 30 110 66"/>
+    <path d="M156 246h104"/>
+    <path d="M170 366c54 0 82-30 110-66"/>
+  </g>
+
+  <!-- inbox card -->
+  <g filter="url(#ch-shadow)" transform="translate(300 96)">
+    <rect width="256" height="292" rx="24" fill="#fff" stroke="#E4E8F0" stroke-width="1.5"/>
+    <rect x="0" y="0" width="256" height="66" rx="24" fill="url(#ch-inbox)"/>
+    <rect x="0" y="40" width="256" height="26" fill="url(#ch-inbox)"/>
+    <path d="M24 32h12l5 9h-22l5-9Z" fill="#fff" opacity=".95"/>
+    <rect x="48" y="24" width="86" height="8" rx="4" fill="#fff" opacity=".9"/>
+    <rect x="48" y="39" width="54" height="6" rx="3" fill="#fff" opacity=".45"/>
+    <circle cx="220" cy="33" r="12" fill="#fff" opacity=".16"/>
+    <path d="M215 33h10M220 28v10" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+
+    <!-- rows -->
+    <g>
+      <rect x="16" y="84" width="224" height="52" rx="12" fill="#F6F8FD"/>
+      <circle cx="42" cy="110" r="14" fill="#EAF0FF"/>
+      <path d="M36 116c-1-2-1.5-4-1.5-6 0-4.4 3.6-8 8-8s8 3.6 8 8-3.6 8-8 8c-1.2 0-2.4-.3-3.4-.7L36 118l.7-2Z" stroke="#0A4DFF" stroke-width="1.8"/>
+      <rect x="66" y="98" width="76" height="7" rx="3.5" fill="#DCE6FF"/>
+      <rect x="66" y="112" width="118" height="6" rx="3" fill="#E4E8F0"/>
+      <circle cx="224" cy="110" r="4" fill="#0A4DFF"/>
+    </g>
+    <g>
+      <rect x="16" y="146" width="224" height="52" rx="12" fill="#fff" stroke="#E9EDF5"/>
+      <circle cx="42" cy="172" r="14" fill="#E9F9F0"/>
+      <path d="M36 178c-1-2-1.5-4-1.5-6 0-4.4 3.6-8 8-8s8 3.6 8 8-3.6 8-8 8c-1.2 0-2.4-.3-3.4-.7L36 180l.7-2Z" stroke="#25D366" stroke-width="1.8"/>
+      <rect x="66" y="160" width="92" height="7" rx="3.5" fill="#DCE6FF"/>
+      <rect x="66" y="174" width="104" height="6" rx="3" fill="#E4E8F0"/>
+    </g>
+    <g>
+      <rect x="16" y="208" width="224" height="52" rx="12" fill="#F6F8FD"/>
+      <circle cx="42" cy="234" r="14" fill="#FFF0F5"/>
+      <rect x="34" y="226" width="16" height="16" rx="5" stroke="#E1306C" stroke-width="1.8"/>
+      <circle cx="42" cy="234" r="4" stroke="#E1306C" stroke-width="1.8"/>
+      <rect x="66" y="222" width="64" height="7" rx="3.5" fill="#DCE6FF"/>
+      <rect x="66" y="236" width="110" height="6" rx="3" fill="#E4E8F0"/>
+      <circle cx="224" cy="234" r="4" fill="#E1306C"/>
+    </g>
+  </g>
+
+  <!-- badges -->
+  <g filter="url(#ch-shadow)" transform="translate(468 58)">
+    <rect width="88" height="34" rx="17" fill="#0A0F1A"/>
+    <circle cx="18" cy="17" r="5" fill="#12B76A"/>
+    <rect x="30" y="13" width="42" height="8" rx="4" fill="#3B465C"/>
+  </g>
+
+  <g fill="#FFB020">
+    <path d="M508 414l4 10 10 4-10 4-4 10-4-10-10-4 10-4 4-10Z"/>
+    <circle cx="256" cy="66" r="5"/>
+  </g>
+</svg>

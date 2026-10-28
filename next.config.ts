@@ -121,12 +121,24 @@ const nextConfig: NextConfig = {
    * directly over HTTPS.
    */
   async rewrites() {
-    if (process.env.SUPABASE_PROXY !== "true") return [];
+    // Marketing site: static, bilingual, served by the app itself so the
+    // landing page and the panel share one origin (no CORS, one TLS cert).
+    const landing = [
+      { source: "/", destination: "/landing/ar.html" },
+      { source: "/ar", destination: "/landing/ar.html" },
+      { source: "/en", destination: "/landing/en.html" },
+    ];
+
+    if (process.env.SUPABASE_PROXY !== "true") {
+      return { beforeFiles: landing, afterFiles: [], fallback: [] };
+    }
+
     const sb = process.env.SUPABASE_PROXY_TARGET || "http://127.0.0.1:54321";
-    return ["auth", "rest", "storage", "graphql", "functions"].map((svc) => ({
+    const proxy = ["auth", "rest", "storage", "graphql", "functions"].map((svc) => ({
       source: `/${svc}/:path*`,
       destination: `${sb}/${svc}/:path*`,
     }));
+    return { beforeFiles: landing, afterFiles: proxy, fallback: [] };
   },
 
   /**

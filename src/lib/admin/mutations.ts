@@ -1004,3 +1004,108 @@ export async function sendCustomEmailToAccount(params: {
 
   return result;
 }
+
+// ------------------------------------------------------------
+// Landing page content
+// ------------------------------------------------------------
+
+export interface LandingPlanPatch {
+  code: string;
+  nameAr?: string | null;
+  landingDescAr?: string | null;
+  landingDescEn?: string | null;
+  priceMonthlyUsd?: number;
+  priceAnnualUsd?: number | null;
+  isFeatured?: boolean;
+  isActive?: boolean;
+  landingFeatures?: string[];
+  limits?: Record<string, number | null>;
+}
+
+export interface LandingContactPatch {
+  salesEmail: string;
+  salesPhone?: string | null;
+  whatsappNumber?: string | null;
+  responseTimeAr?: string;
+  responseTimeEn?: string;
+}
+
+function cleanText(value: unknown, max: number): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim().slice(0, max);
+  return trimmed ? trimmed : null;
+}
+
+export async function updateLandingContent(params: {
+  actor: PlatformAdmin;
+  contact: LandingContactPatch;
+  plans: LandingPlanPatch[];
+}) {
+  const email = params.contact.salesEmail.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+    throw new Error('invalid_email');
+  }
+
+  const db = adminDb();
+  const { error: contactError } = await db.from('landing_settings').upsert({
+    id: 1,
+    sales_email: email,
+    sales_phone: cleanText(params.contact.salesPhone, 40),
+    whatsapp_number: cleanText(params.contact.whatsappNumber, 40),
+    response_time_ar: cleanText(params.contact.responseTimeAr, 120) ?? 'خلال يوم عمل',
+    response_time_en:
+      cleanText(params.contact.responseTimeEn, 120) ?? 'Within one business day',
+    updated_at: new Date().toISOString(),
+    updated_by: params.actor.userId,
+  });
+  if (contactError) {
+    throw new Error(`admin_landing_contact_failed: ${contactError.message}`);
+  }
+
+  for (const plan of params.plans) {
+    const patch: Record<string, unknown> = {};
+    if (plan.nameAr !== undefined) patch.name_ar = cleanText(plan.nameAr, 80);
+    if (plan.landingDescAr !== undefined)
+      patch.landing_desc_ar = cleanText(plan.landingDescAr, 400);
+    if (plan.landingDescEn !== undefined)
+      patch.landing_desc_en = cleanText(plan.landingDescEn, 400);
+    if (plan.priceMonthlyUsd !== undefined)
+      patch.price_monthly_usd = toMoney(Math.max(0, plan.priceMonthlyUsd));
+    if (plan.priceAnnualUsd !== undefined) {
+      patch.price_annual_usd =
+        plan.priceAnnualUsd === null
+          ? null
+          : toMoney(Math.max(0, plan.priceAnnualUsd));
+    }
+    if (plan.isFeatured !== undefined) patch.is_featured = plan.isFeatured;
+    if (plan.isActive !== undefined) patch.is_active = plan.isActive;
+    if (plan.landingFeatures !== undefined)
+      patch.landing_features = plan.landingFeatures.slice(0, 30);
+    if (plan.limits !== undefined) {
+      const limits: Record<string, number | null> = {};
+      for (const [key, value] of Object.entries(plan.limits)) {
+        limits[key] = value === null ? null : Math.max(0, Number(value));
+      }
+      patch.limits = limits;
+    }
+    if (Object.keys(patch).length === 0) continue;
+
+    const { error } = await db.from('plans').update(patch).eq('code', plan.code);
+    if (error) {
+      throw new Error(`admin_landing_plan_failed: ${error.message}`);
+    }
+  }
+
+  await logAdminAction({
+    actor: params.actor,
+    action: 'landing.updated',
+    targetType: 'settings',
+    targetId: 'landing',
+    details: {
+      contactEmail: email,
+      plans: params.plans.map((plan) => plan.code),
+    },
+  });
+
+  return { ok: true };
+}
