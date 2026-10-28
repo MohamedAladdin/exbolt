@@ -107,6 +107,83 @@
     })
   );
 
+  /* scroll progress + scroll spy */
+  const progressBar = $(".scroll-progress i");
+  const spyLinks = $$('.nav-links a[href^="#"]').filter((a) => a.hash.length > 1);
+  const spyTargets = spyLinks
+    .map((link) => ({ link, target: document.querySelector(link.hash) }))
+    .filter((item) => item.target);
+
+  const updateScrollUi = () => {
+    const root = document.documentElement;
+    const max = root.scrollHeight - root.clientHeight;
+    if (progressBar) {
+      progressBar.style.transform = `scaleX(${max > 0 ? Math.min(root.scrollTop / max, 1) : 0})`;
+    }
+    let active = null;
+    for (const item of spyTargets) {
+      if (item.target.getBoundingClientRect().top <= 140) active = item.link;
+    }
+    spyLinks.forEach((link) => link.classList.toggle("active", link === active));
+  };
+
+  let scrollTick = false;
+  window.addEventListener(
+    "scroll",
+    () => {
+      if (scrollTick) return;
+      scrollTick = true;
+      requestAnimationFrame(() => {
+        updateScrollUi();
+        scrollTick = false;
+      });
+    },
+    { passive: true }
+  );
+  updateScrollUi();
+
+  /* animated numbers in the studio section */
+  const facts = $(".about-facts");
+  if (facts) {
+    const numbers = $$("b[data-count]", facts);
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const animate = (el) => {
+      const target = Number(el.dataset.count);
+      const suffix = el.dataset.suffix || "";
+      const decimals = String(el.dataset.count).includes(".") ? 1 : 0;
+      if (!Number.isFinite(target)) return;
+      if (reduce) {
+        el.textContent = target.toFixed(decimals) + suffix;
+        return;
+      }
+      const started = performance.now();
+      const duration = 1250;
+      const tick = (now) => {
+        const progress = Math.min((now - started) / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        el.textContent = (target * eased).toFixed(decimals) + suffix;
+        if (progress < 1) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    };
+
+    if ("IntersectionObserver" in window) {
+      const counterObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            numbers.forEach(animate);
+            counterObserver.disconnect();
+          });
+        },
+        { threshold: 0.35 }
+      );
+      counterObserver.observe(facts);
+    } else {
+      numbers.forEach(animate);
+    }
+  }
+
   /* live contact + pricing from the admin panel */
   const applyContact = (contact) => {
     if (!contact) return;

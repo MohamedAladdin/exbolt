@@ -1086,6 +1086,63 @@ html[dir="rtl"] .channel-link svg.flip { transform: scaleX(-1); }
   html { scroll-behavior: auto; }
 }
 
+
+/* ---------- motion ---------- */
+
+.scroll-progress {
+  position: absolute;
+  inset-inline: 0;
+  bottom: -1px;
+  height: 2px;
+  pointer-events: none;
+}
+.scroll-progress i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--blue);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  transition: transform 0.08s linear;
+}
+html[dir="rtl"] .scroll-progress i { transform-origin: 100% 50%; }
+
+.hero-copy > * {
+  opacity: 0;
+  transform: translateY(16px);
+  animation: rise 0.75s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.hero-copy > *:nth-child(1) { animation-delay: 0.05s; }
+.hero-copy > *:nth-child(2) { animation-delay: 0.12s; }
+.hero-copy > *:nth-child(3) { animation-delay: 0.19s; }
+.hero-copy > *:nth-child(4) { animation-delay: 0.26s; }
+.hero-copy > *:nth-child(5) { animation-delay: 0.33s; }
+.hero-visual {
+  opacity: 0;
+  transform: translateY(22px) scale(0.985);
+  animation: rise 1s cubic-bezier(0.22, 1, 0.36, 1) 0.28s forwards;
+}
+@keyframes rise {
+  to { opacity: 1; transform: none; }
+}
+
+.btn svg { transition: transform 0.2s ease; }
+html[dir="ltr"] .btn:hover svg { transform: translateX(3px); }
+html[dir="rtl"] .btn:hover svg { transform: scaleX(-1) translateX(3px); }
+
+.screen-card .shot img { transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1); }
+.screen-card:hover .shot img { transform: scale(1.02); }
+
+.nav-links a.active { background: var(--sky); color: var(--blue); }
+
+.about-chip { transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease; }
+.about-chip:hover { background: rgba(10, 77, 255, 0.24); border-color: rgba(143, 176, 255, 0.4); transform: translateY(-1px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-copy > *, .hero-visual { opacity: 1; transform: none; animation: none; }
+  .btn svg, .screen-card .shot img, .about-chip { transition: none; }
+}
+
 /* ---------- responsive ---------- */
 
 @media (max-width: 1024px) {

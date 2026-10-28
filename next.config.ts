@@ -208,6 +208,36 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      // The marketing page and its assets are public. The catch-all above
+      // marks everything private/no-store for the authenticated app; these
+      // rules (declared after it) override that for the landing only, so
+      // repeat visits get a 304 and screenshots/fonts stay in the browser
+      // cache instead of being re-downloaded over the slow origin link.
+      {
+        source: "/",
+        headers: [{ key: "Cache-Control", value: "public, max-age=60, stale-while-revalidate=600" }],
+      },
+      {
+        source: "/ar",
+        headers: [{ key: "Cache-Control", value: "public, max-age=60, stale-while-revalidate=600" }],
+      },
+      {
+        source: "/en",
+        headers: [{ key: "Cache-Control", value: "public, max-age=60, stale-while-revalidate=600" }],
+      },
+      {
+        source: "/landing/:file(ar|en).html",
+        headers: [{ key: "Cache-Control", value: "public, max-age=60, stale-while-revalidate=600" }],
+      },
+      {
+        source: "/landing/assets/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=86400, stale-while-revalidate=604800",
+          },
+        ],
+      },
       {
         // Security headers on every response, including /_next/static
         // assets (nosniff matters there) and /api/* (HSTS + referrer-
