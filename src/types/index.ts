@@ -189,6 +189,9 @@ export interface Conversation {
   /** Transport this thread arrived on (migration 060). The send path
    *  dispatches on it. Defaults to 'whatsapp' for legacy rows. */
   channel?: 'whatsapp' | 'messenger' | 'instagram';
+  /** Which WhatsApp number this thread belongs to (migration 075).
+   *  Null for legacy rows until the backfill / next inbound stamps it. */
+  whatsapp_config_id?: string | null;
   created_at: string;
   updated_at: string;
   contact?: Contact;

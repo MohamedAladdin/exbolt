@@ -362,7 +362,10 @@
       "noMessagesYet": "No messages yet",
       "unknown": "Unknown",
       "allChannels": "All",
-      "channelFilterLabel": "Filter by channel"
+      "channelFilterLabel": "Filter by channel",
+      "numberFilterLabel": "Filter by WhatsApp number",
+      "allNumbers": "All numbers",
+      "numberLabel": "Number"
     },
     "messageThread": {
       "backToConversations": "Back to conversations",

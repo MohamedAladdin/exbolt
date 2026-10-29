@@ -10,7 +10,10 @@ import {
 } from "@/lib/inbox/conversations";
 import type { Conversation, Message, Contact, ConversationStatus } from "@/types";
 import { useRealtime } from "@/hooks/use-realtime";
-import { ConversationList } from "@/components/inbox/conversation-list";
+import {
+  ConversationList,
+  type InboxNumberOption,
+} from "@/components/inbox/conversation-list";
 import { parseInboxFilter } from "@/lib/inbox/inbox-filters";
 import { MessageThread } from "@/components/inbox/message-thread";
 import { ContactSidebar } from "@/components/inbox/contact-sidebar";
@@ -59,6 +62,8 @@ function InboxPageInner() {
   const [whatsappConnected, setWhatsappConnected] = useState<boolean | null>(
     null
   );
+  // Multi-number (migration 075): the inbox filters threads by number.
+  const [numbers, setNumbers] = useState<InboxNumberOption[]>([]);
   /**
    * Bumped whenever we want children (ConversationList, MessageThread)
    * to refetch from the DB — used as a safety net against missed
@@ -258,13 +263,29 @@ function InboxPageInner() {
         return;
       }
 
-      const { data } = await supabase
+      // Multi-number: read every row. `.maybeSingle()` errored (PGRST116)
+      // as soon as an account had two numbers, which showed a bogus
+      // "WhatsApp is not connected" banner.
+      const { data: rows } = await supabase
         .from("whatsapp_config")
-        .select("status")
-        .eq("account_id", accountId)
-        .maybeSingle();
+        .select(
+          "id, status, is_default, display_phone_number, verified_name, created_at",
+        )
+        .eq("account_id", accountId);
 
-      setWhatsappConnected(data?.status === "connected");
+      const list = (rows ?? []) as (InboxNumberOption & {
+        status?: string | null;
+        is_default?: boolean | null;
+        created_at?: string | null;
+      })[];
+
+      setNumbers(
+        [...list].sort((a, b) => {
+          if (!!a.is_default !== !!b.is_default) return a.is_default ? -1 : 1;
+          return (a.created_at ?? "") < (b.created_at ?? "") ? -1 : 1;
+        }),
+      );
+      setWhatsappConnected(list.some((row) => row.status === "connected"));
     };
 
     checkConnection();
@@ -617,7 +638,7 @@ function InboxPageInner() {
   const hasActiveConv = !!activeConversation;
 
   return (
-    <div className="-m-4 flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden sm:-m-6">
+    <div className="-m-4 flex h-[calc(100dvh-3.5rem)] flex-col overflow-hidden sm:-m-6">
       {/* WhatsApp connection banner — in the flex column, not absolute,
           so it pushes the panels down instead of overlapping them. */}
       {whatsappConnected === false && (
@@ -646,6 +667,7 @@ function InboxPageInner() {
             onConversationsLoaded={handleConversationsLoaded}
             resyncToken={resyncToken}
             initialFilter={parseInboxFilter(searchParams.get("filter"))}
+            numbers={numbers}
           />
         </div>
 

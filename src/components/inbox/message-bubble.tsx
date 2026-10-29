@@ -423,7 +423,10 @@ export function MessageBubble({
         />
         <div
           className={cn(
-            "mt-1 flex items-center gap-1",
+            // `flex-wrap` keeps the timestamp on screen when a narrow
+            // phone bubble also carries AI/forwarded/edited markers —
+            // without it the time was pushed past the bubble edge.
+            "mt-1 flex flex-wrap items-center gap-x-1 gap-y-0.5",
             isAgent ? "justify-end" : "justify-start",
           )}
         >
@@ -477,7 +480,10 @@ export function MessageBubble({
           )}
           <span
             className={cn(
-              "text-[10px]",
+              // 11px on phones (readable without zooming), 10px once the
+              // layout has room — the timestamps were technically there
+              // on mobile but too small to notice.
+              "shrink-0 whitespace-nowrap text-[11px] tabular-nums sm:text-[10px]",
               // Outbound bubbles sit on the primary fill, so the
               // timestamp must read against that (not the neutral
               // foreground) — otherwise it goes low-contrast in light

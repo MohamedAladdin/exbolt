@@ -10,7 +10,7 @@ import {
 import { applyInboxFilter, type InboxFilter } from "@/lib/inbox/inbox-filters";
 import { cn } from "@/lib/utils";
 import type { Conversation, ConversationStatus, Tag } from "@/types";
-import { Search, ChevronDown, X } from "lucide-react";
+import { Search, ChevronDown, X, Phone } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
@@ -38,6 +38,18 @@ interface ConversationListProps {
    */
   resyncToken?: number;
   initialFilter?: InboxFilter;
+  /**
+   * The account's WhatsApp numbers (multi-number). Empty/absent means
+   * "one number or none", and the number filter row stays hidden.
+   */
+  numbers?: InboxNumberOption[];
+}
+
+/** Minimal shape the inbox needs to filter by number. */
+export interface InboxNumberOption {
+  id: string;
+  display_phone_number: string | null;
+  verified_name: string | null;
 }
 
 const STATUS_COLORS: Record<ConversationStatus, string> = {
@@ -54,6 +66,7 @@ export function ConversationList({
   onConversationsLoaded,
   resyncToken = 0,
   initialFilter = "all",
+  numbers = [],
 }: ConversationListProps) {
   const t = useTranslations("Inbox.conversationList");
   
@@ -87,6 +100,10 @@ export function ConversationList({
   // picking a channel narrows the list to threads that arrived on it, so
   // a shared inbox with WhatsApp + Messenger + Instagram stays readable.
   const [channelFilter, setChannelFilter] = useState<"all" | Channel>("all");
+  // Number filter (migration 075): which WhatsApp number a thread belongs
+  // to. 'all' is the historical view; only rendered when the account has
+  // more than one number.
+  const [numberFilter, setNumberFilter] = useState<string>("all");
 
   // Keep the latest callback in a ref so the fetch effect below can
   // have a stable, empty-dep identity. Previously the fetch useCallback
@@ -181,6 +198,9 @@ export function ConversationList({
 
     // Channel filter — matched on the conversation row, falling back to
     // the contact's channel for rows that predate migration 060.
+    if (numberFilter !== "all") {
+      result = result.filter((c) => c.whatsapp_config_id === numberFilter);
+    }
     if (channelFilter !== "all") {
       result = result.filter(
         (c) => toChannel(c.channel ?? c.contact?.channel) === channelFilter,
@@ -208,7 +228,16 @@ export function ConversationList({
     }
 
     return result;
-  }, [conversations, filter, now, search, selectedTagIds, selectedCompany, channelFilter]);
+  }, [
+    conversations,
+    filter,
+    now,
+    search,
+    selectedTagIds,
+    selectedCompany,
+    channelFilter,
+    numberFilter,
+  ]);
 
   /**
    * Per-channel counts for the filter chips. Derived from the whole list
@@ -232,6 +261,31 @@ export function ConversationList({
   // transport — a WhatsApp-only workspace keeps the original single row.
   const activeChannels = CHANNELS.filter((ch) => channelCounts[ch] > 0);
   const showChannelFilter = activeChannels.length > 1;
+
+  // ---- numbers (multi-number accounts) --------------------------
+  // Last four digits are the only thing that distinguishes two numbers
+  // at a glance; the full number lives in the title/aria-label.
+  const numberByLast4 = useMemo(() => {
+    const map = new Map<string, InboxNumberOption>();
+    for (const n of numbers) map.set(n.id, n);
+    return map;
+  }, [numbers]);
+
+  const last4 = useCallback((n: InboxNumberOption) => {
+    const digits = (n.display_phone_number ?? "").replace(/\D/g, "");
+    return digits.slice(-4) || n.id.slice(-4);
+  }, []);
+
+  const numberCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const c of conversations) {
+      const id = c.whatsapp_config_id;
+      if (id) counts[id] = (counts[id] ?? 0) + 1;
+    }
+    return counts;
+  }, [conversations]);
+
+  const showNumberFilter = numbers.length > 1;
 
   const toggleTag = useCallback((id: string) => {
     setSelectedTagIds((prev) =>
@@ -268,7 +322,7 @@ export function ConversationList({
     // row with the thread + contact sidebar.
     <div className="flex h-full w-full flex-col border-e border-border bg-card lg:w-80">
       {/* Search + Filter */}
-      <div className="space-y-2 border-b border-border p-3">
+      <div className="shrink-0 space-y-2.5 border-b border-border bg-card p-3">
         <div className="relative">
           <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -278,6 +332,68 @@ export function ConversationList({
             className="border-border bg-muted ps-9 text-sm text-foreground placeholder-muted-foreground focus:border-primary/50"
           />
         </div>
+
+        {showNumberFilter && (
+          <div
+            role="tablist"
+            aria-label={t("numberFilterLabel")}
+            className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            <span className="inline-flex shrink-0 items-center gap-1 pe-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/80">
+              <Phone className="h-3 w-3" aria-hidden />
+              {t("numberLabel")}
+            </span>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={numberFilter === "all"}
+              onClick={() => setNumberFilter("all")}
+              className={cn(
+                "shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors",
+                numberFilter === "all"
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground",
+              )}
+            >
+              {t("allNumbers")}
+            </button>
+            {numbers.map((n) => {
+              const isActive = numberFilter === n.id;
+              const label = n.verified_name
+                ? `${n.verified_name} · …${last4(n)}`
+                : `…${last4(n)}`;
+              return (
+                <button
+                  key={n.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  aria-label={`${n.display_phone_number ?? n.id} (${numberCounts[n.id] ?? 0})`}
+                  title={`${n.display_phone_number ?? n.id} · ${n.verified_name ?? ""}`}
+                  onClick={() => setNumberFilter(n.id)}
+                  className={cn(
+                    "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors",
+                    isActive
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                >
+                  <span dir="ltr" className="tabular-nums">
+                    {last4(n)}
+                  </span>
+                  <span
+                    className={cn(
+                      "tabular-nums text-[10px]",
+                      isActive ? "opacity-80" : "opacity-60",
+                    )}
+                  >
+                    {numberCounts[n.id] ?? 0}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {showChannelFilter && (
           <div
@@ -504,6 +620,14 @@ export function ConversationList({
                 isActive={conv.id === activeConversationId}
                 onSelect={handleSelect}
                 t={t}
+                numberBadge={
+                  showNumberFilter && conv.whatsapp_config_id
+                    ? (() => {
+                        const n = numberByLast4.get(conv.whatsapp_config_id);
+                        return n ? `· ${last4(n)}` : null;
+                      })()
+                    : null
+                }
               />
             ))}
           </div>
@@ -518,6 +642,8 @@ interface ConversationItemProps {
   isActive: boolean;
   onSelect: (conversation: Conversation) => void;
   t: ReturnType<typeof useTranslations>;
+  /** e.g. "…9292" when the account has more than one number. */
+  numberBadge?: string | null;
 }
 
 function ConversationItem({
@@ -525,6 +651,7 @@ function ConversationItem({
   isActive,
   onSelect,
   t,
+  numberBadge = null,
 }: ConversationItemProps) {
   const contact = conversation.contact;
   const displayName = contact?.name || contact?.phone || t("unknown");
@@ -578,14 +705,23 @@ function ConversationItem({
                 className="shrink-0"
               />
             )}
+
           </span>
-          <span className="shrink-0 text-[10px] text-muted-foreground">{timeAgo}</span>
+          <span className="shrink-0 whitespace-nowrap text-[11px] tabular-nums text-muted-foreground sm:text-[10px]">{timeAgo}</span>
         </div>
         <div className="mt-0.5 flex items-center justify-between gap-2">
           <p className="truncate text-xs text-muted-foreground">
             {conversation.last_message_text || t("noMessagesYet")}
           </p>
           <div className="flex shrink-0 items-center gap-1.5">
+            {numberBadge && (
+              <span
+                dir="ltr"
+                className="text-[10px] leading-4 tabular-nums text-muted-foreground/60"
+              >
+                {numberBadge}
+              </span>
+            )}
             {conversation.unread_count > 0 && (
               <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
                 {conversation.unread_count}

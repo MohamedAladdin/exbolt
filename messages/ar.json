@@ -362,7 +362,10 @@
       "noMessagesYet": "لا رسائل بعد",
       "unknown": "غير معروف",
       "allChannels": "الكل",
-      "channelFilterLabel": "تصفية حسب القناة"
+      "channelFilterLabel": "تصفية حسب القناة",
+      "numberFilterLabel": "فلترة حسب رقم واتساب",
+      "allNumbers": "كل الأرقام",
+      "numberLabel": "الرقم"
     },
     "messageThread": {
       "backToConversations": "العودة إلى المحادثات",
