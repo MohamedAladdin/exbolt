@@ -21,7 +21,6 @@ import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import {
   Card,
   CardContent,
@@ -165,24 +164,11 @@ export function WhatsAppNumbersCard({
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-start justify-between gap-4">
-        <div className="space-y-1">
-          <CardTitle className="text-foreground">{t('title')}</CardTitle>
-          <CardDescription className="text-muted-foreground">
-            {t('description')}
-          </CardDescription>
-        </div>
-        {canEdit && !adding && (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => setAdding(true)}
-          >
-            <Plus className="size-4 me-1.5" />
-            {t('add')}
-          </Button>
-        )}
+      <CardHeader>
+        <CardTitle className="text-foreground">{t('title')}</CardTitle>
+        <CardDescription className="text-muted-foreground">
+          {t('description')}
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {numbers.length === 0 ? (
@@ -196,50 +182,79 @@ export function WhatsAppNumbersCard({
               return (
                 <li
                   key={number.id}
-                  className="flex flex-wrap items-center gap-2 rounded-lg border border-border/60 px-3 py-2"
+                  className="flex items-center gap-3 rounded-lg border border-border/60 px-3 py-2.5"
                 >
-                  <span dir="ltr" className="font-mono text-sm">
-                    {number.phone_number_id}
-                  </span>
-                  <Badge variant={number.is_default ? 'default' : 'secondary'}>
-                    {number.is_default ? t('defaultBadge') : t('activeBadge')}
-                  </Badge>
-                  {hasError && (
-                    <Badge variant="destructive">{t('errorBadge')}</Badge>
-                  )}
-                  <span className="flex-1" />
-                  {canEdit && !number.is_default && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      disabled={busyId === number.id}
-                      onClick={() => handlePromote(number.id)}
+                  <span
+                    aria-hidden
+                    className={
+                      hasError
+                        ? 'size-2 shrink-0 rounded-full bg-destructive'
+                        : 'size-2 shrink-0 rounded-full bg-emerald-500'
+                    }
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p
+                      dir="ltr"
+                      className="truncate text-start font-mono text-sm leading-5 text-foreground"
                     >
-                      <Star className="size-4 me-1.5" />
-                      {t('setDefault')}
-                    </Button>
-                  )}
-                  {canEdit && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      className="text-destructive"
-                      disabled={busyId === number.id}
-                      onClick={() => handleDelete(number.id)}
-                    >
-                      {busyId === number.id ? (
-                        <Loader2 className="size-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="size-4" />
-                      )}
-                    </Button>
-                  )}
+                      {number.phone_number_id}
+                    </p>
+                    <p className="truncate text-xs leading-4 text-muted-foreground">
+                      {hasError
+                        ? t('errorBadge')
+                        : number.is_default
+                          ? t('defaultBadge')
+                          : t('activeBadge')}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    {canEdit && !number.is_default && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 gap-1.5"
+                        disabled={busyId === number.id}
+                        onClick={() => handlePromote(number.id)}
+                      >
+                        <Star className="size-3.5" />
+                        {t('setDefault')}
+                      </Button>
+                    )}
+                    {canEdit && (
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="size-8 text-muted-foreground hover:text-destructive"
+                        aria-label={t('delete')}
+                        disabled={busyId === number.id}
+                        onClick={() => handleDelete(number.id)}
+                      >
+                        {busyId === number.id ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="size-4" />
+                        )}
+                      </Button>
+                    )}
+                  </div>
                 </li>
               );
             })}
           </ul>
+        )}
+
+        {canEdit && !adding && (
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full justify-start gap-2 border-dashed text-muted-foreground hover:text-foreground"
+            onClick={() => setAdding(true)}
+          >
+            <Plus className="size-4" />
+            {t('add')}
+          </Button>
         )}
 
         {adding && (

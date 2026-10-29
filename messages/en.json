@@ -2089,7 +2089,8 @@
         "phoneIdInvalid": "Phone number ID must be digits only",
         "wabaIdInvalid": "WABA ID must be digits only",
         "tokenRequired": "Access token is required",
-        "pinInvalid": "PIN must be 6 digits"
+        "pinInvalid": "PIN must be 6 digits",
+        "delete": "Disconnect number"
       }
     },
     "sections": {

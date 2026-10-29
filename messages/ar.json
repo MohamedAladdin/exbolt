@@ -2089,7 +2089,8 @@
         "phoneIdInvalid": "معرّف رقم الهاتف لازم يكون أرقام فقط",
         "wabaIdInvalid": "معرّف WABA لازم يكون أرقام فقط",
         "tokenRequired": "رمز الوصول مطلوب",
-        "pinInvalid": "رمز PIN لازم يكون ٦ أرقام"
+        "pinInvalid": "رمز PIN لازم يكون ٦ أرقام",
+        "delete": "فصل الرقم"
       }
     },
     "sections": {
