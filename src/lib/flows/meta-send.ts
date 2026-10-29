@@ -9,6 +9,7 @@ import {
 } from '@/lib/whatsapp/meta-api'
 import type { InteractiveMessagePayload } from '@/lib/whatsapp/interactive'
 import { decrypt } from '@/lib/whatsapp/encryption'
+import { getDefaultWhatsAppConfig } from '@/lib/whatsapp/config-resolver'
 import {
   phoneVariants,
   isRecipientNotAllowedError,
@@ -45,12 +46,8 @@ export async function loadAccountMetaCredentials(
   db: ReturnType<typeof supabaseAdmin>,
   accountId: string,
 ): Promise<{ phoneNumberId: string; accessToken: string }> {
-  const { data: config, error: configErr } = await db
-    .from('whatsapp_config')
-    .select('phone_number_id, access_token')
-    .eq('account_id', accountId)
-    .single()
-  if (configErr || !config) {
+  const config = await getDefaultWhatsAppConfig(db, accountId)
+  if (!config) {
     throw new Error(t('send.notConfigured'))
   }
   return {

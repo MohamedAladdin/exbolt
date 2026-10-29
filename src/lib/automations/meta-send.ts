@@ -5,6 +5,7 @@ import {
   engineSendInteractiveList,
 } from '@/lib/flows/meta-send'
 import { decrypt } from '@/lib/whatsapp/encryption'
+import { getDefaultWhatsAppConfig } from '@/lib/whatsapp/config-resolver'
 import {
   phoneVariants,
   isRecipientNotAllowedError,
@@ -148,12 +149,8 @@ async function sendViaMeta(input: SendInput): Promise<{ whatsapp_message_id: str
   }
   const sanitized = sendTarget.target
 
-  const { data: config, error: configErr } = await db
-    .from('whatsapp_config')
-    .select('*')
-    .eq('account_id', input.accountId)
-    .single()
-  if (configErr || !config) {
+  const config = await getDefaultWhatsAppConfig(db, input.accountId)
+  if (!config) {
     throw new Error(t('send.notConfigured'))
   }
 

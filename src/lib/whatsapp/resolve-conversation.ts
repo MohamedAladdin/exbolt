@@ -23,6 +23,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { findExistingContact, isUniqueViolation } from '@/lib/contacts/dedupe';
 import { parseInternationalPhone } from '@/lib/whatsapp/phone-utils';
 import { SendMessageError } from '@/lib/whatsapp/send-message';
+import { getDefaultWhatsAppConfig } from '@/lib/whatsapp/config-resolver';
 import { resolveAuditUserId, ContactError } from '@/lib/api/v1/contacts';
 
 export interface ResolvedConversation {
@@ -57,12 +58,9 @@ export async function resolveConversationByPhone(
   }
 
   // Fail fast (and create nothing) when the account has no WhatsApp
-  // connected — the same error the send would raise anyway.
-  const { data: config } = await db
-    .from('whatsapp_config')
-    .select('id')
-    .eq('account_id', accountId)
-    .maybeSingle();
+  // connected — the same error the send would raise anyway. With more
+  // than one number the default one owns an API-created thread.
+  const config = await getDefaultWhatsAppConfig(db, accountId);
   if (!config) {
     throw new SendMessageError(
       'whatsapp_not_configured',
@@ -149,7 +147,8 @@ export async function resolveConversationByPhone(
     db,
     accountId,
     contactId,
-    ownerUserId
+    ownerUserId,
+    config.id
   );
 
   return { conversationId, contactId, contactCreated };
@@ -165,7 +164,8 @@ async function findOrCreateConversationRow(
   db: SupabaseClient,
   accountId: string,
   contactId: string,
-  ownerUserId: string
+  ownerUserId: string,
+  whatsappConfigId: string
 ): Promise<string> {
   const { data: existing, error: findErr } = await db
     .from('conversations')
@@ -190,6 +190,7 @@ async function findOrCreateConversationRow(
       account_id: accountId,
       user_id: ownerUserId,
       contact_id: contactId,
+      whatsapp_config_id: whatsappConfigId,
     })
     .select('id')
     .single();

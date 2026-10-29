@@ -6,6 +6,7 @@ import {
   toErrorResponse,
 } from '@/lib/auth/account'
 import { decrypt } from '@/lib/whatsapp/encryption'
+import { getDefaultWhatsAppConfig } from '@/lib/whatsapp/config-resolver'
 import {
   deleteMessageTemplate,
   editMessageTemplate,
@@ -136,12 +137,8 @@ export async function PATCH(
     }
 
     if (!isDryRun()) {
-      const { data: config, error: configError } = await supabase
-        .from('whatsapp_config')
-        .select('*')
-        .eq('account_id', accountId)
-        .single()
-      if (configError || !config) {
+      const config = await getDefaultWhatsAppConfig(supabase, accountId)
+      if (!config) {
         return NextResponse.json(
           { error: t('common.whatsappNotConfiguredDot') },
           { status: 400 },
@@ -264,12 +261,8 @@ export async function DELETE(
     }
 
     if (existing.meta_template_id && !isDryRun()) {
-      const { data: config, error: configError } = await supabase
-        .from('whatsapp_config')
-        .select('*')
-        .eq('account_id', accountId)
-        .single()
-      if (configError || !config || !config.waba_id) {
+      const config = await getDefaultWhatsAppConfig(supabase, accountId)
+      if (!config || !config.waba_id) {
         return NextResponse.json(
           { error: t('templates.notConfiguredDelete') },
           { status: 400 },

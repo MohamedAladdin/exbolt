@@ -190,7 +190,9 @@ describe('DELETE /api/whatsapp/config', () => {
     callerRole = role
     storedConfig = STORED_CONFIG
 
-    const res = await DELETE()
+    const res = await DELETE(
+      new Request('http://localhost/api/whatsapp/config')
+    )
 
     expect(res.status).toBe(403)
     expect(configDeletes).toBe(0)
@@ -199,10 +201,12 @@ describe('DELETE /api/whatsapp/config', () => {
   it('lets an admin reset the configuration', async () => {
     storedConfig = STORED_CONFIG
 
-    const res = await DELETE()
+    const res = await DELETE(
+      new Request('http://localhost/api/whatsapp/config')
+    )
 
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ success: true })
+    expect((await res.json()).success).toBe(true)
     expect(configDeletes).toBe(1)
   })
 })

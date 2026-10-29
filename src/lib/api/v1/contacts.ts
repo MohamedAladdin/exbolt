@@ -13,6 +13,7 @@ import { findExistingContact, isUniqueViolation } from '@/lib/contacts/dedupe';
 import { resolveImportTagIds } from '@/lib/contacts/resolve-import-tags';
 import { addContactTagAndDispatch } from '@/lib/contacts/tag-events';
 import { parseInternationalPhone } from '@/lib/whatsapp/phone-utils';
+import { getDefaultWhatsAppConfig } from '@/lib/whatsapp/config-resolver';
 
 /** Row select that embeds the contact's tags for serialization. */
 export const CONTACT_SELECT = '*, contact_tags(tags(*))';
@@ -74,11 +75,7 @@ export async function resolveAuditUserId(
   db: SupabaseClient,
   accountId: string
 ): Promise<string> {
-  const { data: config } = await db
-    .from('whatsapp_config')
-    .select('user_id')
-    .eq('account_id', accountId)
-    .maybeSingle();
+  const config = await getDefaultWhatsAppConfig(db, accountId);
   const configOwner = config?.user_id as string | undefined;
   if (configOwner) return configOwner;
 

@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { requireRole, toErrorResponse } from '@/lib/auth/account';
 import { sendReactionMessage } from '@/lib/whatsapp/meta-api';
-import { decrypt } from '@/lib/whatsapp/encryption';
+import { decrypt } from '@/lib/whatsapp/encryption'
+import { resolveWhatsAppConfigForConversation } from '@/lib/whatsapp/config-resolver';
 import { resolveContactSendTarget } from '@/lib/whatsapp/wa-identity';
 import {
   checkRateLimit,
@@ -98,14 +99,15 @@ export async function POST(request: Request) {
       );
     }
 
-    // WhatsApp config + access token. Account-scoped post-multi-user.
-    const { data: config, error: configError } = await supabase
-      .from('whatsapp_config')
-      .select('phone_number_id, access_token')
-      .eq('account_id', accountId)
-      .single();
+    // WhatsApp number for this thread — the conversation's own number
+    // wins, the account default is the fallback.
+    const config = await resolveWhatsAppConfigForConversation(
+      supabase,
+      accountId,
+      targetMessage.conversation_id,
+    );
 
-    if (configError || !config) {
+    if (!config) {
       return NextResponse.json(
         { error: t('common.whatsappNotConfiguredDot') },
         { status: 400 },

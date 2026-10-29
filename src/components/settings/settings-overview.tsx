@@ -120,18 +120,20 @@ export function SettingsOverview({
     // WhatsApp connection status — slower, independent.
     (async () => {
       setWhatsappLoading(true);
-      const [row, health] = await Promise.allSettled([
-        supabase
-          .from('whatsapp_config')
-          .select('phone_number_id')
-          .eq('account_id', acctId)
-          .maybeSingle(),
-        fetch('/api/whatsapp/config', { cache: 'no-store' }).then((r) => r.json()),
-      ]);
+      // Multi-number: the API is the one place that knows every number
+      // (migration 075). Reading the row here would break as soon as an
+      // account has two.
+      const health = await fetch('/api/whatsapp/config', {
+        cache: 'no-store',
+      })
+        .then((r) => r.json())
+        .catch(() => null);
       if (cancelled) return;
       setWhatsapp({
-        configured: row.status === 'fulfilled' && !!row.value.data?.phone_number_id,
-        connected: health.status === 'fulfilled' && !!health.value?.connected,
+        configured: Array.isArray(health?.numbers)
+          ? health.numbers.length > 0
+          : !!health?.connected,
+        connected: !!health?.connected,
       });
       setWhatsappLoading(false);
     })();

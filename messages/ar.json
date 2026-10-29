@@ -2061,7 +2061,36 @@
       "phoneNumberIdNotNumeric": "يجب أن يحتوي معرّف رقم الهاتف على أرقام فقط. انسخ المعرّف الرقمي من Meta ← WhatsApp ← API Setup، وليس رقم الهاتف نفسه.",
       "wabaIdNotNumeric": "يجب أن يحتوي معرّف حساب WhatsApp Business على أرقام فقط. انسخه من Meta ← WhatsApp ← API Setup.",
       "wabaSubscribed": "حساب WhatsApp Business مشترك في هذا التطبيق — يمكن تسليم الـ webhooks الواردة.",
-      "wabaNotSubscribed": "حساب WhatsApp Business غير مشترك في هذا التطبيق، لذا لن تسلّم Meta الـ webhooks الواردة. أعد إدخال رمز الوصول واحفظ مجددًا للاشتراك به."
+      "wabaNotSubscribed": "حساب WhatsApp Business غير مشترك في هذا التطبيق، لذا لن تسلّم Meta الـ webhooks الواردة. أعد إدخال رمز الوصول واحفظ مجددًا للاشتراك به.",
+      "numbers": {
+        "title": "أرقام واتساب",
+        "description": "كل رقم مربوط بحسابك، والردود بتطلع من الرقم اللي العميل كتب عليه. الرقم الافتراضي هو اللي بيتبعت منه أي رسالة جديدة.",
+        "add": "إضافة رقم",
+        "addTitle": "ربط رقم جديد",
+        "phoneNumberId": "معرّف رقم الهاتف",
+        "wabaId": "معرّف حساب واتساب للأعمال (WABA)",
+        "accessToken": "رمز الوصول الدائم",
+        "pin": "رمز PIN للتحقق بخطوتين (اختياري)",
+        "save": "ربط الرقم",
+        "cancel": "إلغاء",
+        "empty": "ما فيش أرقام مربوطة بعد.",
+        "defaultBadge": "افتراضي",
+        "activeBadge": "نشط",
+        "errorBadge": "خطأ",
+        "setDefault": "تعيين كافتراضي",
+        "deleteConfirm": "فصل الرقم؟ المحادثات القديمة هتفضل موجودة.",
+        "added": "تم ربط الرقم",
+        "addedNotRegistered": "تم الحفظ، لكن ميتا لم تسجّل الرقم — أضف رمز PIN وأعد الحفظ.",
+        "promoted": "تم تعيين الرقم كافتراضي",
+        "deleted": "تم فصل الرقم",
+        "addFailed": "تعذّر ربط الرقم",
+        "promoteFailed": "تعذّر تعيين الرقم كافتراضي",
+        "deleteFailed": "تعذّر فصل الرقم",
+        "phoneIdInvalid": "معرّف رقم الهاتف لازم يكون أرقام فقط",
+        "wabaIdInvalid": "معرّف WABA لازم يكون أرقام فقط",
+        "tokenRequired": "رمز الوصول مطلوب",
+        "pinInvalid": "رمز PIN لازم يكون ٦ أرقام"
+      }
     },
     "sections": {
       "overview": "نظرة عامة",
@@ -3352,7 +3381,9 @@
       "phoneCheckFailed": "فشل فحص بيانات الهاتف الوصفية: {message}",
       "wabaNoApps": "لا تطبيقات مشتركة في WABA. أعد حفظ الإعدادات للاشتراك.",
       "wabaCheckFailed": "فشل فحص اشتراك WABA: {message}",
-      "noWabaId": "لا معرّف WABA محفوظ — لا يمكن ربط الـ webhooks بدونه. أضفه في النموذج وأعد الحفظ."
+      "noWabaId": "لا معرّف WABA محفوظ — لا يمكن ربط الـ webhooks بدونه. أضفه في النموذج وأعد الحفظ.",
+      "numberNotFound": "الرقم غير موجود على هذا الحساب.",
+      "numberIdRequired": "معرّف الرقم مطلوب."
     },
     "media": {
       "idRequired": "معرّف الوسائط مطلوب",

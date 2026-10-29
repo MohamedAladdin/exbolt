@@ -2061,7 +2061,36 @@
       "phoneNumberIdNotNumeric": "Phone Number ID must contain only digits. Copy the numeric id from Meta → WhatsApp → API Setup, not the phone number itself.",
       "wabaIdNotNumeric": "WhatsApp Business Account ID must contain only digits. Copy it from Meta → WhatsApp → API Setup.",
       "wabaSubscribed": "The WhatsApp Business Account is subscribed to this app — inbound webhooks can be delivered.",
-      "wabaNotSubscribed": "The WhatsApp Business Account is not subscribed to this app, so Meta will not deliver inbound webhooks. Re-enter the access token and save again to subscribe it."
+      "wabaNotSubscribed": "The WhatsApp Business Account is not subscribed to this app, so Meta will not deliver inbound webhooks. Re-enter the access token and save again to subscribe it.",
+      "numbers": {
+        "title": "WhatsApp numbers",
+        "description": "Every number connected to this account. Replies leave from the number the customer wrote to; the default number sends new outbound messages.",
+        "add": "Add number",
+        "addTitle": "Connect a new number",
+        "phoneNumberId": "Phone number ID",
+        "wabaId": "WhatsApp Business Account (WABA) ID",
+        "accessToken": "Permanent access token",
+        "pin": "Two-step PIN (optional)",
+        "save": "Connect number",
+        "cancel": "Cancel",
+        "empty": "No numbers connected yet.",
+        "defaultBadge": "Default",
+        "activeBadge": "Active",
+        "errorBadge": "Error",
+        "setDefault": "Make default",
+        "deleteConfirm": "Disconnect this number? Existing conversations stay.",
+        "added": "Number connected",
+        "addedNotRegistered": "Saved, but Meta did not register the number — add the PIN and save again.",
+        "promoted": "Default number updated",
+        "deleted": "Number disconnected",
+        "addFailed": "Could not connect the number",
+        "promoteFailed": "Could not set the default number",
+        "deleteFailed": "Could not disconnect the number",
+        "phoneIdInvalid": "Phone number ID must be digits only",
+        "wabaIdInvalid": "WABA ID must be digits only",
+        "tokenRequired": "Access token is required",
+        "pinInvalid": "PIN must be 6 digits"
+      }
     },
     "sections": {
       "overview": "Overview",
@@ -3352,7 +3381,9 @@
       "phoneCheckFailed": "Phone metadata check failed: {message}",
       "wabaNoApps": "WABA has no subscribed apps. Re-save the configuration to subscribe.",
       "wabaCheckFailed": "WABA subscription check failed: {message}",
-      "noWabaId": "No WABA ID on file — webhooks can't be wired without it. Add it in the form and re-save."
+      "noWabaId": "No WABA ID on file — webhooks can't be wired without it. Add it in the form and re-save.",
+      "numberNotFound": "That number is not on this account.",
+      "numberIdRequired": "Number id is required."
     },
     "media": {
       "idRequired": "Media ID is required",

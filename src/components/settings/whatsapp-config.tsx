@@ -31,6 +31,10 @@ import {
   AccordionContent,
 } from '@/components/ui/accordion';
 import type { WhatsAppConfig as WhatsAppConfigType } from '@/types';
+import {
+  WhatsAppNumbersCard,
+  type WhatsAppNumber,
+} from './whatsapp-numbers-card';
 
 const MASKED_TOKEN = '••••••••••••••••';
 
@@ -82,6 +86,9 @@ export function WhatsAppConfig() {
   const [resetting, setResetting] = useState(false);
   const [showToken, setShowToken] = useState(false);
   const [config, setConfig] = useState<WhatsAppConfigType | null>(null);
+  // Multi-number (migration 075): every number on the account. The form
+  // below edits the DEFAULT one; the card above lists all of them.
+  const [numbers, setNumbers] = useState<WhatsAppNumber[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('unknown');
   const [resetReason, setResetReason] = useState<ResetReason>(null);
   const [statusMessage, setStatusMessage] = useState<string>('');
@@ -149,15 +156,23 @@ export function WhatsAppConfig() {
       // account sees the same saved configuration. UNIQUE(account_id)
       // on the table guarantees the .maybeSingle() return type
       // remains accurate.
-      const { data, error } = await supabase
+      // Multi-number: read every row, then edit the default one below.
+      const { data: rows, error } = await supabase
         .from('whatsapp_config')
         .select('*')
-        .eq('account_id', acctId)
-        .maybeSingle();
+        .eq('account_id', acctId);
 
       if (error) {
         console.error('Failed to load config row:', error);
       }
+
+      const allRows = (rows ?? []) as unknown as WhatsAppNumber[];
+      setNumbers(allRows);
+
+      const data =
+        (allRows.find((row) => row.is_default) ??
+          allRows[0] ??
+          null) as unknown as WhatsAppConfigType | null;
 
       if (data) {
         setConfig(data);
@@ -254,7 +269,7 @@ export function WhatsAppConfig() {
       const { error } = await supabase
         .from('whatsapp_config')
         .update({ mirror_inbound_media: next })
-        .eq('account_id', accountId);
+        .eq('id', config.id);
       if (error) throw new Error(error.message);
       setConfig({ ...config, mirror_inbound_media: next });
     } catch (error) {
@@ -548,6 +563,13 @@ export function WhatsAppConfig() {
       <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
       {/* Main config form */}
       <div className="space-y-6">
+        <WhatsAppNumbersCard
+          numbers={numbers}
+          canEdit={canEditSettings}
+          onChanged={async () => {
+            if (accountId) await fetchConfig(accountId);
+          }}
+        />
         {/* Corrupted-token reset banner */}
         {showResetBanner && (
           <Alert className="bg-amber-950/40 border-amber-600/40">

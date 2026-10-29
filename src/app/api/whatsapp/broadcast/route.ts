@@ -3,6 +3,7 @@ import { requireRole, toErrorResponse } from '@/lib/auth/account'
 import { requireFeature } from '@/lib/plans/guard'
 import { sendTemplateMessage } from '@/lib/whatsapp/meta-api'
 import { decrypt } from '@/lib/whatsapp/encryption'
+import { getDefaultWhatsAppConfig } from '@/lib/whatsapp/config-resolver'
 import type { SendTimeParams } from '@/lib/whatsapp/template-send-builder'
 import { resolveTemplateRow } from '@/lib/whatsapp/template-body'
 import {
@@ -125,13 +126,9 @@ export async function POST(request: Request) {
       )
     }
 
-    const { data: config, error: configError } = await supabase
-      .from('whatsapp_config')
-      .select('*')
-      .eq('account_id', accountId)
-      .single()
+    const config = await getDefaultWhatsAppConfig(supabase, accountId)
 
-    if (configError || !config) {
+    if (!config) {
       return NextResponse.json(
         {
           error:

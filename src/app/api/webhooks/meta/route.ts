@@ -437,7 +437,8 @@ async function processWebhook(body: { entry?: WhatsAppWebhookEntry[] }) {
           // Default ON: the column is NOT NULL DEFAULT TRUE, but a row
           // read before migration 039 lands would have it undefined,
           // and losing attachments is the failure mode worth avoiding.
-          config.mirror_inbound_media !== false
+          config.mirror_inbound_media !== false,
+          config.id
         )
       }
     }
@@ -624,7 +625,10 @@ async function processMessage(
   accessToken: string,
   // Per-account opt-out for the inbound-media mirror (migration 039).
   // See parseMessageContent for what it turns off.
-  mirrorMedia: boolean
+  mirrorMedia: boolean,
+  // The number that received this message (multi-number, migration 075).
+  // Stamped on the conversation so replies leave from the same number.
+  whatsappConfigId: string | null = null
 ) {
   // Phone number OR business-scoped user ID — Meta sends only the
   // latter for a sender who has adopted a WhatsApp username (#519).
@@ -653,7 +657,8 @@ async function processMessage(
   const convResult = await findOrCreateConversation(
     accountId,
     configOwnerUserId,
-    contactRecord.id
+    contactRecord.id,
+    whatsappConfigId
   )
   if (!convResult) return
   const conversation = convResult.conversation
@@ -1355,6 +1360,7 @@ async function findOrCreateConversation(
   accountId: string,
   configOwnerUserId: string,
   contactId: string,
+  whatsappConfigId: string | null = null,
 ) {
   // Look for an existing conversation in this account, oldest-first.
   //
@@ -1383,7 +1389,20 @@ async function findOrCreateConversation(
   }
 
   if (existingRows && existingRows.length > 0) {
-    return { conversation: existingRows[0], created: false }
+    const existing = existingRows[0]
+    // Attach a thread created before the multi-number backfill to the
+    // number the customer wrote to — a reply then leaves from the right
+    // number instead of the account default.
+    if (whatsappConfigId && !existing.whatsapp_config_id) {
+      await supabaseAdmin()
+        .from('conversations')
+        .update({ whatsapp_config_id: whatsappConfigId })
+        .eq('id', existing.id)
+        .eq('account_id', accountId)
+        .is('whatsapp_config_id', null)
+      existing.whatsapp_config_id = whatsappConfigId
+    }
+    return { conversation: existing, created: false }
   }
 
   // Create new conversation. Same tenancy + audit split as
@@ -1394,6 +1413,7 @@ async function findOrCreateConversation(
       account_id: accountId,
       user_id: configOwnerUserId,
       contact_id: contactId,
+      whatsapp_config_id: whatsappConfigId,
     })
     .select()
     .single()
