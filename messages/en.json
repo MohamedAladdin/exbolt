@@ -2090,7 +2090,8 @@
         "wabaIdInvalid": "WABA ID must be digits only",
         "tokenRequired": "Access token is required",
         "pinInvalid": "PIN must be 6 digits",
-        "delete": "Disconnect number"
+        "delete": "Disconnect number",
+        "metaId": "Meta ID"
       }
     },
     "sections": {

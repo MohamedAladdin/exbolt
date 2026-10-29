@@ -102,6 +102,10 @@ function serializeNumber(row: WhatsAppConfigRow) {
   return {
     id: row.id as string,
     phone_number_id: row.phone_number_id as string,
+    // What the operator recognises: +201068910995 · Hemocure.
+    display_phone_number:
+      (row.display_phone_number as string | null) ?? null,
+    verified_name: (row.verified_name as string | null) ?? null,
     waba_id: (row.waba_id as string | null) ?? null,
     status: (row.status as string | null) ?? null,
     is_default: row.is_default === true,
@@ -127,6 +131,46 @@ async function channelsInUse(
     .eq('account_id', accountId)
     .eq('is_active', true)
   return numbers.length + (count ?? 0)
+}
+
+/**
+ * Fill `display_phone_number` / `verified_name` for rows that never got
+ * them (every row saved before migration 077). Runs at most three Graph
+ * lookups per request and only when a row is missing data, so the cost
+ * is one-off per number. Failures are silent — the list still renders
+ * with the Meta id, and the next load retries.
+ */
+async function backfillDisplayIdentity(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  rows: WhatsAppConfigRow[],
+): Promise<void> {
+  const missing = rows
+    .filter((row) => !row.display_phone_number && row.access_token)
+    .slice(0, 3);
+
+  for (const row of missing) {
+    try {
+      const info = await verifyPhoneNumber({
+        phoneNumberId: row.phone_number_id,
+        accessToken: decrypt(row.access_token),
+      });
+      const display = info.display_phone_number ?? null;
+      const name = info.verified_name ?? null;
+      row.display_phone_number = display;
+      row.verified_name = name;
+      await supabase
+        .from('whatsapp_config')
+        .update({ display_phone_number: display, verified_name: name })
+        .eq('id', row.id);
+    } catch (err) {
+      console.error(
+        '[whatsapp/config GET] display identity lookup failed:',
+        row.phone_number_id,
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
 }
 
 /**
@@ -173,6 +217,7 @@ export async function GET() {
     // numbers. The list is always returned; the health probe below runs
     // against the default number only.
     const rows = await getWhatsAppConfigs(supabase, accountId)
+    await backfillDisplayIdentity(supabase, rows)
     const numbers = rows.map(serializeNumber)
     const config = pickDefaultConfig(rows)
 
@@ -554,6 +599,10 @@ export async function POST(request: Request) {
     // user through a retry.
     const baseRow = {
       phone_number_id,
+      // Read straight from the Graph probe above — free, and it is the
+      // only place the human number is known until the next refresh.
+      display_phone_number: phoneInfo.display_phone_number ?? null,
+      verified_name: phoneInfo.verified_name ?? null,
       waba_id: waba_id || null,
       access_token: encryptedAccessToken,
       verify_token: encryptedVerifyToken,

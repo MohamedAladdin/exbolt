@@ -41,6 +41,10 @@ export interface WhatsAppConfigRow {
   registered_at?: string | null;
   connected_at?: string | null;
   mirror_inbound_media?: boolean | null;
+  /** Human number, e.g. 201068910995 (migration 077). */
+  display_phone_number?: string | null;
+  /** Meta-verified business name for this number. */
+  verified_name?: string | null;
   last_error?: string | null;
   last_registration_error?: string | null;
   created_at?: string | null;

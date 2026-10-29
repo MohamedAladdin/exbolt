@@ -32,6 +32,9 @@ import {
 export interface WhatsAppNumber {
   id: string;
   phone_number_id: string;
+  /** Human number from Meta, e.g. 201068910995. */
+  display_phone_number: string | null;
+  verified_name: string | null;
   waba_id: string | null;
   status: string | null;
   is_default: boolean;
@@ -195,30 +198,44 @@ export function WhatsAppNumbersCard({
                   <div className="min-w-0 flex-1">
                     <p
                       dir="ltr"
-                      className="truncate text-start font-mono text-sm leading-5 text-foreground"
+                      className="truncate text-start text-sm font-medium leading-5 text-foreground"
                     >
-                      {number.phone_number_id}
+                      {number.display_phone_number
+                        ? `+${number.display_phone_number}`
+                        : `#${number.phone_number_id}`}
                     </p>
                     <p className="truncate text-xs leading-4 text-muted-foreground">
-                      {hasError
-                        ? t('errorBadge')
-                        : number.is_default
-                          ? t('defaultBadge')
-                          : t('activeBadge')}
+                      {[
+                        number.verified_name,
+                        hasError
+                          ? t('errorBadge')
+                          : number.is_default
+                            ? t('defaultBadge')
+                            : t('activeBadge'),
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </p>
+                    <p
+                      dir="ltr"
+                      className="truncate text-start text-[11px] leading-4 text-muted-foreground/70"
+                    >
+                      {t('metaId')}: {number.phone_number_id}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
                     {canEdit && !number.is_default && (
                       <Button
                         type="button"
-                        size="sm"
+                        size="icon"
                         variant="ghost"
-                        className="h-8 gap-1.5"
+                        className="size-8 text-muted-foreground hover:text-foreground"
+                        aria-label={t('setDefault')}
+                        title={t('setDefault')}
                         disabled={busyId === number.id}
                         onClick={() => handlePromote(number.id)}
                       >
-                        <Star className="size-3.5" />
-                        {t('setDefault')}
+                        <Star className="size-4" />
                       </Button>
                     )}
                     {canEdit && (
