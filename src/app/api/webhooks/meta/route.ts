@@ -1355,33 +1355,38 @@ async function findOrCreateContact(
 
   return { contact: newContact, wasCreated: true }
 }
-
 async function findOrCreateConversation(
   accountId: string,
   configOwnerUserId: string,
   contactId: string,
   whatsappConfigId: string | null = null,
 ) {
-  // Look for an existing conversation in this account, oldest-first.
+  // Look for the thread this contact has WITH THIS NUMBER, oldest-first.
   //
-  // We deliberately do NOT use `.single()` here. `.single()` errors on
-  // *both* 0 rows and ≥2 rows, and the old code treated any error as
-  // "none found" and inserted a new row. So once two conversations
-  // existed for a contact (from a race — Meta retries a delivery, or a
-  // batch fans out to concurrent runs), every subsequent inbound
-  // message errored on the lookup and created yet another conversation,
-  // snowballing into a wall of duplicate chats (issue #363).
+  // Conversations are per (account, contact, number) since migration
+  // 078: Meta's 24-hour window is tracked per business number, so
+  // answering on a thread created by another number fails with
+  // "more than 24 hours have passed since the customer last replied to
+  // this number" even when the reply is seconds old.
   //
-  // Ordering oldest-first and taking one row makes the lookup resolve to
-  // the same canonical survivor the dedup migration (036) keeps, so any
-  // pre-existing duplicates converge instead of compounding.
-  const { data: existingRows, error: findError } = await supabaseAdmin()
-    .from('conversations')
-    .select('*')
-    .eq('account_id', accountId)
-    .eq('contact_id', contactId)
-    .order('created_at', { ascending: true })
-    .limit(1)
+  // We deliberately do NOT use `.single()`: it errors on *both* 0 rows
+  // and >=2 rows, and treating any error as "none found" is what created
+  // duplicate-chat snowballs (issue #363). Ordering oldest-first means
+  // any pre-existing duplicate converges on the canonical survivor.
+  const scoped = () => {
+    const query = supabaseAdmin()
+      .from('conversations')
+      .select('*')
+      .eq('account_id', accountId)
+      .eq('contact_id', contactId)
+      .order('created_at', { ascending: true })
+      .limit(1)
+    return whatsappConfigId
+      ? query.eq('whatsapp_config_id', whatsappConfigId)
+      : query.is('whatsapp_config_id', null)
+  }
+
+  const { data: existingRows, error: findError } = await scoped()
 
   if (findError) {
     console.error('Error finding conversation:', findError)
@@ -1389,20 +1394,31 @@ async function findOrCreateConversation(
   }
 
   if (existingRows && existingRows.length > 0) {
-    const existing = existingRows[0]
-    // Attach a thread created before the multi-number backfill to the
-    // number the customer wrote to — a reply then leaves from the right
-    // number instead of the account default.
-    if (whatsappConfigId && !existing.whatsapp_config_id) {
+    return { conversation: existingRows[0], created: false }
+  }
+
+  // A legacy thread for this contact with no number attached: adopt it
+  // rather than opening a second thread the operator cannot explain.
+  if (whatsappConfigId) {
+    const { data: legacy } = await supabaseAdmin()
+      .from('conversations')
+      .select('*')
+      .eq('account_id', accountId)
+      .eq('contact_id', contactId)
+      .is('whatsapp_config_id', null)
+      .order('created_at', { ascending: true })
+      .limit(1)
+
+    if (legacy && legacy.length > 0) {
       await supabaseAdmin()
         .from('conversations')
         .update({ whatsapp_config_id: whatsappConfigId })
-        .eq('id', existing.id)
+        .eq('id', legacy[0].id)
         .eq('account_id', accountId)
         .is('whatsapp_config_id', null)
-      existing.whatsapp_config_id = whatsappConfigId
+      legacy[0].whatsapp_config_id = whatsappConfigId
+      return { conversation: legacy[0], created: false }
     }
-    return { conversation: existing, created: false }
   }
 
   // Create new conversation. Same tenancy + audit split as
@@ -1420,17 +1436,10 @@ async function findOrCreateConversation(
 
   if (createError) {
     // Lost a race: a concurrent inbound delivery created the
-    // conversation between our lookup and insert, and the unique index
-    // (migration 036) rejected the duplicate. Re-resolve the winning
-    // row instead of dropping the message — mirrors findOrCreateContact.
+    // conversation between our lookup and insert. Re-resolve the
+    // winning row instead of dropping the message.
     if (isUniqueViolation(createError)) {
-      const { data: raced } = await supabaseAdmin()
-        .from('conversations')
-        .select('*')
-        .eq('account_id', accountId)
-        .eq('contact_id', contactId)
-        .order('created_at', { ascending: true })
-        .limit(1)
+      const { data: raced } = await scoped()
       if (raced && raced.length > 0) {
         return { conversation: raced[0], created: false }
       }

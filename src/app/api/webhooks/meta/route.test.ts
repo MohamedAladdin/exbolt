@@ -78,22 +78,19 @@ vi.mock('@supabase/supabase-js', () => ({
               },
             }),
           }
-        case 'conversations':
-          // findOrCreateConversation: select().eq().eq().order().limit()
+        case 'conversations': {
+          // findOrCreateConversation is number-scoped (migration 078), so
+          // the select chain carries a variable number of .eq()/.is()
+          // filters before .order().limit().
+          const row = h.state.conversation
+          const selectChain: Record<string, unknown> = {}
+          for (const m of ['select', 'eq', 'is', 'order', 'limit']) {
+            selectChain[m] = () => selectChain
+          }
+          selectChain.then = (resolve: (v: unknown) => unknown) =>
+            resolve({ data: row ? [row] : [], error: null })
           return {
-            select: () => ({
-              eq: () => ({
-                eq: () => ({
-                  order: () => ({
-                    limit: () =>
-                      Promise.resolve({
-                        data: [h.state.conversation],
-                        error: null,
-                      }),
-                  }),
-                }),
-              }),
-            }),
+            ...selectChain,
             update: () => ({
               eq: () => ({
                 is: () => ({
@@ -110,6 +107,7 @@ vi.mock('@supabase/supabase-js', () => ({
               }),
             }),
           }
+        }
         case 'broadcast_recipients':
           return {
             select: () => ({

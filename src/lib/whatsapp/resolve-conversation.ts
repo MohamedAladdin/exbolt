@@ -167,11 +167,14 @@ async function findOrCreateConversationRow(
   ownerUserId: string,
   whatsappConfigId: string
 ): Promise<string> {
+  // One thread per (account, contact, number) since migration 078 —
+  // Meta's 24-hour window belongs to the number, not the contact.
   const { data: existing, error: findErr } = await db
     .from('conversations')
     .select('id')
     .eq('account_id', accountId)
     .eq('contact_id', contactId)
+    .eq('whatsapp_config_id', whatsappConfigId)
     .order('created_at', { ascending: true })
     .limit(1);
 
@@ -202,6 +205,7 @@ async function findOrCreateConversationRow(
         .select('id')
         .eq('account_id', accountId)
         .eq('contact_id', contactId)
+        .eq('whatsapp_config_id', whatsappConfigId)
         .order('created_at', { ascending: true })
         .limit(1);
       if (raced && raced.length > 0) {
