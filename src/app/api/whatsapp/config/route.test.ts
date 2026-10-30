@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+// Plan/channel-slot gating is exercised in the plans tests; this file is
+// about registration state on save, so the guard is a pass-through here.
+vi.mock('@/lib/plans/guard', () => ({
+  requireWithinLimit: vi.fn(async () => undefined),
+}))
+
 let callerRole = 'admin'
 let signedIn = true
 
@@ -191,7 +197,11 @@ describe('POST /api/whatsapp/config', () => {
 describe('POST /api/whatsapp/config registration state', () => {
   const REGISTERED_AT = '2026-01-01T00:00:00.000Z'
 
-  it('clears registered_at when the phone number changes and no PIN is given', async () => {
+  it('adds a SECOND number without inheriting registered_at from the first', async () => {
+    // Multi-number fork: a different phone_number_id is a new channel row
+    // (docs/multi-whatsapp-numbers.md), not a replacement of the existing
+    // one. The registration state must therefore start empty on the new row
+    // — nothing is inherited from the number that is already registered.
     storedConfig = { ...STORED_CONFIG, registered_at: REGISTERED_AT }
     meta.verifyPhoneNumber.mockResolvedValueOnce({
       id: '999888777',
@@ -210,10 +220,13 @@ describe('POST /api/whatsapp/config registration state', () => {
       registration_skipped: true,
     })
     expect(meta.registerPhoneNumber).not.toHaveBeenCalled()
-    expect(configUpdates).toHaveLength(1)
-    expect(configUpdates[0]).toMatchObject({
+    // The existing number is left alone; the new one is inserted.
+    expect(configUpdates).toHaveLength(0)
+    expect(configInserts).toHaveLength(1)
+    expect(configInserts[0]).toMatchObject({
       phone_number_id: '999888777',
       registered_at: null,
+      is_default: false,
     })
   })
 
