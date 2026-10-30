@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import type { FailedMessage } from '@/lib/dashboard/overview'
+import { errorSlug } from '@/lib/whatsapp/error-labels'
 
 export function FailedMessagesDialog({
   open,
@@ -24,6 +25,9 @@ export function FailedMessagesDialog({
   total: number
 }) {
   const t = useTranslations('Dashboard.overview.failedDialog')
+  // Meta's own titles are wire vocabulary ("Re-engagement message"); the
+  // catalogued slug is what the clinic's staff can act on.
+  const te = useTranslations('WhatsAppErrors')
   const format = useFormatter()
 
   return (
@@ -52,13 +56,35 @@ export function FailedMessagesDialog({
                       {format.dateTime(new Date(m.at), { hour: '2-digit', minute: '2-digit' })}
                     </time>
                   </div>
-                  <p className="mt-0.5 text-xs text-status-critical">
-                    {m.errorTitle
-                      ? m.errorCode
-                        ? t('reasonWithCode', { reason: m.errorTitle, code: m.errorCode })
-                        : m.errorTitle
-                      : t('unknownReason')}
-                  </p>
+                  {(() => {
+                    const slug = errorSlug(m.errorCode, m.errorTitle)
+                    if (slug) {
+                      return (
+                        <>
+                          <p className="mt-0.5 text-xs font-medium text-status-critical">
+                            {te(`${slug}.title`)}
+                            {m.errorCode ? (
+                              <span className="ms-1.5 font-mono text-[10px] opacity-70">
+                                {m.errorCode}
+                              </span>
+                            ) : null}
+                          </p>
+                          <p className="mt-0.5 text-[11px] leading-5 text-muted-foreground">
+                            {te(`${slug}.hint`)}
+                          </p>
+                        </>
+                      )
+                    }
+                    return (
+                      <p className="mt-0.5 text-xs text-status-critical">
+                        {m.errorTitle
+                          ? m.errorCode
+                            ? t('reasonWithCode', { reason: m.errorTitle, code: m.errorCode })
+                            : m.errorTitle
+                          : t('unknownReason')}
+                      </p>
+                    )
+                  })()}
                   {m.preview ? (
                     <p className="mt-0.5 truncate text-xs text-muted-foreground">{m.preview}</p>
                   ) : null}

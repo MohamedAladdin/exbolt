@@ -40,7 +40,9 @@ import {
   templateMessageView,
   type TemplateMessageHeader,
 } from "@/lib/whatsapp/template-message-view";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { errorSlug } from "@/lib/whatsapp/error-labels";
 
 interface MessageBubbleProps {
   message: Message;
@@ -136,8 +138,28 @@ function TemplateHeader({
   );
 }
 
-function failureReason(message: Message): string | null {
-  if (message.status !== "failed" || !message.error_title) return null;
+/**
+ * A failed send, in the operator's language.
+ *
+ * Meta's stored title ("Re-engagement message") is wire vocabulary; when the
+ * code is catalogued we render `WhatsAppErrors.<slug>.title` and keep the raw
+ * reason only as the fallback for codes we have not met yet.
+ */
+function failureReason(
+  message: Message,
+  te: ReturnType<typeof useTranslations>,
+): string | null {
+  if (message.status !== "failed") return null;
+  const slug = errorSlug(
+    message.error_code,
+    message.error_title,
+    message.error_details,
+  );
+  if (slug) {
+    const title = te(`${slug}.title`);
+    return message.error_code ? `${title} (${message.error_code})` : title;
+  }
+  if (!message.error_title) return null;
   return message.error_details
     ? `${message.error_title} — ${message.error_details}`
     : message.error_title;
@@ -385,10 +407,11 @@ export function MessageBubble({
   onOpenMedia,
 }: MessageBubbleProps) {
   const t = useTranslations("Inbox.bubble");
+  const tErrors = useTranslations("WhatsAppErrors");
 
   const isAgent = message.sender_type === "agent" || message.sender_type === "bot";
   const time = format(new Date(message.created_at), "HH:mm");
-  const failure = isAgent ? failureReason(message) : null;
+  const failure = isAgent ? failureReason(message, tErrors) : null;
 
   // Row alignment + width cap are owned by <MessageActions> so its hover
   // group matches the bubble's content area, not the full row.
@@ -508,7 +531,19 @@ export function MessageBubble({
           className="mt-0.5 max-w-[85%] truncate px-1 text-[10px] font-light leading-tight text-muted-foreground"
           title={senderName}
         >
-          {senderName}
+          {message.sender_type === "agent" && message.sender_id ? (
+            // Attribution doubles as the way into that member's KPIs —
+            // a supervisor reading a thread can answer "who is this and
+            // how are they doing" in one click.
+            <Link
+              href={`/team/${message.sender_id}`}
+              className="hover:text-foreground underline-offset-2 hover:underline"
+            >
+              {senderName}
+            </Link>
+          ) : (
+            senderName
+          )}
         </span>
       )}
       {failure && (
