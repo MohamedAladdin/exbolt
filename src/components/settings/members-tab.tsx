@@ -62,6 +62,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import Link from "next/link";
 import { useTranslations } from 'next-intl';
 import { RequireRole } from '@/components/auth/require-role';
 import { useAuth } from '@/hooks/use-auth';
@@ -384,9 +385,12 @@ export function MembersTab() {
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="truncate text-sm font-medium text-foreground">
+                        <Link
+                          href={`/team/${member.user_id}`}
+                          className="truncate text-sm font-medium text-foreground hover:underline underline-offset-2"
+                        >
                           {member.full_name || t('unnamed')}
-                        </span>
+                        </Link>
                         {isSelf && (
                           <Badge className="bg-muted text-muted-foreground border-border text-[10px] uppercase tracking-wide">
                             {t('you')}

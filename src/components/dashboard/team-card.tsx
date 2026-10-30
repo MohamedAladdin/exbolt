@@ -73,7 +73,12 @@ export function TeamCard({ data, now }: { data: DashboardOverview | null; now: n
                           <AvatarFallback className="text-[10px]">{initialsOf(name)}</AvatarFallback>
                           <AvatarBadge className={PRESENCE_CLASS[presence]} />
                         </Avatar>
-                        <span className="truncate">{name}</span>
+                        <Link
+                          href={`/team/${m.userId}`}
+                          className="truncate hover:underline underline-offset-2"
+                        >
+                          {name}
+                        </Link>
                         <span className="sr-only">{t(`presence.${presence}`)}</span>
                       </div>
                     </TableCell>

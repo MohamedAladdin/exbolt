@@ -13,6 +13,12 @@ const tablesWithoutDomainData = new Set([
   "profiles",
   "account_invitations",
   "member_presence",
+  // Presence telemetry, not data: `touch_presence` writes a session for
+  // anyone who opens the app, so an empty personal account accumulates
+  // rows the moment an invited user clicks around. Blocking a join over
+  // them would read as "this account has data" to someone who never
+  // created anything; the rows cascade with the old account.
+  "member_sessions",
   "pending_message_statuses",
   // The audit trail describes events INSIDE the account that produced
   // them, so it must not be moved to the new account, and an existing
