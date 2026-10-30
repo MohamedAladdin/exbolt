@@ -11,7 +11,7 @@ import { logAdminAction } from './audit';
 import type { PlatformAdmin } from './auth';
 import {
   invoiceTotals,
-  nextInvoiceNumber,
+  randomInvoiceNumber,
   toMoney,
   type LineItem,
 } from './invoice';
@@ -437,7 +437,14 @@ export async function createInvoice(params: {
   const year = Number(issueDate.slice(0, 4));
   const prefix = params.numberPrefix || process.env.INVOICE_PREFIX || 'EXB';
 
-  const number = nextInvoiceNumber(await listInvoiceNumbers(), prefix, year);
+  // Random, not sequential: an invoice number must not advertise how many
+  // customers the business has. Collisions are ~1 in 729M per year and the
+  // unique index catches them; the insert below retries with a fresh code.
+  const issued = new Set(await listInvoiceNumbers());
+  let number = randomInvoiceNumber(prefix, year);
+  for (let attempt = 0; attempt < 5 && issued.has(number); attempt += 1) {
+    number = randomInvoiceNumber(prefix, year);
+  }
 
   const payload = {
     number,
@@ -466,12 +473,8 @@ export async function createInvoice(params: {
     .select('*')
     .maybeSingle();
   if (error?.code === '23505') {
-    // Number collided with a concurrent create; retry once with the next one.
-    const retryNumber = nextInvoiceNumber(
-      await listInvoiceNumbers(),
-      prefix,
-      year
-    );
+    // Number collided with a concurrent create; retry once with a fresh code.
+    const retryNumber = randomInvoiceNumber(prefix, year);
     ({ data, error } = await adminDb()
       .from('invoices')
       .insert({ ...payload, number: retryNumber })

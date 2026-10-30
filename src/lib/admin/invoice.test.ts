@@ -8,6 +8,9 @@ import {
   maxSequenceForYear,
   monthlyEquivalent,
   nextInvoiceNumber,
+  INVOICE_CODE_ALPHABET,
+  randomInvoiceCode,
+  randomInvoiceNumber,
   roundMoney,
 } from './invoice';
 
@@ -90,5 +93,37 @@ describe('monthlyEquivalent', () => {
 
   it('falls back to monthly when the annual price is missing', () => {
     expect(monthlyEquivalent(129, null, 'annual')).toBe(129);
+  });
+});
+
+describe('random invoice numbering', () => {
+  it('formats PREFIX-YEAR-CODE', () => {
+    const n = randomInvoiceNumber('exb', 2026, () => 0);
+    expect(n).toMatch(/^EXB-2026-[A-Z0-9]{6}$/);
+    // Same rng every position, so the anti-triple nudge is the only variation.
+    expect(n).toBe('EXB-2026-AACAAC');
+  });
+
+  it('never emits ambiguous characters', () => {
+    const forbidden = /[01OILBS58]/;
+    for (let i = 0; i < 200; i += 1) {
+      const code = randomInvoiceCode();
+      expect(code).toHaveLength(6);
+      expect(forbidden.test(code)).toBe(false);
+      for (const ch of code) expect(INVOICE_CODE_ALPHABET).toContain(ch);
+    }
+  });
+
+  it('never emits a triple run and survives bad rng input', () => {
+    for (let i = 0; i < 200; i += 1) {
+      expect(randomInvoiceCode()).not.toMatch(/(.)\1\1/);
+    }
+    expect(randomInvoiceCode(() => Number.NaN, 3)).toBe('AAC');
+  });
+
+  it('does not produce two equal numbers in a short run', () => {
+    const seen = new Set<string>();
+    for (let i = 0; i < 500; i += 1) seen.add(randomInvoiceNumber('EXB', 2026));
+    expect(seen.size).toBeGreaterThan(495);
   });
 });

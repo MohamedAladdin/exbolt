@@ -49,7 +49,56 @@ export function invoiceTotals(
 }
 
 /**
- * Invoice number: `<PREFIX>-<YYYY>-<NNNN>`, sequence restarting each year.
+ * Unambiguous alphabet for invoice codes: no `0/O`, `1/I/L`, `B/8`, `S/5`
+ * — a number that is read over the phone or copied off a screenshot must
+ * survive the trip. 30 chars, 6 positions = 729M combinations per year.
+ */
+export const INVOICE_CODE_ALPHABET = 'ACDEFGHJKMNPQRTUVWXY234679';
+
+export function randomInvoiceCode(
+  rng: () => number = Math.random,
+  length = 6
+): string {
+  const alphabet = INVOICE_CODE_ALPHABET;
+  let out = '';
+  for (let i = 0; i < length; i += 1) {
+    const raw = rng();
+    const index = Math.floor(
+      (Number.isFinite(raw) ? Math.min(Math.max(raw, 0), 0.999999) : 0) *
+        alphabet.length
+    );
+    let ch = alphabet[index] ?? 'A';
+    // A run like `YYY` reads as a typo on a printed invoice; nudge it.
+    if (i >= 2 && out[i - 1] === ch && out[i - 2] === ch) {
+      ch = alphabet[(index + 1) % alphabet.length];
+    }
+    out += ch;
+  }
+  return out;
+}
+
+/**
+ * Public invoice number: `<PREFIX>-<YYYY>-<6 random chars>`.
+ *
+ * Sequential numbers (`EXB-2026-0001`) tell every customer they are the
+ * first sale of the year — a competitor reads the whole business from the
+ * invoice footer. Random, unique and still human-readable: unguessable
+ * count, sortable by the embedded year, no ambiguous characters.
+ * Uniqueness is enforced by the DB; callers retry on 23505.
+ */
+export function randomInvoiceNumber(
+  prefix: string,
+  year: number,
+  rng: () => number = Math.random
+): string {
+  const cleanPrefix =
+    prefix.replace(/[^A-Za-z0-9]/g, '').toUpperCase() || 'INV';
+  return `${cleanPrefix}-${year}-${randomInvoiceCode(rng)}`;
+}
+
+/**
+ * Legacy sequential numbering — kept for the invoices issued before the
+ * random scheme (and for reading old PDFs); never used for new rows.
  *
  * The sequence is derived from the numbers already issued for that year
  * rather than a DB sequence, so a manually imported invoice cannot collide
