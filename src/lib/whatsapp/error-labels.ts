@@ -29,7 +29,8 @@ export type WhatsAppErrorSlug =
   | 'unsupportedType'
   | 'tokenExpired'
   | 'invalidParam'
-  | 'accountLocked';
+  | 'accountLocked'
+  | 'experiment';
 
 const BY_CODE: Record<number, WhatsAppErrorSlug> = {
   // 131047: outside the 24-hour customer-service window.
@@ -48,6 +49,8 @@ const BY_CODE: Record<number, WhatsAppErrorSlug> = {
   // Throughput.
   130429: 'rateLimited',
   131056: 'pairRateLimited',
+  // Recipient is inside a Meta experiment (delivery withheld on Meta's side).
+  130472: 'experiment',
   // Account state.
   131042: 'billing',
   133010: 'phoneUnregistered',
@@ -78,6 +81,7 @@ const BY_TEXT: Rule[] = [
   { slug: 'phoneUnregistered', test: /not registered|register(?:ed)? the phone/i },
   { slug: 'tokenExpired', test: /access token.*(?:expired|invalid)|session has expired/i },
   { slug: 'accountLocked', test: /account .*(?:locked|restricted|blocked)/i },
+  { slug: 'experiment', test: /part of an experiment/i },
   { slug: 'invalidParam', test: /invalid parameter/i },
 ];
 

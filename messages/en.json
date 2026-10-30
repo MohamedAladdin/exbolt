@@ -3544,6 +3544,10 @@
     "accountLocked": {
       "title": "WhatsApp account suspended",
       "hint": "Meta suspended the account. Review the account and quality status in Meta Business."
+    },
+    "experiment": {
+      "title": "Recipient is in a WhatsApp experiment",
+      "hint": "Meta has placed this customer’s number in an experiment group, so it is withholding delivery. Nothing on our side can override it — try another number, or retry later; experiments rotate."
     }
   },
   "Team": {

@@ -10,6 +10,7 @@ describe('errorSlug', () => {
     expect(errorSlug(132015)).toBe('templatePaused');
     expect(errorSlug(130429)).toBe('rateLimited');
     expect(errorSlug(190)).toBe('tokenExpired');
+    expect(errorSlug(130472)).toBe('experiment');
   });
 
   it('accepts the code as a string from PostgREST', () => {
@@ -18,6 +19,9 @@ describe('errorSlug', () => {
 
   it('falls back to Meta’s English title when the code is missing', () => {
     expect(errorSlug(null, 'Re-engagement message')).toBe('reengagement');
+    expect(errorSlug(null, "User's number is part of an experiment")).toBe(
+      'experiment',
+    );
     expect(errorSlug(undefined, 'Message undeliverable')).toBe('undeliverable');
     expect(errorSlug(null, 'Template is paused due to low quality')).toBe(
       'templatePaused',
