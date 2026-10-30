@@ -12,6 +12,7 @@ import {
   SendMessageError,
 } from '@/lib/whatsapp/send-message'
 import { isUniqueViolation } from '@/lib/contacts/dedupe'
+import { getDefaultWhatsAppConfig } from '@/lib/whatsapp/config-resolver'
 import { getT } from '@/lib/i18n/translate'
 
 const t = getT('Api')
@@ -134,7 +135,8 @@ export async function POST(request: Request) {
         supabase,
         accountId,
         userId,
-        contact_id
+        contact_id,
+        (await getDefaultWhatsAppConfig(supabase, accountId))?.id ?? null
       )
       if (!resolved) {
         return NextResponse.json(
@@ -197,26 +199,36 @@ export async function POST(request: Request) {
 type SendSupabase = Awaited<ReturnType<typeof createClient>>
 
 /**
- * Return the contact's conversation id in this account, creating one if
- * it doesn't exist yet. Mirrors the webhook's find-or-create so an
- * inbound-then-outbound (or outbound-first) sequence converges on a single
- * thread per contact. Runs under the caller's RLS — the conversations_insert
- * policy requires account agent membership, which the caller already is.
+ * Return the contact's conversation id on the given WhatsApp number in this
+ * account, creating one if it doesn't exist yet. Mirrors the webhook's
+ * find-or-create so an inbound-then-outbound (or outbound-first) sequence
+ * converges on a single thread per contact PER NUMBER (migration 078).
+ * Runs under the caller's RLS — the conversations_insert policy requires
+ * account agent membership, which the caller already is.
  */
 async function findOrCreateConversation(
   supabase: SendSupabase,
   accountId: string,
   userId: string,
   contactId: string,
+  whatsappConfigId: string | null,
 ): Promise<string | null> {
+  // Oldest-first + limit(1) rather than `.maybeSingle()`: a contact can hold
+  // one thread per number, and legacy NULL-number rows may duplicate, both of
+  // which make `.maybeSingle()` answer PGRST116 instead of a row.
   const findExisting = async () => {
-    const { data } = await supabase
+    let query = supabase
       .from('conversations')
       .select('id')
       .eq('account_id', accountId)
       .eq('contact_id', contactId)
-      .maybeSingle()
-    return data?.id ?? null
+    if (whatsappConfigId) {
+      query = query.eq('whatsapp_config_id', whatsappConfigId)
+    }
+    const { data } = await query
+      .order('created_at', { ascending: true })
+      .limit(1)
+    return data?.[0]?.id ?? null
   }
 
   const existingId = await findExisting()
@@ -228,6 +240,7 @@ async function findOrCreateConversation(
       account_id: accountId,
       user_id: userId,
       contact_id: contactId,
+      ...(whatsappConfigId ? { whatsapp_config_id: whatsappConfigId } : {}),
     })
     .select('id')
     .single()

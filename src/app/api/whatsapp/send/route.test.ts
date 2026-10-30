@@ -35,6 +35,10 @@ const CONTACT = {
 function makeSupabaseMock() {
   function builder(table: string) {
     let didInsert = false
+    // The route reads the conversation with `.order().limit(1)` (one thread
+    // per contact PER NUMBER), so a limited read must answer like PostgREST:
+    // an array, not a single row.
+    let didLimit = false
 
     const selectResult = () => {
       switch (table) {
@@ -47,20 +51,23 @@ function makeSupabaseMock() {
           return { data: { id: 'acct-1', name: 'Acme' }, error: null }
         case 'contacts':
           return { data: contactRow, error: null }
-        case 'conversations':
+        case 'conversations': {
           // Once created this request, a by-id reload returns it (with
           // its contact); otherwise fall back to the canned existing row.
-          return { data: createdConversation ?? existingConversation, error: null }
-        case 'whatsapp_config':
-          return {
-            data: {
-              id: 'cfg-1',
-              account_id: 'acct-1',
-              phone_number_id: 'PNID-1',
-              access_token: 'enc-token',
-            },
-            error: null,
+          const row = createdConversation ?? existingConversation
+          if (didLimit) return { data: row ? [row] : [], error: null }
+          return { data: row, error: null }
+        }
+        case 'whatsapp_config': {
+          const cfg = {
+            id: 'cfg-1',
+            account_id: 'acct-1',
+            phone_number_id: 'PNID-1',
+            access_token: 'enc-token',
+            is_default: true,
           }
+          return { data: didLimit ? [cfg] : cfg, error: null }
+        }
         case 'message_templates':
           return { data: null, error: null }
         default:
@@ -98,9 +105,13 @@ function makeSupabaseMock() {
 
     const b: Record<string, unknown> = {}
     const chain = () => b
-    for (const m of ['select', 'eq', 'in', 'order', 'limit', 'update', 'delete']) {
+    for (const m of ['select', 'eq', 'in', 'order', 'update', 'delete']) {
       b[m] = vi.fn(chain)
     }
+    b.limit = vi.fn(() => {
+      didLimit = true
+      return b
+    })
     b.insert = vi.fn((payload: Record<string, unknown>) => {
       didInsert = true
       if (table === 'conversations') {
