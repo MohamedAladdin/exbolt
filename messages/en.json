@@ -2114,7 +2114,8 @@
       "channels": "Channels",
       "branding": "Branding",
       "plan": "Plan",
-      "activity": "Activity log"
+      "activity": "Activity log",
+      "billing": "Invoices"
     },
     "groups": {
       "account": "Account",
@@ -2724,6 +2725,27 @@
       "lockedTitle": "The activity log ships with Growth and Scale",
       "lockedHint": "Changes are already being recorded for this account; viewing them is what your plan does not include. Upgrade and the full trail is there from day one.",
       "lockedCta": "See plans"
+    },
+    "billing": {
+      "title": "Invoices",
+      "description": "Every invoice issued to this account, with its payment date and a downloadable copy.",
+      "loading": "Loading invoices…",
+      "loadFailed": "Could not load the invoices.",
+      "retry": "Try again",
+      "empty": "No invoices yet",
+      "emptyHint": "Invoices appear here once the first subscription payment is receipted.",
+      "issued": "Issued",
+      "paidAt": "Paid",
+      "paymentRef": "Payment reference",
+      "download": "Download",
+      "adminOnly": "Only an account admin can see the billing history.",
+      "statuses": {
+        "draft": "Draft",
+        "sent": "Sent",
+        "paid": "Paid",
+        "overdue": "Overdue",
+        "void": "Void"
+      }
     }
   },
   "SignupPage": {
@@ -3457,5 +3479,101 @@
     "archived": "This account is archived. Your data is retained and access is disabled.",
     "contact": "Contact",
     "signOut": "Sign out"
+  },
+  "WhatsAppErrors": {
+    "reengagement": {
+      "title": "No reply within 24 hours",
+      "hint": "WhatsApp allows free-form replies for 24 hours after the customer’s last message. After that you must send an approved template to reopen the conversation."
+    },
+    "undeliverable": {
+      "title": "Message was not delivered",
+      "hint": "The number is not on WhatsApp, the customer blocked this number, or there is no opt-in. Check the number or ask the customer to message you first."
+    },
+    "templateParams": {
+      "title": "Template variables do not match",
+      "hint": "The template expects a different number of variables ({{1}}, {{2}} …). Check the count and send again."
+    },
+    "templateMissing": {
+      "title": "Template missing or not approved",
+      "hint": "The template does not exist on this account or is still awaiting Meta approval. Approve it under Settings → Templates, then retry."
+    },
+    "templatePaused": {
+      "title": "Template paused",
+      "hint": "Meta paused this template for low quality. Edit the copy or use another template."
+    },
+    "templateDisabled": {
+      "title": "Template disabled or deleted",
+      "hint": "The template was removed by Meta. Create a new one and get it approved."
+    },
+    "templatePolicy": {
+      "title": "Template violates Meta policy",
+      "hint": "Meta rejected the template content. Reword it and submit again."
+    },
+    "mediaUpload": {
+      "title": "Attachment problem",
+      "hint": "The file type is unsupported or the upload failed. Try another format or size (JPG/PNG image, PDF, MP4 video)."
+    },
+    "rateLimited": {
+      "title": "Sending limit exceeded",
+      "hint": "Meta caps messages per second. Wait a moment and retry."
+    },
+    "pairRateLimited": {
+      "title": "Too many messages to this contact",
+      "hint": "You sent many messages to the same number in a short time. Wait before trying again."
+    },
+    "billing": {
+      "title": "Payment method problem",
+      "hint": "The WhatsApp Business account has a billing issue. Check Meta Business Settings → Billing."
+    },
+    "phoneUnregistered": {
+      "title": "WhatsApp number not registered",
+      "hint": "The number is not registered on the Cloud API. Register it under Settings → WhatsApp with its PIN."
+    },
+    "unsupportedType": {
+      "title": "Unsupported message type",
+      "hint": "This message or file type is not supported by the Cloud API."
+    },
+    "tokenExpired": {
+      "title": "WhatsApp connection expired",
+      "hint": "The access token expired or was revoked. Reconnect the number under Settings → WhatsApp."
+    },
+    "invalidParam": {
+      "title": "Invalid message data",
+      "hint": "A field is missing or invalid. Check the number, template or file."
+    },
+    "accountLocked": {
+      "title": "WhatsApp account suspended",
+      "hint": "Meta suspended the account. Review the account and quality status in Meta Business."
+    }
+  },
+  "Team": {
+    "profile": {
+      "loading": "Loading the profile…",
+      "unavailable": "This profile is not available",
+      "unavailableHint": "Only an account admin can open a colleague’s profile. Agents can open their own.",
+      "back": "Back to the dashboard",
+      "unnamed": "Unnamed member",
+      "lastActivity": "Last activity {when}",
+      "noActivity": "No activity yet",
+      "days": "{days} days",
+      "kpi": {
+        "online": "Online time",
+        "onlineHint": "≈ {perDay} per day",
+        "replies": "Replies",
+        "repliesHint": "Across {conv} conversations",
+        "firstResponse": "Median first reply",
+        "firstResponseHint": "90th percentile {p90}",
+        "none": "No replies in this range",
+        "sla": "Within {target}-minute target",
+        "slaHint": "Share of replies inside the reply target",
+        "contacts": "Unique customers",
+        "contactsHint": "People this member replied to",
+        "resolved": "Resolved",
+        "resolvedHint": "{open} still assigned and open"
+      },
+      "chartTitle": "Daily activity (bars = online time)",
+      "chartEmpty": "No activity in this range yet — online time starts recording from this release.",
+      "chartLegend": "hover a bar for the day’s numbers"
+    }
   }
 }
