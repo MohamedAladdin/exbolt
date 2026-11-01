@@ -2535,7 +2535,7 @@
         "ai_knowledge": "AI knowledge base",
         "flows": "Visual flow builder",
         "reports": "Ready-made reports + CSV",
-        "reports_advanced": "Custom reports and advanced metrics",
+        "reports_advanced": "Custom reports: comparison, email schedules, alerts, AI reading",
         "exports": "Excel export",
         "multi_channel": "Messenger & Instagram",
         "integrations": "Integrations (Sheets, Odoo, Zoho, Shopify)",

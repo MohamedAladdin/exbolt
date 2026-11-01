@@ -2535,7 +2535,7 @@
         "ai_knowledge": "قاعدة معرفة للذكاء الاصطناعي",
         "flows": "محرر التدفقات المرئي",
         "reports": "تقارير جاهزة + تصدير CSV",
-        "reports_advanced": "تقارير مخصصة ومقاييس متقدمة",
+        "reports_advanced": "تقارير مخصصة: مقارنة، جدولة بالإيميل، تنبيهات، تحليل AI",
         "exports": "تصدير Excel",
         "multi_channel": "ماسنجر وإنستجرام",
         "integrations": "تكاملات (Sheets، Odoo، Zoho، Shopify)",
