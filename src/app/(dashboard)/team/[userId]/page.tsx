@@ -12,7 +12,7 @@
 // only owner/admin can open a colleague's.
 // ============================================================
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
@@ -93,31 +93,42 @@ export default function TeamMemberPage() {
   const rawDays = Number(search.get("days"));
   const days: Range = RANGES.includes(rawDays as Range) ? (rawDays as Range) : 30;
 
-  const [data, setData] = useState<MemberProfileResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    if (!accountId || !params?.userId) return;
-    setLoading(true);
-    setError(null);
-    const supabase = createClient();
-    const { data: result, error: rpcError } = await supabase.rpc(
-      "member_profile",
-      { p_user: params.userId, p_days: days, p_tz: "Africa/Cairo" },
-    );
-    if (rpcError) {
-      setError(rpcError.message);
-      setData(null);
-    } else {
-      setData(result as MemberProfileResponse);
-    }
-    setLoading(false);
-  }, [accountId, params?.userId, days]);
+  // One fetch per (member, range). The response is stored under the request
+  // key it answered, so `loading` is derived instead of set: a range change
+  // makes the stored key stale and the spinner comes back on its own — no
+  // synchronous setState on the effect path.
+  const requestKey = `${accountId ?? ""}:${params?.userId ?? ""}:${days}`;
+  const [settled, setSettled] = useState<{
+    key: string;
+    data: MemberProfileResponse | null;
+    error: string | null;
+  } | null>(null);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (!accountId || !params?.userId) return;
+    let cancelled = false;
+    void (async () => {
+      const supabase = createClient();
+      const { data: result, error: rpcError } = await supabase.rpc(
+        "member_profile",
+        { p_user: params.userId, p_days: days, p_tz: "Africa/Cairo" },
+      );
+      if (cancelled) return;
+      setSettled({
+        key: requestKey,
+        data: rpcError ? null : (result as MemberProfileResponse),
+        error: rpcError ? rpcError.message : null,
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [accountId, params?.userId, days, requestKey]);
+
+  const current = settled?.key === requestKey ? settled : null;
+  const loading = current === null;
+  const error = current?.error ?? null;
+  const data = current?.data ?? null;
 
   const fmtDate = useMemo(
     () =>
