@@ -3805,6 +3805,27 @@
         "5": "Friday",
         "6": "Saturday"
       }
+    },
+    "alerts": {
+      "button": "Alerts",
+      "title": "Alert me when this report crosses a line",
+      "metric": "Metric",
+      "comparator": {
+        "label": "Condition",
+        "gt": "above",
+        "gte": "at least",
+        "lt": "below",
+        "lte": "at most"
+      },
+      "threshold": "Value",
+      "cooldown": "Don't repeat within",
+      "cooldownHours": "{count, plural, =1 {1 hour} other {# hours}}",
+      "lastValue": "last: {value}",
+      "remove": "Remove rule",
+      "save": "Save rule",
+      "close": "Close",
+      "saveFailed": "The rule could not be saved.",
+      "metricNotInReport": "That metric is not in this report."
     }
   }
 }

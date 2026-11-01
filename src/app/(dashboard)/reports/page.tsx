@@ -18,7 +18,7 @@
 // ============================================================
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowUpRight, CalendarClock, Loader2, Lock, Pencil, Trash2 } from 'lucide-react';
+import { ArrowUpRight, Bell, CalendarClock, Loader2, Lock, Pencil, Trash2 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 
 import { Button } from '@/components/ui/button';
@@ -55,6 +55,7 @@ import {
 } from '@/components/reports/report-controls';
 import { ReportResults } from '@/components/reports/report-results';
 import { ScheduleDialog, type ScheduleRecord } from '@/components/reports/schedule-dialog';
+import { AlertDialog } from '@/components/reports/alert-dialog';
 
 interface SavedReport {
   id: string;
@@ -95,6 +96,7 @@ export default function ReportsPage() {
   const [saved, setSaved] = useState<SavedReport[]>([]);
   const [schedules, setSchedules] = useState<Record<string, ScheduleRecord>>({});
   const [scheduleFor, setScheduleFor] = useState<SavedReport | null>(null);
+  const [alertFor, setAlertFor] = useState<SavedReport | null>(null);
   const [savedLoading, setSavedLoading] = useState(true);
   const [activePreset, setActivePreset] = useState<string | null>(PRESETS[0].id);
   const [activeSaved, setActiveSaved] = useState<string | null>(null);
@@ -545,6 +547,15 @@ export default function ReportsPage() {
                     type="button"
                     variant="ghost"
                     size="sm"
+                    aria-label={t('alerts.button')}
+                    onClick={() => setAlertFor(report)}
+                  >
+                    <Bell className="size-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
                     aria-label={t('schedule.button')}
                     onClick={() => setScheduleFor(report)}
                   >
@@ -579,6 +590,20 @@ export default function ReportsPage() {
           </div>
         )}
       </section>
+
+      {alertFor && (
+        <AlertDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setAlertFor(null);
+          }}
+          reportId={alertFor.id}
+          reportName={alertFor.name}
+          metrics={alertFor.config.metrics ?? []}
+          dataset={alertFor.config.dataset}
+          onSaved={() => void loadSaved()}
+        />
+      )}
 
       {scheduleFor && (
         <ScheduleDialog
