@@ -65,6 +65,7 @@ export function ReportControls({
   advanced,
   options,
   canRun,
+  historyDays,
 }: {
   config: ReportConfig;
   onChange: (next: ReportConfig) => void;
@@ -73,6 +74,8 @@ export function ReportControls({
   advanced: boolean;
   options: ReportOptions;
   canRun: boolean;
+  /** Plan ceiling for how far back a report may look (`null` = unlimited). */
+  historyDays?: number | null;
 }) {
   const t = useTranslations('Reports');
   const def = DATASETS[config.dataset];
@@ -183,7 +186,9 @@ export function ReportControls({
         </label>
 
         <div className="flex gap-1.5">
-          {RANGE_SHORTCUTS.map((shortcut) => (
+          {RANGE_SHORTCUTS.filter(
+            (shortcut) => historyDays == null || shortcut <= historyDays,
+          ).map((shortcut) => (
             <button
               key={shortcut}
               type="button"

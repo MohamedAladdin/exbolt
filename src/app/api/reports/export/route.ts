@@ -29,6 +29,7 @@ import {
 } from '@/lib/reports/catalog';
 import { contentDisposition, reportFileName, reportToCsv } from '@/lib/reports/csv';
 import { renderReportHtml, type ReportDocumentColumn } from '@/lib/reports/document';
+import { ReportPlanError, assertHistory, reportAccess } from '@/lib/reports/access';
 import { ReportRunError, formatCell, runReport } from '@/lib/reports/run';
 
 interface ExportLabels {
@@ -52,17 +53,26 @@ export async function POST(request: Request) {
       | { config?: unknown; format?: unknown; locale?: unknown; labels?: unknown; currency?: unknown }
       | null;
 
-    const allowAdvanced = ctx.entitlements.features.reports_advanced !== false;
+    const timeZone = browserTimeZone();
+    const today = todayIn(timeZone);
+    const access = reportAccess(ctx.entitlements);
+    const allowAdvanced = access.custom;
+
     let config;
     try {
-      config = normalizeReportConfig(body?.config, {
-        today: todayIn(browserTimeZone()),
-        timeZone: browserTimeZone(),
-        allowAdvanced,
-      });
+      config = normalizeReportConfig(body?.config, { today, timeZone, allowAdvanced });
+      // The file is the same data as the screen: the plan's history floor
+      // applies to the export too, or it becomes the way around the gate.
+      assertHistory(access, config, today);
     } catch (err) {
       if (err instanceof ReportConfigError) {
         return NextResponse.json({ error: err.code, detail: err.message }, { status: 400 });
+      }
+      if (err instanceof ReportPlanError) {
+        return NextResponse.json(
+          { error: err.code, detail: err.message, limit: err.limit },
+          { status: err.status },
+        );
       }
       throw err;
     }

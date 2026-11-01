@@ -50,6 +50,10 @@ export const LIMITS = [
   'broadcast_monthly',
   'channels',
   'ai_agents',
+  // Reports packaging (migration 083). `null` = unlimited: history depth and
+  // how many saved reports the account may keep. Exports stay in every plan.
+  'report_history_days',
+  'saved_reports',
 ] as const;
 
 export type LimitKey = (typeof LIMITS)[number];
@@ -132,6 +136,8 @@ export const DEFAULT_LIMITS: Limits = {
   broadcast_monthly: 5000,
   channels: 1,
   ai_agents: 0,
+  report_history_days: 90,
+  saved_reports: 0,
 };
 
 const ENTITLING: readonly SubscriptionStatus[] = [

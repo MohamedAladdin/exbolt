@@ -19,9 +19,20 @@ import {
   normalizeReportConfig,
   todayIn,
 } from '@/lib/reports/catalog';
+import { ReportPlanError, assertCustomize, reportAccess } from '@/lib/reports/access';
 
 const SELECT =
   'id, name, description, dataset, config, created_by, is_shared, created_at, updated_at';
+
+function planResponse(err: unknown): NextResponse | null {
+  if (err instanceof ReportPlanError) {
+    return NextResponse.json(
+      { error: err.code, detail: err.message, limit: err.limit },
+      { status: err.status },
+    );
+  }
+  return null;
+}
 
 export async function PATCH(
   request: Request,
@@ -33,6 +44,16 @@ export async function PATCH(
     const body = await request.json().catch(() => null);
     if (!body || typeof body !== 'object') {
       return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
+    }
+
+    // Editing a definition is customisation (deleting is not — a downgraded
+    // account must still be able to clean up what it made while it could).
+    try {
+      assertCustomize(reportAccess(ctx.entitlements));
+    } catch (err) {
+      const refusal = planResponse(err);
+      if (refusal) return refusal;
+      throw err;
     }
 
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -56,7 +77,7 @@ export async function PATCH(
     }
 
     if (raw.config !== undefined) {
-      const allowAdvanced = ctx.entitlements.features.reports_advanced !== false;
+      const allowAdvanced = reportAccess(ctx.entitlements).custom;
       try {
         const config = normalizeReportConfig(raw.config, {
           today: todayIn(browserTimeZone()),

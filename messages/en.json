@@ -2512,7 +2512,9 @@
         "team_members": "Team members",
         "broadcast_monthly": "Broadcast messages / month",
         "channels": "Channels",
-        "ai_agents": "AI agents"
+        "ai_agents": "AI agents",
+        "report_history_days": "Report history (days)",
+        "saved_reports": "Saved reports"
       },
       "feature": {
         "inbox": "Shared inbox",
@@ -2524,8 +2526,8 @@
         "ai_agent": "Full AI agent",
         "ai_knowledge": "AI knowledge base",
         "flows": "Visual flow builder",
-        "reports": "Basic reports",
-        "reports_advanced": "Advanced reports & team performance",
+        "reports": "Ready-made reports + CSV",
+        "reports_advanced": "Custom reports and advanced metrics",
         "exports": "Excel export",
         "multi_channel": "Messenger & Instagram",
         "integrations": "Integrations (Sheets, Odoo, Zoho, Shopify)",
@@ -3760,6 +3762,14 @@
       "customer": "Customer messages",
       "unassigned": "Unassigned",
       "noSender": "No recorded member"
+    },
+    "locked": {
+      "custom": "Custom reports are included in the Growth and Scale plans.",
+      "builderTitle": "Custom reports are a Growth feature",
+      "builderBody": "Your plan runs every ready-made report above with its own metrics, breakdowns and CSV export. Building your own — choosing metrics, breakdowns and filters, and saving it for the team — opens on Growth.",
+      "upgrade": "Compare plans",
+      "savedLimit": "This plan keeps {count} saved reports. Delete one or upgrade to keep more.",
+      "historyLimit": "This plan reports on the last {count} days. Growth opens a full year, Scale keeps everything."
     }
   }
 }

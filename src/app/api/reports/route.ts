@@ -21,6 +21,12 @@ import {
   normalizeReportConfig,
   todayIn,
 } from '@/lib/reports/catalog';
+import {
+  ReportPlanError,
+  assertCustomize,
+  assertSavedSlot,
+  reportAccess,
+} from '@/lib/reports/access';
 
 const SELECT =
   'id, name, description, dataset, config, created_by, is_shared, created_at, updated_at';
@@ -28,6 +34,12 @@ const SELECT =
 function badRequest(err: unknown) {
   if (err instanceof ReportConfigError) {
     return NextResponse.json({ error: err.code, detail: err.message }, { status: 400 });
+  }
+  if (err instanceof ReportPlanError) {
+    return NextResponse.json(
+      { error: err.code, detail: err.message, limit: err.limit },
+      { status: err.status },
+    );
   }
   throw err;
 }
@@ -68,7 +80,16 @@ export async function POST(request: Request) {
     const description =
       typeof descriptionRaw === 'string' ? descriptionRaw.trim().slice(0, 280) || null : null;
 
-    const allowAdvanced = ctx.entitlements.features.reports_advanced !== false;
+    const access = reportAccess(ctx.entitlements);
+    // Saving a definition IS customisation: a Core account runs the ready-made
+    // reports, it does not keep its own. Refused here as well as in the UI.
+    try {
+      assertCustomize(access);
+    } catch (err) {
+      return badRequest(err);
+    }
+
+    const allowAdvanced = access.custom;
     let config;
     try {
       config = normalizeReportConfig((body as { config?: unknown }).config, {
@@ -79,6 +100,12 @@ export async function POST(request: Request) {
     } catch (err) {
       return badRequest(err);
     }
+
+    const { count } = await ctx.supabase
+      .from('saved_reports')
+      .select('id', { count: 'exact', head: true })
+      .eq('account_id', ctx.accountId);
+    assertSavedSlot(access, count ?? 0);
 
     const { data, error } = await ctx.supabase
       .from('saved_reports')

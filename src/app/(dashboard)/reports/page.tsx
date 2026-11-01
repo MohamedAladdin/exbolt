@@ -18,7 +18,7 @@
 // ============================================================
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Loader2, Pencil, Trash2 } from 'lucide-react';
+import { ArrowUpRight, Loader2, Lock, Pencil, Trash2 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 
 import { Button } from '@/components/ui/button';
@@ -47,6 +47,7 @@ import {
   type ReportConfig,
   type ReportPreset,
 } from '@/lib/reports/catalog';
+import { canSave as canSaveReports, reportAccess } from '@/lib/reports/access';
 import type { ReportResult } from '@/lib/reports/run';
 import {
   ReportControls,
@@ -103,35 +104,74 @@ export default function ReportsPage() {
   const [saveDescription, setSaveDescription] = useState('');
   const [exporting, setExporting] = useState<'csv' | 'html' | null>(null);
 
-  const advanced = entitlements?.features.reports_advanced !== false;
+  // One source of truth for what the plan allows: the same object decides what
+  // this page renders and what the server accepts.
+  const access = useMemo(() => reportAccess(entitlements), [entitlements]);
+  const advanced = access.custom;
+  const canSaveReport = canSaveReports(access);
+  const historyDays = access.historyDays;
 
-  const run = useCallback(async (next: ReportConfig) => {
-    setRunning(true);
-    setError(null);
-    try {
-      const response = await fetch('/api/reports/run', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config: next }),
-      });
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null);
-        setError(payload?.error === 'metric_not_in_plan' ? t('advancedOnly') : t('error'));
-        setResult(null);
-        return;
+  const planMessage = useCallback(
+    (code: string | undefined, limit?: number | null) => {
+      switch (code) {
+        case 'reports_custom_missing':
+        case 'reports_saved_not_in_plan':
+          return t('locked.custom');
+        case 'reports_saved_limit':
+          return t('locked.savedLimit', { count: limit ?? access.savedLimit ?? 0 });
+        case 'reports_history_limit':
+          return t('locked.historyLimit', { count: limit ?? historyDays ?? 0 });
+        case 'metric_not_in_plan':
+          return t('advancedOnly');
+        default:
+          return t('error');
       }
-      const payload = (await response.json()) as { config: ReportConfig; result: ReportResult };
-      // The server may have normalised the period (empty → last 30 days);
-      // adopt what it actually ran so the controls match the table.
-      setConfig(payload.config);
-      setResult(payload.result);
-    } catch {
-      setError(t('error'));
-      setResult(null);
-    } finally {
-      setRunning(false);
-    }
-  }, [t]);
+    },
+    [access.savedLimit, historyDays, t],
+  );
+
+  const post = useCallback(
+    async (payload: unknown) => {
+      setRunning(true);
+      setError(null);
+      try {
+        const response = await fetch('/api/reports/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+          const body = await response.json().catch(() => null);
+          setError(planMessage(body?.error, body?.limit));
+          setResult(null);
+          return;
+        }
+        const body = (await response.json()) as { config: ReportConfig; result: ReportResult };
+        // The server may have normalised the period (empty → last 30 days);
+        // adopt what it actually ran so the controls match the table.
+        setConfig(body.config);
+        setResult(body.result);
+      } catch {
+        setError(t('error'));
+        setResult(null);
+      } finally {
+        setRunning(false);
+      }
+    },
+    [planMessage, t],
+  );
+
+  /** The builder path — Growth and Scale only. */
+  const run = useCallback((next: ReportConfig) => post({ config: next }), [post]);
+
+  /**
+   * The ready-made path — every plan. The server builds the config from the
+   * catalogue, so this cannot be used to smuggle a custom report through.
+   */
+  const runPreset = useCallback(
+    (presetId: string, days: number) => post({ preset: presetId, days }),
+    [post],
+  );
 
   const loadSaved = useCallback(async () => {
     try {
@@ -204,16 +244,17 @@ export default function ReportsPage() {
 
   // First paint runs the default preset so the page is never an empty form.
   useEffect(() => {
-    void run(presetConfig(PRESETS[0], { today, timeZone }));
+    const days = Math.min(PRESETS[0].days, historyDays ?? PRESETS[0].days);
+    void runPreset(PRESETS[0].id, days);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const applyPreset = (preset: ReportPreset) => {
-    const next = presetConfig(preset, { today, timeZone });
+    const days = Math.min(preset.days, historyDays ?? preset.days);
     setActivePreset(preset.id);
     setActiveSaved(null);
-    setConfig(next);
-    void run(next);
+    setConfig(presetConfig(preset, { today, timeZone, days }));
+    void runPreset(preset.id, days);
   };
 
   const applySaved = (report: SavedReport) => {
@@ -379,18 +420,36 @@ export default function ReportsPage() {
           <CardTitle className="text-base">{t('builderTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
-          <ReportControls
-            config={config}
-            onChange={(next) => {
-              setConfig(next);
-              setActivePreset(null);
-            }}
-            onRun={() => void run(config)}
-            running={running}
-            advanced={advanced}
-            options={options}
-            canRun={canRun}
-          />
+          {advanced ? (
+            <ReportControls
+              config={config}
+              onChange={(next) => {
+                setConfig(next);
+                setActivePreset(null);
+              }}
+              onRun={() => void run(config)}
+              running={running}
+              advanced={advanced}
+              options={options}
+              canRun={canRun}
+              historyDays={historyDays}
+            />
+          ) : (
+            <div className="flex flex-col items-start gap-3 rounded-lg border border-dashed border-border p-4">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Lock className="size-4 text-muted-foreground" />
+                {t('locked.builderTitle')}
+              </div>
+              <p className="text-xs text-muted-foreground">{t('locked.builderBody')}</p>
+              <a
+                href="/settings?tab=plan"
+                className="inline-flex items-center gap-1 text-xs font-medium text-primary underline decoration-dotted underline-offset-2"
+              >
+                {t('locked.upgrade')}
+                <ArrowUpRight className="size-3" />
+              </a>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -410,7 +469,7 @@ export default function ReportsPage() {
             <ReportResults
               result={result}
               currency={defaultCurrency}
-              canSave
+              canSave={canSaveReport}
               saving={saving}
               exporting={exporting}
               onSave={() => {
@@ -428,7 +487,7 @@ export default function ReportsPage() {
         </CardContent>
       </Card>
 
-      <section className="space-y-3">
+      <section className={cn('space-y-3', !canSaveReport && 'hidden')}>
         <h2 className="text-sm font-medium text-muted-foreground">{t('savedLabel')}</h2>
         {savedLoading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">

@@ -513,14 +513,17 @@ export const PRESETS: ReportPreset[] = [
 
 export function presetConfig(
   preset: ReportPreset,
-  { today, timeZone }: { today: string; timeZone: string },
+  { today, timeZone, days }: { today: string; timeZone: string; days?: number },
 ): ReportConfig {
+  // `days` lets the caller pick a 7/30/90 window without becoming a builder:
+  // the metrics, dimensions and grain still come from the catalogue.
+  const window = days && days > 0 ? days : preset.days;
   return {
     dataset: preset.dataset,
     metrics: preset.metrics,
     dimensions: preset.dimensions,
-    grain: preset.grain ?? suggestGrain(preset.days),
-    from: addDays(today, -(preset.days - 1)),
+    grain: preset.grain ?? suggestGrain(window),
+    from: addDays(today, -(window - 1)),
     to: today,
     tz: timeZone,
     filters: {},
