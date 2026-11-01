@@ -395,6 +395,18 @@ export function ReportControls({
         )}
       </div>
 
+      {advanced && (
+        <label className="flex w-fit cursor-pointer items-center gap-2 rounded-md border border-border px-3 py-2 text-xs">
+          <input
+            type="checkbox"
+            checked={config.compare === true}
+            onChange={(event) => patch({ compare: event.target.checked })}
+            className="size-3.5 accent-current"
+          />
+          {t('compare.label')}
+        </label>
+      )}
+
       <div className="flex items-center gap-2">
         <Button type="button" onClick={onRun} disabled={running || !canRun}>
           {running ? t('running') : t('run')}

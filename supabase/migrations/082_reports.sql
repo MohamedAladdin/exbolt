@@ -148,6 +148,12 @@ DECLARE
   v_base     TEXT;
   v_sql      TEXT;
   v_rows     JSONB;
+  v_base_tpl TEXT;
+  v_base_prev TEXT;
+  v_compare  BOOLEAN := FALSE;
+  v_prev_start TIMESTAMPTZ;
+  v_prev_end   TIMESTAMPTZ;
+  v_prev_totals JSONB;
   v_count    INTEGER;
   v_truncated BOOLEAN := FALSE;
   v_totals   JSONB;
@@ -206,6 +212,7 @@ BEGIN
   END IF;
 
   v_limit := LEAST(GREATEST(COALESCE((p_config->>'limit')::INTEGER, 1000), 1), 5000);
+  v_compare := COALESCE((p_config->>'compare')::BOOLEAN, FALSE);
 
   SELECT COALESCE(a.reply_target_minutes, 5) INTO v_target
   FROM accounts a WHERE a.id = v_account;
@@ -245,7 +252,7 @@ BEGIN
   -- Every dataset fills the same column list so the aggregation below is
   -- written once. A column a dataset cannot produce stays NULL rather than
   -- being faked, so `sum(value)` over messages is NULL, not 0.
-  v_base := CASE v_dataset
+  v_base_tpl := CASE v_dataset
     WHEN 'messages' THEN $q$
       SELECT m.created_at               AS occurred_at,
              m.sender_id                AS agent_id,
@@ -492,10 +499,22 @@ BEGIN
   -- Dynamic SQL cannot see plpgsql variables, so the three values every
   -- base query needs are inlined as quoted literals here — after the
   -- dataset was chosen, never from client text.
-  v_base := replace(replace(replace(v_base,
+  v_base := replace(replace(replace(v_base_tpl,
     ':account', quote_literal(v_account)),
     ':start',   quote_literal(v_start)),
     ':end',     quote_literal(v_end));
+
+  -- Comparison window: the equal-length period immediately before this one, so
+  -- "this month vs last month" is the same number of days and a 31-day month
+  -- cannot flatter itself against a 30-day one.
+  IF v_compare THEN
+    v_prev_end   := v_start;
+    v_prev_start := v_start - (v_end - v_start);
+    v_base_prev := replace(replace(replace(v_base_tpl,
+      ':account', quote_literal(v_account)),
+      ':start',   quote_literal(v_prev_start)),
+      ':end',     quote_literal(v_prev_end));
+  END IF;
 
   -- ---- optional joins (only when the report actually asks for them) ----
   IF v_need_tag THEN
@@ -720,6 +739,16 @@ BEGIN
     v_where
   ) INTO v_totals;
 
+  IF v_compare THEN
+    EXECUTE format(
+      'SELECT to_jsonb(r) FROM (SELECT %s FROM (%s) b%s WHERE TRUE%s) r',
+      array_to_string(v_metric_select, ', '),
+      v_base_prev,
+      v_joins,
+      v_where
+    ) INTO v_prev_totals;
+  END IF;
+
   RETURN jsonb_build_object(
     'dataset',   v_dataset,
     'from',      v_from,
@@ -729,6 +758,11 @@ BEGIN
     'columns',   v_columns,
     'rows',      COALESCE(v_rows, '[]'::jsonb),
     'totals',    COALESCE(v_totals, '{}'::jsonb),
+    'previous',  CASE WHEN v_compare THEN jsonb_build_object(
+                   'from', v_prev_start,
+                   'to',   v_prev_end,
+                   'totals', COALESCE(v_prev_totals, '{}'::jsonb)
+                 ) ELSE NULL END,
     'rowCount',  COALESCE(jsonb_array_length(v_rows), 0),
     'truncated', v_truncated,
     'limit',     v_limit

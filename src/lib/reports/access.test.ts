@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { Entitlements } from '@/lib/plans/entitlements';
 import {
   ReportPlanError,
+  assertCompare,
   assertCustomize,
   assertHistory,
   assertSavedSlot,
@@ -62,6 +63,14 @@ describe('customization gate', () => {
     expect(() => assertCustomize(reportAccess(GROWTH))).not.toThrow();
     expect(canSave(reportAccess(CORE))).toBe(false);
     expect(canSave(reportAccess(GROWTH))).toBe(true);
+  });
+});
+
+describe('comparison gate', () => {
+  it('is a Growth+ capability', () => {
+    expect(() => assertCompare(reportAccess(CORE))).toThrow(ReportPlanError);
+    expect(() => assertCompare(reportAccess(GROWTH))).not.toThrow();
+    expect(() => assertCompare(reportAccess(SCALE))).not.toThrow();
   });
 });
 

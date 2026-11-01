@@ -26,7 +26,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { agentPlaceholderKey, metricUnit } from '@/lib/reports/catalog';
-import { formatCell, formatMetric, type ReportResult } from '@/lib/reports/run';
+import { compare } from '@/lib/dashboard/overview';
+import { formatCell, formatMetric, lowerIsBetter, type ReportResult } from '@/lib/reports/run';
 
 export function ReportResults({
   result,
@@ -140,6 +141,48 @@ export function ReportResults({
           </Button>
         </div>
       </div>
+
+      {result.previous && numberColumns.length > 0 && (
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          {numberColumns.slice(0, 4).map((column) => {
+            const current = result.totals[column.key];
+            const previous = result.previous?.totals?.[column.key] ?? null;
+            const change = compare(
+              current == null ? null : Number(current),
+              previous == null ? null : Number(previous),
+              lowerIsBetter(result.dataset, column.key),
+            );
+            const tone =
+              change.tone === 'good'
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : change.tone === 'bad'
+                  ? 'text-rose-600 dark:text-rose-400'
+                  : 'text-muted-foreground';
+            const arrow =
+              change.trend === 'up' ? '▲' : change.trend === 'down' ? '▼' : '＝';
+            return (
+              <div key={column.key} className="rounded-lg border border-border p-3">
+                <div className="text-[11px] text-muted-foreground">
+                  {t(`metrics.${column.key}`)}
+                </div>
+                <div className="mt-1 flex items-baseline gap-2">
+                  <span className="text-lg font-semibold tabular-nums">
+                    {formatMetric(current, unitOf(column.key), { locale, currency })}
+                  </span>
+                  <span className={cn('text-xs font-medium tabular-nums', tone)}>
+                    {arrow} {change.percent == null ? t('compare.new') : `${Math.abs(change.percent)}%`}
+                  </span>
+                </div>
+                <div className="mt-0.5 text-[11px] text-muted-foreground">
+                  {t('compare.previousValue', {
+                    value: formatMetric(previous, unitOf(column.key), { locale, currency }),
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {result.truncated && (
         <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">

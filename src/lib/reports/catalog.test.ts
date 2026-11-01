@@ -92,6 +92,14 @@ describe('normalizeReportConfig', () => {
     expect(config.dimensions).toEqual(['period', 'agent']);
   });
 
+  it('turns comparison on only when it is literally requested', () => {
+    const base = { dataset: 'messages' as const };
+    expect(normalizeReportConfig({ ...base, compare: true }, { today: TODAY, timeZone: 'UTC' }).compare).toBe(true);
+    // "true" as a string, 1, or anything truthy is not a comparison request.
+    expect(normalizeReportConfig({ ...base, compare: 'true' }, { today: TODAY, timeZone: 'UTC' }).compare).toBe(false);
+    expect(normalizeReportConfig(base, { today: TODAY, timeZone: 'UTC' }).compare).toBe(false);
+  });
+
   it('drops empty filter arrays instead of sending them to the runner', () => {
     const config = normalizeReportConfig(
       { dataset: 'messages', filters: { channel: [], status: ['failed'] } },
@@ -195,6 +203,11 @@ describe('catalogue ↔ run_report', () => {
     for (const filter of DATASETS[dataset].filters) {
       expect(sql).toContain(`v_key = '${filter}'`);
     }
+  });
+
+  it('returns a previous-period block only when asked', () => {
+    expect(sql).toContain("'previous'");
+    expect(sql).toContain('v_prev_start');
   });
 
   it('sends the nameless-member sentinel the UI translates', () => {

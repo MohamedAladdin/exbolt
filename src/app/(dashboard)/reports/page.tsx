@@ -169,7 +169,8 @@ export default function ReportsPage() {
    * catalogue, so this cannot be used to smuggle a custom report through.
    */
   const runPreset = useCallback(
-    (presetId: string, days: number) => post({ preset: presetId, days }),
+    (presetId: string, days: number, compare?: boolean) =>
+      post({ preset: presetId, days, compare: compare === true }),
     [post],
   );
 
@@ -254,7 +255,7 @@ export default function ReportsPage() {
     setActivePreset(preset.id);
     setActiveSaved(null);
     setConfig(presetConfig(preset, { today, timeZone, days }));
-    void runPreset(preset.id, days);
+    void runPreset(preset.id, days, config.compare);
   };
 
   const applySaved = (report: SavedReport) => {

@@ -93,6 +93,8 @@ export interface ReportConfig {
   tz: string;
   filters: ReportFilters;
   limit: number;
+  /** Also aggregate the equal-length window immediately before `from`. */
+  compare?: boolean;
 }
 
 /**
@@ -397,8 +399,9 @@ export function normalizeReportConfig(
     : DEFAULT_REPORT_ROWS;
 
   const tz = typeof raw.tz === 'string' && raw.tz.trim() ? raw.tz.trim() : timeZone;
+  const compare = raw.compare === true;
 
-  return { dataset, metrics, dimensions, grain, from, to, tz, filters, limit };
+  return { dataset, metrics, dimensions, grain, from, to, tz, filters, limit, compare };
 }
 
 function dedupe<T>(values: T[]): T[] {

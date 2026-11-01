@@ -106,6 +106,20 @@ export function assertHistory(access: ReportAccess, config: Pick<ReportConfig, '
   }
 }
 
+/**
+ * Period-over-period comparison. Sold with the builder: it is the first thing a
+ * manager asks of any number ("is that better than last month?"), and answering
+ * it is what makes a report a decision instead of a screenshot.
+ */
+export function assertCompare(access: ReportAccess): void {
+  if (!access.custom) {
+    throw new ReportPlanError(
+      'reports_compare_not_in_plan',
+      'Comparing with the previous period is included in the Growth and Scale plans.',
+    );
+  }
+}
+
 export function assertSavedSlot(access: ReportAccess, currentCount: number): void {
   if (access.savedLimit === null) return;
   if (access.savedLimit === 0) {

@@ -26,6 +26,39 @@ scans. Filters are the same vocabulary, per dataset; a filter that does not
 apply is **refused**, never ignored, because a silently dropped filter is a
 report that lies.
 
+## Who gets what (packaging, migration 083)
+
+| Plan | Reports | History | Saved |
+| --- | --- | --- | --- |
+| Core $65 | ready-made + CSV export | 90 days | none |
+| Growth $129 | + builder, filters, comparison, advanced metrics | 365 days | 50 |
+| Scale $229 | + everything | unlimited | unlimited |
+
+`reports` is true on every plan — hiding a client's own numbers is not a
+feature. `reports_advanced` is the **customization** switch (builder, saving,
+comparison, advanced metrics) and the two ceilings live in `plans.limits`
+(`report_history_days`, `saved_reports`, `null` = unlimited).
+
+Enforcement is why `/api/reports/run` takes two shapes:
+
+* `{ preset, days }` — any plan. The server builds the config from the
+  catalogue, so a preset cannot carry a metric or dimension the plan lacks.
+* `{ config }` — Growth+ only (`402 reports_custom_missing`).
+
+The history floor is checked on both the run **and** the export (a file that
+ignores the plan is the way around the gate), and comparison is refused on
+Core (`reports_compare_not_in_plan`) even though the same request would work
+on Growth.
+
+## Comparing with the previous period
+
+`compare: true` on a run also aggregates the **equal-length window immediately
+before** `from` and returns `previous: { from, to, totals }`. Equal length on
+purpose: a 31-day month must not be flattered by a 30-day one. The UI renders a
+four-card strip with the delta and colours it by direction — a rising response
+time or failure count is bad news even though the number is bigger, which is
+what `lowerIsBetter()` exists for.
+
 ## Where the numbers come from
 
 `supabase/migrations/082_reports.sql` installs two things:

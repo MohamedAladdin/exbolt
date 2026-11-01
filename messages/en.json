@@ -3770,6 +3770,11 @@
       "upgrade": "Compare plans",
       "savedLimit": "This plan keeps {count} saved reports. Delete one or upgrade to keep more.",
       "historyLimit": "This plan reports on the last {count} days. Growth opens a full year, Scale keeps everything."
+    },
+    "compare": {
+      "label": "Compare with the previous period",
+      "previousValue": "before: {value}",
+      "new": "new"
     }
   }
 }

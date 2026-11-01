@@ -27,6 +27,12 @@ export interface ReportColumn {
 export type ReportRow = Record<string, string | number | null>;
 export type ReportTotals = Record<string, number | string | null>;
 
+export interface ReportComparison {
+  from: string;
+  to: string;
+  totals: ReportTotals;
+}
+
 export interface ReportResult {
   dataset: ReportDataset;
   from: string;
@@ -36,6 +42,8 @@ export interface ReportResult {
   columns: ReportColumn[];
   rows: ReportRow[];
   totals: ReportTotals;
+  /** Present only when the caller asked to compare with the previous period. */
+  previous?: ReportComparison | null;
   rowCount: number;
   truncated: boolean;
   limit: number;
@@ -65,6 +73,17 @@ export async function runReport(
     throw error;
   }
   return data as ReportResult;
+}
+
+/**
+ * Which direction is good. A response time or a failure count going up is bad
+ * news even though the number is bigger, and a report that colours every rise
+ * green is worse than no colour at all.
+ */
+export function lowerIsBetter(dataset: ReportDataset, metric: string): boolean {
+  if (metric === 'failed' || metric.endsWith('_minutes') || metric.endsWith('_days')) return true;
+  if (metric === 'days_to_close' || metric === 'days_to_close_avg') return true;
+  return dataset === 'team' && metric.startsWith('median') ? true : false;
 }
 
 /** Value with the unit it was measured in — never a bare number in a table. */

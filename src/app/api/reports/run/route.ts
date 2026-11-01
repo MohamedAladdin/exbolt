@@ -30,6 +30,7 @@ import {
 } from '@/lib/reports/catalog';
 import {
   ReportPlanError,
+  assertCompare,
   assertCustomize,
   assertHistory,
   reportAccess,
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
   try {
     const ctx = await requireFeature('reports');
     const body = (await request.json().catch(() => null)) as
-      | { config?: unknown; preset?: unknown; days?: unknown }
+      | { config?: unknown; preset?: unknown; days?: unknown; compare?: unknown }
       | null;
 
     const timeZone = browserTimeZone();
@@ -63,6 +64,9 @@ export async function POST(request: Request) {
           : Math.min(preset.days, access.historyDays ?? preset.days);
         assertPresetMetrics(preset.dataset, preset.metrics, access.custom);
         config = presetConfig(preset, { today, timeZone, days });
+        // A ready-made report may also be read against the previous period —
+        // still a Growth+ capability, and still built server-side.
+        if (body.compare === true && access.custom) config = { ...config, compare: true };
       } else {
         assertCustomize(access);
         config = normalizeReportConfig(body?.config, {
@@ -71,6 +75,7 @@ export async function POST(request: Request) {
           allowAdvanced: access.custom,
         });
       }
+      if (config.compare) assertCompare(access);
       assertHistory(access, config, today);
     } catch (err) {
       return planOrConfigResponse(err);
