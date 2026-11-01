@@ -404,6 +404,7 @@
       "waitForSending": "انتظر حتى يكتمل إرسال الرسالة",
       "reactionFailed": "تعذّر التفاعل: {reason}",
       "assignmentUpdateFailed": "تعذّر تحديث الإسناد",
+      "assigneeNoLongerMember": "هذا الزميل لم يعد عضوًا في هذا الحساب",
       "networkError": "خطأ في الشبكة",
       "documentFallback": "مستند",
       "you": "أنت"
@@ -885,6 +886,7 @@
       "titlePlaceholder": "عنوان الصفقة",
       "contact": "جهة الاتصال",
       "selectContact": "اختر جهة اتصال",
+      "searchContacts": "ابحث عن جهة اتصال بالاسم أو الرقم",
       "linkToConversation": "الربط بمحادثة",
       "value": "القيمة",
       "currency": "العملة",
@@ -1057,6 +1059,8 @@
       "toastNotLinked": "ملفك الشخصي غير مرتبط بحساب.",
       "toastFailedDraft": "تعذّر حفظ المسودة: {error}",
       "toastDraftSaved": "تم حفظ المسودة",
+      "toastSendInterrupted": "توقف الإرسال لأن الاتصال بالخادم انقطع. افتح الحملة واختر «استئناف الإرسال» للوصول إلى المستلمين المتبقين. يظهر الزر خلال 5 دقائق.",
+      "toastSendTakenOver": "نافذة أخرى تولّت إرسال هذه الحملة، فتوقف الإرسال من هذه النافذة. افتح الحملة لمتابعة تقدمها.",
       "broadcastFailed": "فشلت الحملة"
     },
     "wizard": {
@@ -3132,6 +3136,7 @@
       "duplicateNodeKey": "node_key مكرر «{key}».",
       "unreachable": "العقدة «{key}» غير قابلة للوصول من عقدة البداية.",
       "autoAdvanceCycle": "العقد {keys} تعود إلى بعضها دون انتظار العميل، لذا سيستمر التدفق في إرسال الرسائل. أضف خطوة أزرار أو قائمة أو سؤال إلى الحلقة، أو اكسرها.",
+      "autoAdvanceChainTooLong": "العقدة «{key}» تبدأ {count} خطوات متتالية تعمل دون انتظار العميل. يمكن للتدفق تشغيل {max} خطوة من هذا النوع كحد أقصى قبل أن ينتظر؛ أضف خطوة أزرار أو قائمة أو سؤال لتقسيم السلسلة.",
       "keywordsRequired": "تحتاج مُشغّلات الكلمات المفتاحية كلمة واحدة على الأقل.",
       "blankKeywords": "{count} {count, plural, =1 {كلمة مفتاحية فارغة} other {كلمات مفتاحية فارغة}} — لن تطابق شيئًا.",
       "startNeedsNext": "يجب أن تشير عقدة البداية إلى عقدة تالية.",
@@ -3394,7 +3399,8 @@
       "nameEmpty": "لا يمكن أن يكون name فارغًا",
       "unknownTemplate": "template_slug غير معروف «{slug}»",
       "insertFailed": "فشل إدراج التدفق",
-      "nameRequired": "name مطلوب"
+      "nameRequired": "name مطلوب",
+      "timeoutHoursInvalid": "يجب أن تكون on_timeout_hours رقمًا أكبر من 0 وبحد أقصى {max}."
     },
     "quickReplies": {
       "kindInvalid": "يجب أن يكون kind أحد \"text\" أو \"interactive\"",
@@ -3471,6 +3477,7 @@
       "rateLimit": "تم بلوغ حد معدل Meta (100 إنشاء قالب في الساعة). حاول لاحقًا.",
       "submittedSaveFailed": "أُرسل إلى Meta لكن فشل الحفظ محليًا: {message}. شغّل «مزامنة من Meta» للاستعادة.",
       "submitFailed": "تعذّر إرسال القالب.",
+      "alreadyExists": "يوجد قالب باسم {name} ({language}) في هذا الحساب بالفعل. عدّل ذلك القالب أو أعد إرساله بدلًا من إنشاء قالب جديد.",
       "metaApiStatus": "خطأ Meta API: {status}",
       "syncFailed": "تعذّرت مزامنة القوالب",
       "categoryLockedApproved": "ميتا لا تسمح بتغيير فئة قالب معتمد. أنشئ قالبًا جديدًا بدلًا من ذلك."

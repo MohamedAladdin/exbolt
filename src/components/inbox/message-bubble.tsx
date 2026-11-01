@@ -383,16 +383,18 @@ function MessageContent({
               <CornerDownLeft className="h-3 w-3" />
               {t("buttonReply")}
             </span>
-            <p className="whitespace-pre-wrap break-words text-sm">
-              {message.content_text || t("interactiveReply")}
-            </p>
+            <LinkedText
+              text={message.content_text || t("interactiveReply")}
+              onPrimary={isAgent}
+            />
           </div>
         );
       }
       return (
-        <p className="whitespace-pre-wrap break-words text-sm">
-          {message.content_text || t("interactiveReply")}
-        </p>
+        <LinkedText
+          text={message.content_text || t("interactiveReply")}
+          onPrimary={isAgent}
+        />
       );
     }
 
