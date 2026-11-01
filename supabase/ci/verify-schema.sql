@@ -163,6 +163,22 @@ BEGIN
     RAISE EXCEPTION 'anon can execute dashboard_overview — migration 059 grants are wrong';
   END IF;
 
+  -- Reports (082). A missing `saved_reports` is a 500 on every /reports load,
+  -- and a `run_report` still executable by `anon` would expose one account's
+  -- traffic to anyone holding the public key.
+  IF to_regclass('public.saved_reports') IS NULL THEN
+    RAISE EXCEPTION 'public.saved_reports is missing — migration 082 did not apply';
+  END IF;
+  IF NOT (SELECT relrowsecurity FROM pg_class WHERE oid = 'public.saved_reports'::regclass) THEN
+    RAISE EXCEPTION 'saved_reports has RLS disabled — migration 082 did not apply';
+  END IF;
+  IF to_regprocedure('public.run_report(jsonb)') IS NULL THEN
+    RAISE EXCEPTION 'public.run_report(jsonb) is missing — migration 082 did not apply';
+  END IF;
+  IF has_function_privilege('anon', 'public.run_report(jsonb)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'anon can execute run_report — migration 082 grants are wrong';
+  END IF;
+
   RAISE NOTICE 'schema verification passed';
 END
 $$;

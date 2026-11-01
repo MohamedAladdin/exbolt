@@ -26,6 +26,9 @@ const pageTitles: Record<string, string> = {
   "/pipelines": "pipelines",
   "/broadcasts": "broadcasts",
   "/automations": "automations",
+  // Without this the shell header read «لوحة التحكم» on /reports — the
+  // fallback is the dashboard title, so a missing entry is a visible lie.
+  "/reports": "reports",
   "/settings": "settings",
 };
 

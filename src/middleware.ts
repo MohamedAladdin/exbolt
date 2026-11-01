@@ -112,6 +112,7 @@ export async function middleware(request: NextRequest) {
     '/broadcasts',
     '/automations',
     '/flows',
+    '/reports',
     '/agents',
     '/notifications',
     '/settings',

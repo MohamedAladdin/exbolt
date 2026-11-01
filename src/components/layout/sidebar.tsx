@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useTotalUnread } from "@/hooks/use-total-unread";
 import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
 import {
+  BarChart3,
   Bell,
   Bot,
   Crown,
@@ -111,6 +112,7 @@ const navItems: NavItem[] = [
   { href: "/broadcasts", labelKey: "broadcasts", icon: Radio, feature: "broadcasts" },
   { href: "/automations", labelKey: "automations", icon: Zap, feature: "automations" },
   { href: "/flows", labelKey: "flows", icon: Workflow, beta: true, feature: "flows" },
+  { href: "/reports", labelKey: "reports", icon: BarChart3, feature: "reports" },
   { href: "/agents", labelKey: "aiAgents", icon: Bot, feature: "ai_agent" },
 ];
 

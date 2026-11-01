@@ -43,7 +43,8 @@
     "menuSettings": "Settings",
     "menuSignOut": "Sign out",
     "poweredBy": "Powered by",
-    "superAdmin": "Super-admin panel"
+    "superAdmin": "Super-admin panel",
+    "reports": "Reports"
   },
   "Header": {
     "dashboard": "Dashboard",
@@ -60,7 +61,8 @@
     "defaultAvatar": "Avatar",
     "menuProfile": "Profile",
     "menuSettings": "Settings",
-    "menuSignOut": "Sign out"
+    "menuSignOut": "Sign out",
+    "reports": "Reports"
   },
   "ModeToggle": {
     "switchMode": "Switch to {mode} mode"
@@ -3606,5 +3608,153 @@
       "chartEmpty": "No activity in this range yet — online time starts recording from this release.",
       "chartLegend": "hover a bar for the day’s numbers"
     }
+  },
+  "Reports": {
+    "title": "Reports",
+    "subtitle": "Build a report from the account's own data, keep it, and hand it over as a spreadsheet or a printable page.",
+    "presetsLabel": "Ready-made reports",
+    "builderTitle": "Build your own",
+    "savedLabel": "Saved reports",
+    "noSaved": "No saved reports yet. Run one and press Save — the dates are refreshed on every run, so it stays useful next month.",
+    "loading": "Loading…",
+    "private": "private",
+    "mine": "yours",
+    "delete": "Delete",
+    "emptyPrompt": "Pick a ready-made report above, or choose a source and metrics here.",
+    "empty": "No data in this period.",
+    "error": "The report could not be run.",
+    "saveFailed": "The report could not be saved.",
+    "exportFailed": "The export failed.",
+    "advancedOnly": "Included in the Growth and Scale plans",
+    "chartTitle": "Trend",
+    "totals": "Total",
+    "rowsCount": "{count, plural, =0 {no rows} =1 {one row} other {# rows}}",
+    "truncated": "Showing the first {count} rows — narrow the period or add a filter.",
+    "periodLabel": "{from} → {to}",
+    "generatedAt": "Generated {when}",
+    "footerNote": "Figures are computed from this account's conversation history at the moment of export.",
+    "run": "Run report",
+    "running": "Running…",
+    "save": "Save",
+    "saveTitle": "Save this report",
+    "saveDescription": "The definition is saved; the period is not — a saved report always runs on the dates you choose.",
+    "namePlaceholder": "Team performance — October",
+    "descriptionPlaceholder": "Optional note for your team",
+    "cancel": "Cancel",
+    "exportCsv": "CSV",
+    "exportPrint": "Print / PDF",
+    "metricsLabel": "Metrics",
+    "dimensionsLabel": "Break down by (up to two)",
+    "filtersLabel": "Filters",
+    "period": {
+      "from": "From",
+      "to": "To",
+      "days": "{count, plural, =1 {1 day} other {# days}}"
+    },
+    "grain": {
+      "label": "Bucket",
+      "day": "Daily",
+      "week": "Weekly",
+      "month": "Monthly"
+    },
+    "datasets": {
+      "messages": "Messages",
+      "conversations": "Conversations",
+      "contacts": "Contacts",
+      "deals": "Deals",
+      "broadcasts": "Campaigns",
+      "team": "Team replies"
+    },
+    "metrics": {
+      "messages": "Messages",
+      "inbound": "Inbound",
+      "outbound": "Outbound",
+      "delivered": "Delivered",
+      "read": "Read",
+      "failed": "Failed",
+      "ai_replies": "AI replies",
+      "delivery_rate": "Delivery rate",
+      "conversations": "Conversations",
+      "open": "Open",
+      "closed": "Closed",
+      "unassigned": "Unassigned",
+      "with_reply": "Answered",
+      "first_response_avg": "Avg first response",
+      "days_to_close_avg": "Avg days to close",
+      "contacts": "New contacts",
+      "with_tag": "Tagged contacts",
+      "deals": "Deals",
+      "won": "Won",
+      "lost": "Lost",
+      "active": "Active",
+      "value": "Value",
+      "won_value": "Won value",
+      "avg_value": "Avg deal value",
+      "broadcasts": "Campaigns",
+      "recipients": "Recipients",
+      "sent": "Sent",
+      "replied": "Replied",
+      "read_rate": "Read rate",
+      "reply_rate": "Reply rate",
+      "replies": "Replies",
+      "avg_response_minutes": "Avg response",
+      "median_response_minutes": "Median response",
+      "p90_response_minutes": "90th percentile response",
+      "within_target": "Within target",
+      "within_target_rate": "Within target %"
+    },
+    "dimensions": {
+      "period": "Period",
+      "channel": "Channel",
+      "agent": "Team member",
+      "status": "Status",
+      "tag": "Tag",
+      "number": "Number",
+      "pipeline": "Pipeline",
+      "stage": "Stage",
+      "broadcast": "Campaign"
+    },
+    "filters": {
+      "channel": "Channel",
+      "status": "Status",
+      "agent": "Team member",
+      "tag": "Tag",
+      "pipeline": "Pipeline",
+      "stage": "Stage",
+      "broadcast": "Campaign",
+      "number": "Number"
+    },
+    "channels": {
+      "whatsapp": "WhatsApp",
+      "messenger": "Messenger",
+      "instagram": "Instagram"
+    },
+    "statuses": {
+      "sending": "Sending",
+      "sent": "Sent",
+      "delivered": "Delivered",
+      "read": "Read",
+      "failed": "Failed",
+      "open": "Open",
+      "pending": "Pending",
+      "closed": "Closed",
+      "won": "Won",
+      "lost": "Lost",
+      "active": "Active",
+      "draft": "Draft",
+      "scheduled": "Scheduled"
+    },
+    "presets": {
+      "volume": "Daily message volume",
+      "team-performance": "Team performance",
+      "response-times": "Response time over time",
+      "new-contacts": "New contacts",
+      "tags": "Tag breakdown",
+      "pipeline": "Deals by stage",
+      "broadcasts": "Campaign results",
+      "failed-messages": "Failed messages"
+    },
+    "rename": "Rename",
+    "renameTitle": "Rename this report"
   }
 }

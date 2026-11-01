@@ -43,7 +43,8 @@
     "menuSettings": "الإعدادات",
     "menuSignOut": "تسجيل الخروج",
     "poweredBy": "بدعم من",
-    "superAdmin": "لوحة السوبر أدمن"
+    "superAdmin": "لوحة السوبر أدمن",
+    "reports": "التقارير"
   },
   "Header": {
     "dashboard": "لوحة التحكم",
@@ -60,7 +61,8 @@
     "defaultAvatar": "صورة رمزية",
     "menuProfile": "الملف الشخصي",
     "menuSettings": "الإعدادات",
-    "menuSignOut": "تسجيل الخروج"
+    "menuSignOut": "تسجيل الخروج",
+    "reports": "التقارير"
   },
   "ModeToggle": {
     "switchMode": "التبديل إلى الوضع {mode}"
@@ -3606,5 +3608,153 @@
       "chartEmpty": "لا يوجد نشاط في الفترة دي — حساب مدة التواجد بدأ من التحديث دا.",
       "chartLegend": "مرّر على العمود لرؤية أرقام اليوم"
     }
+  },
+  "Reports": {
+    "title": "التقارير",
+    "subtitle": "ابنِ تقريرًا من بيانات حسابك، احفظه، وسلّمه كملف Excel أو صفحة جاهزة للطباعة.",
+    "presetsLabel": "تقارير جاهزة",
+    "builderTitle": "تقرير مخصص",
+    "savedLabel": "تقارير محفوظة",
+    "noSaved": "لا توجد تقارير محفوظة. شغّل تقريرًا واضغط حفظ — الفترة تُحدَّث عند كل تشغيل فيبقى مفيدًا الشهر القادم.",
+    "loading": "جاري التحميل…",
+    "private": "خاص",
+    "mine": "من إنشائك",
+    "delete": "حذف",
+    "emptyPrompt": "اختر تقريرًا جاهزًا من الأعلى، أو حدّد المصدر والمقاييس هنا.",
+    "empty": "لا توجد بيانات في هذه الفترة.",
+    "error": "تعذر تشغيل التقرير.",
+    "saveFailed": "تعذر حفظ التقرير.",
+    "exportFailed": "تعذر التصدير.",
+    "advancedOnly": "متاح في باقتي النمو والتوسع",
+    "chartTitle": "الاتجاه",
+    "totals": "الإجمالي",
+    "rowsCount": "{count, plural, =0 {لا صفوف} =1 {صف واحد} other {# صفوف}}",
+    "truncated": "يتم عرض أول {count} صف — ضيّق الفترة أو أضف فلترًا.",
+    "periodLabel": "{from} ← {to}",
+    "generatedAt": "أُنشئ في {when}",
+    "footerNote": "الأرقام محسوبة من سجل محادثات هذا الحساب لحظة التصدير.",
+    "run": "تشغيل التقرير",
+    "running": "جاري التشغيل…",
+    "save": "حفظ",
+    "saveTitle": "حفظ التقرير",
+    "saveDescription": "يُحفظ التعريف فقط، وليست الفترة — التقرير المحفوظ يعمل دائمًا على التواريخ التي تختارها.",
+    "namePlaceholder": "أداء الفريق — أكتوبر",
+    "descriptionPlaceholder": "ملاحظة اختيارية لفريقك",
+    "cancel": "إلغاء",
+    "exportCsv": "CSV",
+    "exportPrint": "طباعة / PDF",
+    "metricsLabel": "المقاييس",
+    "dimensionsLabel": "التقسيم (حتى قسمين)",
+    "filtersLabel": "الفلاتر",
+    "period": {
+      "from": "من",
+      "to": "إلى",
+      "days": "{count, plural, =1 {يوم} other {# أيام}}"
+    },
+    "grain": {
+      "label": "التجميع",
+      "day": "يومي",
+      "week": "أسبوعي",
+      "month": "شهري"
+    },
+    "datasets": {
+      "messages": "الرسائل",
+      "conversations": "المحادثات",
+      "contacts": "جهات الاتصال",
+      "deals": "الصفقات",
+      "broadcasts": "الحملات",
+      "team": "ردود الفريق"
+    },
+    "metrics": {
+      "messages": "الرسائل",
+      "inbound": "واردة",
+      "outbound": "صادرة",
+      "delivered": "تم التسليم",
+      "read": "تم القراءة",
+      "failed": "فاشلة",
+      "ai_replies": "ردود AI",
+      "delivery_rate": "نسبة التسليم",
+      "conversations": "المحادثات",
+      "open": "مفتوحة",
+      "closed": "مغلقة",
+      "unassigned": "غير مسندة",
+      "with_reply": "تم الرد عليها",
+      "first_response_avg": "متوسط أول رد",
+      "days_to_close_avg": "متوسط أيام الإغلاق",
+      "contacts": "جهات اتصال جديدة",
+      "with_tag": "جهات موسومة",
+      "deals": "الصفقات",
+      "won": "مكسوبة",
+      "lost": "خاسرة",
+      "active": "نشطة",
+      "value": "القيمة",
+      "won_value": "قيمة المكسوب",
+      "avg_value": "متوسط قيمة الصفقة",
+      "broadcasts": "الحملات",
+      "recipients": "المستلمون",
+      "sent": "أُرسلت",
+      "replied": "ردّوا",
+      "read_rate": "نسبة القراءة",
+      "reply_rate": "نسبة الرد",
+      "replies": "الردود",
+      "avg_response_minutes": "متوسط زمن الرد",
+      "median_response_minutes": "وسيط زمن الرد",
+      "p90_response_minutes": "الشريحة ٩٠٪ لزمن الرد",
+      "within_target": "داخل المستهدف",
+      "within_target_rate": "نسبة داخل المستهدف"
+    },
+    "dimensions": {
+      "period": "الفترة",
+      "channel": "القناة",
+      "agent": "الموظف",
+      "status": "الحالة",
+      "tag": "الوسم",
+      "number": "الرقم",
+      "pipeline": "مسار البيع",
+      "stage": "المرحلة",
+      "broadcast": "الحملة"
+    },
+    "filters": {
+      "channel": "القناة",
+      "status": "الحالة",
+      "agent": "الموظف",
+      "tag": "الوسم",
+      "pipeline": "مسار البيع",
+      "stage": "المرحلة",
+      "broadcast": "الحملة",
+      "number": "الرقم"
+    },
+    "channels": {
+      "whatsapp": "واتساب",
+      "messenger": "ماسنجر",
+      "instagram": "إنستجرام"
+    },
+    "statuses": {
+      "sending": "جاري الإرسال",
+      "sent": "أُرسلت",
+      "delivered": "تم التسليم",
+      "read": "تم القراءة",
+      "failed": "فاشلة",
+      "open": "مفتوحة",
+      "pending": "معلّقة",
+      "closed": "مغلقة",
+      "won": "مكسوبة",
+      "lost": "خاسرة",
+      "active": "نشطة",
+      "draft": "مسودة",
+      "scheduled": "مجدولة"
+    },
+    "presets": {
+      "volume": "حجم الرسائل اليومي",
+      "team-performance": "أداء الفريق",
+      "response-times": "زمن الرد عبر الوقت",
+      "new-contacts": "جهات اتصال جديدة",
+      "tags": "توزيع الوسوم",
+      "pipeline": "الصفقات حسب المرحلة",
+      "broadcasts": "نتائج الحملات",
+      "failed-messages": "الرسائل الفاشلة"
+    },
+    "rename": "تعديل الاسم",
+    "renameTitle": "تعديل اسم التقرير"
   }
 }
