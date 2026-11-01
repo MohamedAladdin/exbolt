@@ -573,7 +573,11 @@ BEGIN
       WHEN 'period'    THEN format('date_trunc(%L, b.occurred_at AT TIME ZONE %L) AT TIME ZONE %L',
                                    v_grain, v_tz, v_tz)
       WHEN 'channel'   THEN 'b.channel'
-      WHEN 'agent'     THEN 'COALESCE(ap.full_name, ''—'')'
+      -- NULL means something different per dataset (a customer message, an
+      -- unassigned conversation, a reply with no recorded member). The
+      -- sentinel travels as-is and the UI/export translate it, so the report
+      -- never prints a dash where a word belongs.
+      WHEN 'agent'     THEN 'COALESCE(ap.full_name, ''__none'')'
       WHEN 'status'    THEN 'b.status'
       WHEN 'tag'       THEN 'COALESCE(tg.name, ''—'')'
       WHEN 'number'    THEN 'COALESCE(wc.display_phone_number, wc.verified_name, ''—'')'

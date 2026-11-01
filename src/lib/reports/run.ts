@@ -15,7 +15,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import type { MetricUnit, ReportConfig, ReportDataset } from './catalog';
-import { metricUnit } from './catalog';
+import { UNASSIGNED_AGENT, metricUnit } from './catalog';
 
 export type ColumnKind = 'time' | 'text' | 'number';
 
@@ -152,6 +152,8 @@ export function formatCell(
     dataset: ReportDataset;
     grain: 'day' | 'week' | 'month';
     timeZone: string;
+    /** Translated label for the nameless-member row (`UNASSIGNED_AGENT`). */
+    agentPlaceholder?: string;
   },
 ): string {
   if (column.kind === 'time') {
@@ -159,6 +161,9 @@ export function formatCell(
   }
   if (column.kind === 'number') {
     return formatMetric(value, metricUnit(context.dataset, column.key), context);
+  }
+  if (value === UNASSIGNED_AGENT) {
+    return context.agentPlaceholder ?? '—';
   }
   return value == null || value === '' ? '—' : String(value);
 }

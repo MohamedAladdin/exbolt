@@ -22,6 +22,7 @@ import { VENDOR_NAME, VENDOR_URL, brandName } from '@/lib/branding';
 import { requireFeature } from '@/lib/plans/guard';
 import {
   ReportConfigError,
+  UNASSIGNED_AGENT,
   browserTimeZone,
   normalizeReportConfig,
   todayIn,
@@ -39,6 +40,8 @@ interface ExportLabels {
   generated: string;
   rowCount: string;
   truncated: string;
+  /** Label for the nameless-member row, e.g. «بدون موظف مسجل». */
+  agentPlaceholder?: string | null;
   footer?: string | null;
 }
 
@@ -83,6 +86,17 @@ export async function POST(request: Request) {
       throw err;
     }
 
+    // The runner returns a sentinel for "no member" (NULL means a customer
+    // message in one dataset and an unassigned conversation in another). Both
+    // the spreadsheet and the printed page get the translated word.
+    const agentLabel = labels.agentPlaceholder ? String(labels.agentPlaceholder).slice(0, 60) : null;
+    const rows = agentLabel
+      ? result.rows.map((row) =>
+          row.agent === UNASSIGNED_AGENT ? { ...row, agent: agentLabel } : row,
+        )
+      : result.rows;
+    const scoped = { ...result, rows };
+
     const headers: Record<string, string> = {};
     for (const column of result.columns) {
       headers[column.key] = String(labels.columns?.[column.key] ?? column.key).slice(0, 80);
@@ -90,7 +104,7 @@ export async function POST(request: Request) {
     headers.__totals = String(labels.totals ?? 'Total').slice(0, 80);
 
     if (format === 'csv') {
-      const csv = reportToCsv(result, headers);
+      const csv = reportToCsv(scoped, headers);
       return new NextResponse(csv, {
         headers: {
           'Content-Type': 'text/csv; charset=utf-8',
@@ -117,7 +131,7 @@ export async function POST(request: Request) {
       align: column.kind === 'number' ? 'end' : 'start',
     }));
 
-    const rows = result.rows.map((row) =>
+    const tableRows = scoped.rows.map((row) =>
       result.columns.map((column) => formatCell(row[column.key], column, cellContext)),
     );
 
@@ -135,7 +149,7 @@ export async function POST(request: Request) {
       periodLabel: String(labels.period ?? '').slice(0, 160),
       generatedAtLabel: String(labels.generated ?? '').slice(0, 160),
       columns,
-      rows,
+      rows: tableRows,
       totals: result.rows.length > 1 ? totals : null,
       totalsLabel: headers.__totals,
       rowCountLabel: String(labels.rowCount ?? '').slice(0, 80),

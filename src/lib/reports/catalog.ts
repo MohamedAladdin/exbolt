@@ -95,6 +95,28 @@ export interface ReportConfig {
   limit: number;
 }
 
+/**
+ * What the SQL runner returns instead of a name when a row has no member.
+ *
+ * NULL means something different in each dataset — a customer-sent message, an
+ * unassigned conversation, a reply whose sender was never recorded — so the
+ * label is chosen per dataset instead of printing one dash for all three.
+ */
+export const UNASSIGNED_AGENT = '__none';
+
+/** i18n key (under `Reports.agentPlaceholder`) for the nameless member row. */
+export function agentPlaceholderKey(dataset: ReportDataset): string {
+  switch (dataset) {
+    case 'messages':
+      return 'customer';
+    case 'conversations':
+    case 'deals':
+      return 'unassigned';
+    default:
+      return 'noSender';
+  }
+}
+
 export const MAX_REPORT_DAYS = 366;
 export const MAX_REPORT_ROWS = 5000;
 export const DEFAULT_REPORT_ROWS = 1000;

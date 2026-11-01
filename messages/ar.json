@@ -3755,6 +3755,11 @@
       "failed-messages": "الرسائل الفاشلة"
     },
     "rename": "تعديل الاسم",
-    "renameTitle": "تعديل اسم التقرير"
+    "renameTitle": "تعديل اسم التقرير",
+    "agentPlaceholder": {
+      "customer": "رسائل العملاء",
+      "unassigned": "غير مسندة",
+      "noSender": "بدون موظف مسجّل"
+    }
   }
 }

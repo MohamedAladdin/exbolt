@@ -25,7 +25,7 @@ import { BarChart } from '@/components/tremor/bar-chart';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { metricUnit } from '@/lib/reports/catalog';
+import { agentPlaceholderKey, metricUnit } from '@/lib/reports/catalog';
 import { formatCell, formatMetric, type ReportResult } from '@/lib/reports/run';
 
 export function ReportResults({
@@ -62,6 +62,7 @@ export function ReportResults({
     dataset: result.dataset,
     grain: result.grain,
     timeZone: result.timeZone,
+    agentPlaceholder: t(`agentPlaceholder.${agentPlaceholderKey(result.dataset)}`),
   };
 
   const columns = result.columns;

@@ -40,6 +40,7 @@ import { cn } from '@/lib/utils';
 import {
   PRESETS,
   addDays,
+  agentPlaceholderKey,
   browserTimeZone,
   presetConfig,
   todayIn,
@@ -307,6 +308,7 @@ export default function ReportsPage() {
             }),
             rowCount: t('rowsCount', { count: result.rowCount }),
             truncated: t('truncated', { count: result.limit }),
+            agentPlaceholder: t(`agentPlaceholder.${agentPlaceholderKey(result.dataset)}`),
             footer: t('footerNote'),
           },
         }),

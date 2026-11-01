@@ -197,6 +197,13 @@ describe('catalogue ↔ run_report', () => {
     }
   });
 
+  it('sends the nameless-member sentinel the UI translates', () => {
+    // The label is chosen per dataset in the UI, so the SQL must not bake a
+    // dash into the value: '__none' is the contract.
+    expect(sql).toContain("'__none'");
+    expect(sql).not.toContain("COALESCE(ap.full_name, ''—'')");
+  });
+
   it('implements every dimension the catalogue offers', () => {
     for (const dataset of REPORT_DATASETS) {
       for (const dimension of DATASETS[dataset].dimensions) {

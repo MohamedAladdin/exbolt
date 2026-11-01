@@ -3755,6 +3755,11 @@
       "failed-messages": "Failed messages"
     },
     "rename": "Rename",
-    "renameTitle": "Rename this report"
+    "renameTitle": "Rename this report",
+    "agentPlaceholder": {
+      "customer": "Customer messages",
+      "unassigned": "Unassigned",
+      "noSender": "No recorded member"
+    }
   }
 }
