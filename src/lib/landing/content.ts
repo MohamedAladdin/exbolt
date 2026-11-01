@@ -70,6 +70,19 @@ function limitText(key: string, raw: unknown, locale: LandingLocale): string | n
     if (value === 1) return ar ? 'وكيل AI واحد' : '1 AI agent';
     return ar ? `${value} وكلاء AI` : `${value} AI agents`;
   }
+  // Reports packaging (083). These two are the line the customer is actually
+  // buying, so they are printed as numbers on the plan card, not implied by a
+  // feature bullet.
+  if (key === 'report_history_days') {
+    if (value === null) return ar ? 'تقارير على كل التاريخ' : 'Reports on all history';
+    if (value >= 365) return ar ? 'تقارير على مدار سنة' : 'A full year of reports';
+    return ar ? `تقارير على آخر ${value} يوم` : `Reports on the last ${value} days`;
+  }
+  if (key === 'saved_reports') {
+    if (value === null) return ar ? 'تقارير محفوظة بلا حد' : 'Unlimited saved reports';
+    if (value === 0) return null;
+    return ar ? `${value} تقرير محفوظ` : `${value} saved reports`;
+  }
   return null;
 }
 
@@ -101,7 +114,14 @@ export async function getLandingContent(locale: LandingLocale): Promise<LandingC
         .map((code) => FEATURE_LABELS[code]?.[locale])
         .filter((label): label is string => Boolean(label));
 
-      const limits = ['channels', 'team_members', 'broadcast_monthly', 'ai_agents']
+      const limits = [
+        'channels',
+        'team_members',
+        'broadcast_monthly',
+        'ai_agents',
+        'report_history_days',
+        'saved_reports',
+      ]
         .map((key) => limitText(key, (row.limits as Record<string, unknown>)?.[key], locale))
         .filter((label): label is string => Boolean(label));
 

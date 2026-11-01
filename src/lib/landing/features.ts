@@ -40,7 +40,10 @@ export const FEATURE_LABELS: Record<string, { ar: string; en: string }> = {
   ai_knowledge: { ar: 'قاعدة معرفة', en: 'Knowledge base' },
   flows: { ar: 'تدفقات بصرية', en: 'Visual flows' },
   reports: { ar: 'تقارير جاهزة وتصدير CSV', en: 'Ready-made reports and CSV' },
-  reports_advanced: { ar: 'تقارير مخصصة ومقاييس متقدمة', en: 'Custom reports and advanced metrics' },
+  reports_advanced: {
+    ar: 'تقارير مخصصة: مقارنة بالفترة السابقة، جدولة بالإيميل، تنبيهات، تحليل AI',
+    en: 'Custom reports: period comparison, email schedules, alerts, AI reading',
+  },
   exports: { ar: 'تصدير البيانات', en: 'Data export' },
   multi_channel: { ar: 'ماسنجر وإنستجرام', en: 'Messenger and Instagram' },
   integrations: { ar: 'تكاملات', en: 'Integrations' },
