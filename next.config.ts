@@ -124,10 +124,13 @@ const nextConfig: NextConfig = {
   async rewrites() {
     // Marketing site: static, bilingual, served by the app itself so the
     // landing page and the panel share one origin (no CORS, one TLS cert).
+    // The page is static, but the pricing grid is rendered from `plans` at
+    // request time (see src/app/api/landing/[locale]/route.ts) so a packaging
+    // change in the DB reaches the landing without a hand edit in two files.
     const landing = [
-      { source: "/", destination: "/landing/ar.html" },
-      { source: "/ar", destination: "/landing/ar.html" },
-      { source: "/en", destination: "/landing/en.html" },
+      { source: "/", destination: "/api/landing/ar" },
+      { source: "/ar", destination: "/api/landing/ar" },
+      { source: "/en", destination: "/api/landing/en" },
     ];
 
     if (process.env.SUPABASE_PROXY !== "true") {
