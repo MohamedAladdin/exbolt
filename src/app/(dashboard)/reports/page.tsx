@@ -18,7 +18,7 @@
 // ============================================================
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowUpRight, Loader2, Lock, Pencil, Trash2 } from 'lucide-react';
+import { ArrowUpRight, CalendarClock, Loader2, Lock, Pencil, Trash2 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 
 import { Button } from '@/components/ui/button';
@@ -54,6 +54,7 @@ import {
   type ReportOptions,
 } from '@/components/reports/report-controls';
 import { ReportResults } from '@/components/reports/report-results';
+import { ScheduleDialog, type ScheduleRecord } from '@/components/reports/schedule-dialog';
 
 interface SavedReport {
   id: string;
@@ -92,6 +93,8 @@ export default function ReportsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [saved, setSaved] = useState<SavedReport[]>([]);
+  const [schedules, setSchedules] = useState<Record<string, ScheduleRecord>>({});
+  const [scheduleFor, setScheduleFor] = useState<SavedReport | null>(null);
   const [savedLoading, setSavedLoading] = useState(true);
   const [activePreset, setActivePreset] = useState<string | null>(PRESETS[0].id);
   const [activeSaved, setActiveSaved] = useState<string | null>(null);
@@ -178,8 +181,14 @@ export default function ReportsPage() {
     try {
       const response = await fetch('/api/reports', { cache: 'no-store' });
       if (!response.ok) return;
-      const payload = (await response.json()) as { reports: SavedReport[] };
+      const payload = (await response.json()) as {
+        reports: SavedReport[];
+        schedules?: ScheduleRecord[];
+      };
       setSaved(payload.reports ?? []);
+      const map: Record<string, ScheduleRecord> = {};
+      for (const schedule of payload.schedules ?? []) map[schedule.saved_report_id] = schedule;
+      setSchedules(map);
     } finally {
       setSavedLoading(false);
     }
@@ -521,9 +530,26 @@ export default function ReportsPage() {
                     {t(`datasets.${report.dataset}`)}
                     {!report.is_shared && ` · ${t('private')}`}
                     {report.created_by === user?.id && ` · ${t('mine')}`}
+                    {schedules[report.id] && (
+                      <>
+                        {` · ${t('schedule.badge', {
+                          cadence: t(`schedule.cadence.${schedules[report.id].cadence}`),
+                          hour: `${String(schedules[report.id].hour).padStart(2, '0')}:00`,
+                        })}`}
+                      </>
+                    )}
                   </span>
                 </button>
                 <div className="flex items-center gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    aria-label={t('schedule.button')}
+                    onClick={() => setScheduleFor(report)}
+                  >
+                    <CalendarClock className={cn('size-4', schedules[report.id] && 'text-primary')} />
+                  </Button>
                   <Button
                     type="button"
                     variant="ghost"
@@ -553,6 +579,23 @@ export default function ReportsPage() {
           </div>
         )}
       </section>
+
+      {scheduleFor && (
+        <ScheduleDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setScheduleFor(null);
+          }}
+          reportId={scheduleFor.id}
+          reportName={scheduleFor.name}
+          timeZone={timeZone}
+          initial={schedules[scheduleFor.id] ?? null}
+          onSaved={() => {
+            setScheduleFor(null);
+            void loadSaved();
+          }}
+        />
+      )}
 
       <Dialog open={saveOpen} onOpenChange={setSaveOpen}>
         <DialogContent>

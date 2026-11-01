@@ -57,7 +57,17 @@ export async function GET() {
       console.error('[reports] list failed:', error.message);
       return NextResponse.json({ error: 'read_failed' }, { status: 500 });
     }
-    return NextResponse.json({ reports: data ?? [] });
+
+    // Schedules travel with the list: the card needs a badge, and one query is
+    // cheaper than N round trips per saved report.
+    const { data: schedules } = await ctx.supabase
+      .from('report_schedules')
+      .select(
+        'saved_report_id, cadence, weekday, day_of_month, hour, time_zone, recipients, format, is_active, last_sent_at, last_error',
+      )
+      .eq('account_id', ctx.accountId);
+
+    return NextResponse.json({ reports: data ?? [], schedules: schedules ?? [] });
   } catch (err) {
     return toErrorResponse(err);
   }

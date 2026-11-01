@@ -93,7 +93,8 @@ CREATE POLICY saved_reports_delete ON public.saved_reports
   );
 
 -- ------------------------------------------------------------
--- run_report(config)
+-- _run_report(account, config) — the implementation; `run_report(config)`
+-- below is the session-scoped wrapper that every API route calls.
 --
 --   {
 --     "dataset":    "messages" | "conversations" | "contacts"
@@ -111,7 +112,7 @@ CREATE POLICY saved_reports_delete ON public.saved_reports
 --   → { columns: [{key, kind}], rows: [...], totals: {...},
 --       rowCount, truncated, dataset, from, to, timeZone, grain }
 -- ------------------------------------------------------------
-CREATE OR REPLACE FUNCTION public.run_report(p_config JSONB)
+CREATE OR REPLACE FUNCTION public._run_report(p_account UUID, p_config JSONB)
 RETURNS JSONB
 LANGUAGE plpgsql
 STABLE
@@ -119,7 +120,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_account  UUID;
+  v_account  UUID := p_account;
   v_tz       TEXT := 'UTC';
   v_dataset  TEXT;
   v_grain    TEXT;
@@ -164,9 +165,6 @@ DECLARE
   v_need_pip BOOLEAN;
   v_need_stg BOOLEAN;
 BEGIN
-  SELECT p.account_id INTO v_account
-  FROM profiles p WHERE p.user_id = auth.uid();
-
   IF v_account IS NULL THEN
     RAISE EXCEPTION 'caller is not a member of an account' USING ERRCODE = '42501';
   END IF;
@@ -767,6 +765,36 @@ BEGIN
     'truncated', v_truncated,
     'limit',     v_limit
   );
+END;
+$$;
+
+ALTER FUNCTION public._run_report(UUID, JSONB) OWNER TO postgres;
+-- The account is a parameter here, so this one is for the service role only
+-- (scheduled delivery). A tenant session must never reach it: it could name
+-- somebody else's account.
+REVOKE ALL ON FUNCTION public._run_report(UUID, JSONB) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public._run_report(UUID, JSONB) TO service_role;
+
+-- The tenant-facing entry point: resolves the account from the session and
+-- delegates, so there is one implementation of the aggregation.
+CREATE OR REPLACE FUNCTION public.run_report(p_config JSONB)
+RETURNS JSONB
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_account UUID;
+BEGIN
+  SELECT p.account_id INTO v_account
+  FROM profiles p WHERE p.user_id = auth.uid();
+
+  IF v_account IS NULL THEN
+    RAISE EXCEPTION 'caller is not a member of an account' USING ERRCODE = '42501';
+  END IF;
+
+  RETURN public._run_report(v_account, p_config);
 END;
 $$;
 

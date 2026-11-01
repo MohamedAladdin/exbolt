@@ -3775,6 +3775,36 @@
       "label": "Compare with the previous period",
       "previousValue": "before: {value}",
       "new": "new"
+    },
+    "schedule": {
+      "button": "Schedule delivery",
+      "badge": "{cadence} at {hour}",
+      "title": "Mail this report",
+      "cadence": {
+        "weekly": "Every week",
+        "monthly": "Every month"
+      },
+      "weekday": "Day",
+      "dayOfMonth": "Day of month",
+      "hour": "Hour",
+      "recipients": "Recipients",
+      "recipientsHint": "Separate emails with a comma. The report is attached as a table in the message.",
+      "active": "Active",
+      "lastError": "Last attempt",
+      "stop": "Stop",
+      "save": "Save schedule",
+      "cancel": "Cancel",
+      "saveFailed": "The schedule could not be saved.",
+      "needsRecipient": "Add at least one valid email.",
+      "days": {
+        "0": "Sunday",
+        "1": "Monday",
+        "2": "Tuesday",
+        "3": "Wednesday",
+        "4": "Thursday",
+        "5": "Friday",
+        "6": "Saturday"
+      }
     }
   }
 }
