@@ -378,6 +378,8 @@
       "loadingOlder": "Loading…",
       "loadOlderFailed": "Could not load older messages.",
       "refreshConversation": "Refresh conversation",
+      "chatWallpaper": "Chat background",
+      "chatWallpaperHint": "Repaint the canvas behind the messages. Bubbles carry their own colours, so the text stays readable whatever you pick.",
       "status": "Status",
       "statusOpen": "Open",
       "statusPending": "Pending",
@@ -2192,6 +2194,8 @@
       "arabicFontHint": "Used when the interface language is Arabic.",
       "fontSize": "Text size",
       "fontSizeHint": "Scales the whole interface.",
+      "chatBackground": "Chat background",
+      "chatBackgroundDescription": "The canvas behind the messages in the inbox — colours, the patterned default, or your own photo. Saved on this device.",
       "size": {
         "sm": "Small",
         "md": "Default",
@@ -3549,6 +3553,29 @@
       "title": "Recipient is in a WhatsApp experiment",
       "hint": "Meta has placed this customer’s number in an experiment group, so it is withholding delivery. Nothing on our side can override it — try another number, or retry later; experiments rotate."
     }
+  },
+  "ChatWallpaper": {
+    "presetGroup": "Chat background",
+    "presets": {
+      "doodle": "WhatsApp pattern",
+      "plain": "Plain",
+      "sand": "Sand",
+      "sage": "Sage",
+      "sky": "Sky",
+      "lilac": "Lilac",
+      "rose": "Rose",
+      "graphite": "Graphite"
+    },
+    "photoTitle": "Your own photo",
+    "photoHint": "Stored on this device only, never uploaded, and downscaled before it is saved.",
+    "uploadPhoto": "Choose photo",
+    "replacePhoto": "Change photo",
+    "removePhoto": "Remove photo",
+    "photoOpacity": "Strength",
+    "photoTooLarge": "That photo is too large. Try a smaller one or a less detailed image.",
+    "photoReadFailed": "That image could not be read. Try a JPG or PNG.",
+    "storageFull": "The browser refused to save this preference (storage full) — it works now and reverts on reload.",
+    "reset": "Restore the default background"
   },
   "Team": {
     "profile": {

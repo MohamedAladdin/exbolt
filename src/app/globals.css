@@ -52,6 +52,25 @@
   --color-status-warning: var(--status-warning);
   --color-status-serious: var(--status-serious);
   --color-status-critical: var(--status-critical);
+  /* Chat surfaces. The message panel keeps its OWN palette instead of
+   * borrowing --primary: a bubble is a large flat fill that people read
+   * small text on for hours, while --primary is a button accent picked to
+   * be noticed. Painting bubbles with the accent is what shipped a
+   * saturated green panel behind near-black ink (5.9:1 on paper, but
+   * shimmering in practice) and 3.8:1 timestamps. These tokens are
+   * mode-aware (dark = deep fill + light ink, light = pale fill + dark
+   * ink) and hue-linked to the accent via --chat-h, so branding survives
+   * the contrast fix. See src/lib/chat-contrast.test.ts. */
+  --color-chat-canvas: var(--chat-canvas);
+  --color-chat-out: var(--chat-out);
+  --color-chat-out-foreground: var(--chat-out-foreground);
+  --color-chat-out-meta: var(--chat-out-meta);
+  --color-chat-in: var(--chat-in);
+  --color-chat-in-foreground: var(--chat-in-foreground);
+  --color-chat-in-meta: var(--chat-in-meta);
+  --color-chat-ring: var(--chat-ring);
+  --color-chat-tick: var(--chat-tick);
+  --color-chat-danger: var(--chat-danger);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -122,6 +141,26 @@ html[data-mode="dark"] {
   --status-warning: #fab219;
   --status-serious: #ec835a;
   --status-critical: #e05252;
+
+  /* ---- CHAT (bubble palette, dark) ----
+   * Deep fills + near-white ink, i.e. WhatsApp's dark-mode logic: the
+   * bubble is darker than the canvas around it and the text is the
+   * lightest thing on screen. Hue comes from the accent (--chat-h), so
+   * emerald reads green and violet reads violet without either one
+   * dragging its *lightness* around. */
+  --chat-canvas: oklch(0.168 0.011 260);
+  --chat-out: oklch(0.4 0.085 var(--chat-h, 162));
+  --chat-out-foreground: oklch(0.975 0.008 var(--chat-h, 162));
+  --chat-out-meta: oklch(0.82 0.03 var(--chat-h, 162));
+  --chat-in: oklch(0.255 0.011 260);
+  --chat-in-foreground: oklch(0.975 0 0);
+  --chat-in-meta: oklch(0.74 0.008 260);
+  --chat-ring: oklch(0.34 0.01 260);
+  /* Read ticks + failed-send icon. Fixed hues, not accent-derived: they
+   * are status colours, and the pair must stay distinguishable from the
+   * bubble ink in both modes. */
+  --chat-tick: oklch(0.74 0.13 245);
+  --chat-danger: oklch(0.72 0.17 25);
 }
 
 html[data-mode="light"] {
@@ -155,6 +194,23 @@ html[data-mode="light"] {
   --status-warning: #946100;
   --status-serious: #c2532a;
   --status-critical: #c43232;
+
+  /* ---- CHAT (bubble palette, light) ----
+   * Pale fills + dark ink. A light-mode bubble must be LIGHTER than its
+   * ink and still separable from the canvas; the previous accent fill put
+   * a vivid mid-green panel (≈#00A267) behind near-black text, which is
+   * the "highlighter" look the agents complained about — legible on
+   * paper, tiring on a full screen. */
+  --chat-canvas: oklch(0.93 0.004 255);
+  --chat-out: oklch(0.9 0.06 var(--chat-h, 162));
+  --chat-out-foreground: oklch(0.235 0.045 var(--chat-h, 162));
+  --chat-out-meta: oklch(0.44 0.045 var(--chat-h, 162));
+  --chat-in: oklch(1 0 0);
+  --chat-in-foreground: oklch(0.235 0.012 260);
+  --chat-in-meta: oklch(0.49 0.012 260);
+  --chat-ring: oklch(0.82 0.006 260);
+  --chat-tick: oklch(0.52 0.16 250);
+  --chat-danger: oklch(0.5 0.19 27);
 }
 
 /* ---- ACCENT: primary color ---- */
@@ -171,6 +227,9 @@ html[data-theme="violet"] {
   --sidebar-primary: oklch(0.526 0.247 293);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-ring: oklch(0.526 0.247 293);
+  /* Accent hue, consumed by the chat palette in the MODE blocks so the
+   * bubble follows the brand without inheriting the accent's lightness. */
+  --chat-h: 293;
 }
 
 html[data-theme="emerald"] {
@@ -185,6 +244,7 @@ html[data-theme="emerald"] {
   --sidebar-primary: oklch(0.62 0.16 162);
   --sidebar-primary-foreground: oklch(0.16 0.02 162);
   --sidebar-ring: oklch(0.62 0.16 162);
+  --chat-h: 162;
 }
 
 html[data-theme="cobalt"] {
@@ -199,6 +259,7 @@ html[data-theme="cobalt"] {
   --sidebar-primary: oklch(0.585 0.2 254);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-ring: oklch(0.585 0.2 254);
+  --chat-h: 254;
 }
 
 html[data-theme="amber"] {
@@ -213,6 +274,7 @@ html[data-theme="amber"] {
   --sidebar-primary: oklch(0.745 0.16 65);
   --sidebar-primary-foreground: oklch(0.18 0.03 65);
   --sidebar-ring: oklch(0.745 0.16 65);
+  --chat-h: 65;
 }
 
 html[data-theme="rose"] {
@@ -227,6 +289,7 @@ html[data-theme="rose"] {
   --sidebar-primary: oklch(0.645 0.22 16);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-ring: oklch(0.645 0.22 16);
+  --chat-h: 16;
 }
 
 @layer base {
@@ -397,3 +460,46 @@ html[lang="ar"] time {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
 }
+
+/* ============================================================
+ * CHAT SURFACE + WALLPAPER (Settings → Appearance · paint button in the
+ * thread header)
+ *
+ * The canvas is a single CSS variable (`--chat-canvas`, set per mode
+ * above) and each preset only *repoints that variable* on the element
+ * that carries `data-chat-wallpaper`, so a wallpaper can never touch the
+ * bubble or its ink. Unlayered on purpose: a utility class in
+ * `@layer utilities` would win over these (see the Arabic blocks above
+ * for the same lesson learned the hard way).
+ *
+ * The doodle tile is only painted for the `doodle` preset — every other
+ * canvas is flat, which is what makes a photo readable underneath.
+ * ============================================================ */
+.chat-surface {
+  background-color: var(--chat-canvas);
+  background-size: 240px 240px;
+  background-repeat: repeat;
+  background-position: center top;
+}
+
+.chat-surface[data-chat-wallpaper="doodle"] {
+  background-image: url("/inbox-doodle.svg");
+}
+
+/* Preset canvases — dark */
+html[data-mode="dark"] .chat-surface[data-chat-wallpaper="plain"] { --chat-canvas: oklch(0.13 0.01 260); }
+html[data-mode="dark"] .chat-surface[data-chat-wallpaper="sand"] { --chat-canvas: oklch(0.22 0.02 80); }
+html[data-mode="dark"] .chat-surface[data-chat-wallpaper="sage"] { --chat-canvas: oklch(0.21 0.025 160); }
+html[data-mode="dark"] .chat-surface[data-chat-wallpaper="sky"] { --chat-canvas: oklch(0.2 0.025 245); }
+html[data-mode="dark"] .chat-surface[data-chat-wallpaper="lilac"] { --chat-canvas: oklch(0.21 0.025 300); }
+html[data-mode="dark"] .chat-surface[data-chat-wallpaper="rose"] { --chat-canvas: oklch(0.21 0.025 15); }
+html[data-mode="dark"] .chat-surface[data-chat-wallpaper="graphite"] { --chat-canvas: oklch(0.19 0.008 260); }
+
+/* Preset canvases — light */
+html[data-mode="light"] .chat-surface[data-chat-wallpaper="plain"] { --chat-canvas: oklch(0.975 0.002 260); }
+html[data-mode="light"] .chat-surface[data-chat-wallpaper="sand"] { --chat-canvas: oklch(0.95 0.03 85); }
+html[data-mode="light"] .chat-surface[data-chat-wallpaper="sage"] { --chat-canvas: oklch(0.95 0.03 150); }
+html[data-mode="light"] .chat-surface[data-chat-wallpaper="sky"] { --chat-canvas: oklch(0.95 0.025 235); }
+html[data-mode="light"] .chat-surface[data-chat-wallpaper="lilac"] { --chat-canvas: oklch(0.95 0.025 300); }
+html[data-mode="light"] .chat-surface[data-chat-wallpaper="rose"] { --chat-canvas: oklch(0.955 0.02 15); }
+html[data-mode="light"] .chat-surface[data-chat-wallpaper="graphite"] { --chat-canvas: oklch(0.93 0.004 260); }

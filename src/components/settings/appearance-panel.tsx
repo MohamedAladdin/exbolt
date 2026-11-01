@@ -2,7 +2,16 @@
 
 import { useCallback, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Languages, Moon, Palette, SunMoon, Sun, Type } from "lucide-react";
+import {
+  Check,
+  Languages,
+  Moon,
+  Paintbrush,
+  Palette,
+  SunMoon,
+  Sun,
+  Type,
+} from "lucide-react";
 
 import { useTheme } from "@/hooks/use-theme";
 import { useUiPrefs } from "@/hooks/use-ui-prefs";
@@ -18,6 +27,7 @@ import { LOCALES, LOCALE_LABELS, localeDirection, type Locale } from "@/i18n/con
 import { cn } from "@/lib/utils";
 import { useLocale, useTranslations } from "next-intl";
 import { SettingsPanelHead } from "./settings-panel-head";
+import { ChatWallpaperPicker } from "@/components/inbox/chat-wallpaper-picker";
 
 /**
  * Appearance panel — light/dark mode + accent-color picker.
@@ -245,6 +255,20 @@ export function AppearancePanel() {
             />
           ))}
         </div>
+      </div>
+
+      {/* Chat wallpaper — the message panel's canvas. This is the "repaint my
+          chat like WhatsApp" control; the same picker also opens from the
+          paint button in the thread header. */}
+      <div className="mt-8 space-y-4">
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+          <Paintbrush className="size-4 text-muted-foreground" />
+          {t("chatBackground")}
+        </h3>
+        <p className="-mt-2 text-xs text-muted-foreground">
+          {t("chatBackgroundDescription")}
+        </p>
+        <ChatWallpaperPicker />
       </div>
     </section>
   );

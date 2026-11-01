@@ -173,19 +173,23 @@ function StatusIcon({
   /** Tooltip for the failed state — Meta's reason, when we have one. */
   title?: string | null;
 }) {
+  // Only rendered inside an OUTGOING bubble, so every colour here is read
+  // against the chat-out fill — hence the dedicated tokens rather than the
+  // neutral `muted-foreground` (unreadable on a pale bubble) or a raw
+  // `text-blue-400` (unreadable on the light-mode pale green).
   switch (status) {
     case "sending":
-      return <Clock className="h-3 w-3 text-muted-foreground" />;
+      return <Clock className="h-3 w-3 text-chat-out-meta" />;
     case "sent":
-      return <Check className="h-3 w-3 text-muted-foreground" />;
+      return <Check className="h-3 w-3 text-chat-out-meta" />;
     case "delivered":
-      return <CheckCheck className="h-3 w-3 text-muted-foreground" />;
+      return <CheckCheck className="h-3 w-3 text-chat-out-meta" />;
     case "read":
-      return <CheckCheck className="h-3 w-3 text-blue-400" />;
+      return <CheckCheck className="h-3 w-3 text-chat-tick" />;
     case "failed":
       return (
         <span className="inline-flex" title={title ?? undefined}>
-          <XCircle className="h-3 w-3 text-red-400" />
+          <XCircle className="h-3 w-3 text-chat-danger" />
         </span>
       );
     default:
@@ -283,8 +287,8 @@ function MessageContent({
             className={cn(
               "mb-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium",
               isAgent
-                ? "bg-primary-foreground/20 text-primary-foreground"
-                : "bg-primary/20 text-primary",
+                ? "bg-chat-out-foreground/15 text-chat-out-foreground"
+                : "bg-primary/15 text-primary",
             )}
           >
             <LayoutTemplate className="h-3 w-3" />
@@ -310,7 +314,7 @@ function MessageContent({
             <p
               className={cn(
                 "mt-1 break-words text-[11px]",
-                isAgent ? "text-primary-foreground/70" : "text-muted-foreground",
+                isAgent ? "text-chat-out-meta" : "text-chat-in-meta",
               )}
             >
               {view.footer}
@@ -320,7 +324,7 @@ function MessageContent({
             <div
               className={cn(
                 "mt-2 flex flex-col border-t",
-                isAgent ? "border-primary-foreground/20" : "border-border",
+                isAgent ? "border-chat-out-foreground/20" : "border-border",
               )}
             >
               {view.buttons.map((button, i) => {
@@ -331,7 +335,7 @@ function MessageContent({
                     className={cn(
                       "flex items-center justify-center gap-1.5 border-t py-1.5 text-sm font-medium first:border-t-0",
                       isAgent
-                        ? "border-primary-foreground/20 text-primary-foreground"
+                        ? "border-chat-out-foreground/20 text-chat-out-foreground"
                         : "border-border text-primary",
                     )}
                   >
@@ -349,7 +353,12 @@ function MessageContent({
     case "location":
       return (
         <div className="flex items-center gap-2 text-sm">
-          <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <MapPin
+            className={cn(
+              "h-4 w-4 shrink-0",
+              isAgent ? "text-chat-out-meta" : "text-chat-in-meta",
+            )}
+          />
           <span>{message.content_text || t("locationShared")}</span>
         </div>
       );
@@ -424,10 +433,16 @@ export function MessageBubble({
     >
       <div
         className={cn(
-          "relative rounded-2xl px-3 py-2",
+          // Bubble fills are their OWN tokens, not `primary`: the accent is
+          // chosen to be noticed, a bubble is read for hours. See the CHAT
+          // palette in globals.css — dark mode = deep fill + light ink,
+          // light mode = pale fill + dark ink, hue still follows the accent.
+          // The inset ring keeps a white inbound bubble visible on a pale
+          // wallpaper.
+          "relative rounded-2xl px-3 py-2 ring-1 ring-inset",
           isAgent
-            ? "rounded-br-md bg-primary text-primary-foreground"
-            : "rounded-bl-md bg-muted text-foreground",
+            ? "rounded-br-md bg-chat-out text-chat-out-foreground ring-chat-ring/50"
+            : "rounded-bl-md bg-chat-in text-chat-in-foreground ring-chat-ring",
         )}
       >
         {reply && (
@@ -459,7 +474,7 @@ export function MessageBubble({
               glance. */}
           {message.ai_generated && (
             <span
-              className="inline-flex items-center gap-0.5 rounded-full bg-primary-foreground/20 px-1.5 py-px text-[9px] font-semibold uppercase leading-none tracking-wide text-primary-foreground"
+              className="inline-flex items-center gap-0.5 rounded-full bg-chat-out-foreground/20 px-1.5 py-px text-[9px] font-semibold uppercase leading-none tracking-wide text-chat-out-foreground"
               title={t("aiBadgeTitle")}
             >
               <Sparkles className="h-2.5 w-2.5" />
@@ -472,7 +487,7 @@ export function MessageBubble({
             <span
               className={cn(
                 "inline-flex items-center gap-0.5 text-[10px]",
-                isAgent ? "text-primary-foreground/70" : "text-muted-foreground",
+                isAgent ? "text-chat-out-meta" : "text-chat-in-meta",
               )}
               title={t("forwardedTitle", {
                 count: message.forward_count ?? 0,
@@ -489,7 +504,7 @@ export function MessageBubble({
             <span
               className={cn(
                 "inline-flex items-center gap-0.5 text-[10px]",
-                isAgent ? "text-primary-foreground/70" : "text-muted-foreground",
+                isAgent ? "text-chat-out-meta" : "text-chat-in-meta",
               )}
               title={
                 message.correction_message_id
@@ -511,7 +526,10 @@ export function MessageBubble({
               // timestamp must read against that (not the neutral
               // foreground) — otherwise it goes low-contrast in light
               // mode. Inbound bubbles use the muted surface.
-              isAgent ? "text-primary-foreground/70" : "text-muted-foreground",
+              // ...but no longer at /70 opacity: over a saturated fill that
+              // landed at 3.8:1, below AA for 10px type. `chat-*-meta` is a
+              // dedicated token that keeps ≥ 4.5:1 on both bubble fills.
+              isAgent ? "text-chat-out-meta" : "text-chat-in-meta",
             )}
           >
             {time}

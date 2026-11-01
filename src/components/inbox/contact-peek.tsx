@@ -158,7 +158,7 @@ export function ContactPeek({
         className={cn(
           "inline rounded-sm underline decoration-dotted underline-offset-2 transition-colors",
           onPrimary
-            ? "decoration-primary-foreground/60 hover:bg-primary-foreground/15"
+            ? "decoration-chat-out-foreground/60 hover:bg-chat-out-foreground/15"
             : "decoration-muted-foreground/70 hover:bg-foreground/5 hover:decoration-foreground/60",
           className,
         )}

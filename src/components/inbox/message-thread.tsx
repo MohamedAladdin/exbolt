@@ -28,6 +28,7 @@ import {
   RefreshCw,
   PanelRightOpen,
   PanelRightClose,
+  Paintbrush,
 } from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
 import { useTranslations } from "next-intl";
@@ -40,6 +41,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { useChatWallpaper } from "@/hooks/use-chat-wallpaper";
+import { ChatWallpaperPicker } from "./chat-wallpaper-picker";
 import { MessageBubble } from "./message-bubble";
 import {
   senderDisplayName,
@@ -168,16 +176,37 @@ const STATUS_OPTIONS: { label: string; value: ConversationStatus; color: string 
 ];
 
 /**
- * WhatsApp-style doodle background applied to the chat area (both the
- * active thread and the empty state). The SVG tile lives at
- * `/public/inbox-doodle.svg`; the slate-950 colour sits underneath so
- * the doodles read as a subtle pattern rather than a stark grid.
- *
- * Defined once at module scope so the two render paths can't drift —
- * if we ever switch the asset, both spots update together.
+ * Chat canvas classes — the wallpaper lives in one CSS class
+ * (`.chat-surface` in globals.css) which paints `--chat-canvas` and, for the
+ * `doodle` preset only, the WhatsApp-style SVG tile from
+ * `/public/inbox-doodle.svg`. The preset itself arrives as
+ * `data-chat-wallpaper`, so the two render paths below (empty state and
+ * active thread) can't drift, and adding a preset is a CSS-only change.
  */
-const DOODLE_BG_CLASSES =
-  "bg-background bg-[url('/inbox-doodle.svg')] bg-repeat";
+const CHAT_SURFACE_CLASSES = "chat-surface";
+
+/**
+ * The user's own photo, painted *behind* the bubbles with a `-z-10` overlay
+ * inside the surface's stacking context. Kept as a separate layer rather
+ * than a `background-image` so the opacity slider can dial it back without
+ * touching the preset canvas underneath.
+ */
+function ChatWallpaperPhoto({
+  photo,
+  opacity,
+}: {
+  photo: string | null;
+  opacity: number;
+}) {
+  if (!photo) return null;
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-0 -z-10 bg-cover bg-center bg-no-repeat"
+      style={{ backgroundImage: `url(${photo})`, opacity }}
+    />
+  );
+}
 
 export function MessageThread({
   conversation,
@@ -198,6 +227,14 @@ export function MessageThread({
   const t = useTranslations("Inbox.messageThread");
   const tTimer = useTranslations("Inbox.sessionTimer");
   const tQuote = useTranslations("Inbox.replyQuote");
+  // The agent's chat wallpaper (Settings → Appearance, or the paint button in
+  // the header below). Read here, before the empty-state early return, so both
+  // render paths paint the same canvas.
+  const { wallpaper } = useChatWallpaper();
+  const [wallpaperOpen, setWallpaperOpen] = useState(false);
+  /** Deadline (ms) before which an `onOpenChange(false)` from the native file
+   *  dialog is ignored — see the Popover below. */
+  const wallpaperDialogUntil = useRef(0);
 
   const { user } = useAuth();
   const { getPresence, getRow, now } = usePresence();
@@ -1041,14 +1078,24 @@ export function MessageThread({
   // pattern under the user's eye.
   if (!conversation || !contact) {
     return (
-      <div className={cn("flex flex-1 flex-col items-center justify-center", DOODLE_BG_CLASSES)}>
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+      <div
+        data-chat-wallpaper={wallpaper.id}
+        className={cn(
+          "relative isolate flex flex-1 flex-col items-center justify-center",
+          CHAT_SURFACE_CLASSES,
+        )}
+      >
+        <ChatWallpaperPhoto
+          photo={wallpaper.photo}
+          opacity={wallpaper.photoOpacity}
+        />
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-card shadow-sm ring-1 ring-border">
           <MessageSquare className="h-8 w-8 text-muted-foreground" />
         </div>
-        <h3 className="mt-4 text-sm font-medium text-muted-foreground">
+        <h3 className="mt-4 rounded-md bg-card/80 px-2 py-0.5 text-sm font-medium text-foreground shadow-sm">
           {t("selectConversation")}
         </h3>
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="mt-1 rounded bg-card/80 px-2 py-0.5 text-xs text-muted-foreground">
           {t("selectConversationHint")}
         </p>
       </div>
@@ -1075,7 +1122,17 @@ export function MessageThread({
     // clipped and the hover toolbar overlaps the Tags panel. Letting the
     // root shrink lets the bubbles' break-words / max-w caps apply.
     // Issue #257.
-    <div className={cn("flex min-w-0 flex-1 flex-col", DOODLE_BG_CLASSES)}>
+    <div
+      data-chat-wallpaper={wallpaper.id}
+      className={cn(
+        "relative isolate flex min-w-0 flex-1 flex-col",
+        CHAT_SURFACE_CLASSES,
+      )}
+    >
+      <ChatWallpaperPhoto
+        photo={wallpaper.photo}
+        opacity={wallpaper.photoOpacity}
+      />
       {/* Header — solid card surface sits on top of the doodle so the
           name/avatar/dropdowns stay legible. */}
       <div className="flex items-center justify-between gap-2 border-b border-border bg-card px-3 py-3 sm:px-4">
@@ -1153,6 +1210,45 @@ export function MessageThread({
               )}
             </button>
           )}
+
+          {/* Chat wallpaper — the WhatsApp-style paint control, right where
+              the agent is looking. Same picker as Settings → Appearance; the
+              store behind it repaints the canvas immediately, no reload. */}
+          <Popover
+            open={wallpaperOpen}
+            onOpenChange={(next) => {
+              // Choosing a photo opens a NATIVE file dialog; the browser
+              // reports that hand-off as a dismissal and the popover would
+              // unmount the picker mid-upload. Ignore closes that arrive
+              // right after the dialog was triggered.
+              if (!next && Date.now() < wallpaperDialogUntil.current) return;
+              setWallpaperOpen(next);
+            }}
+          >
+            <PopoverTrigger
+              aria-label={t("chatWallpaper")}
+              title={t("chatWallpaper")}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <Paintbrush className="h-3.5 w-3.5" />
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-[19rem] gap-2 p-3">
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-foreground">
+                  {t("chatWallpaper")}
+                </p>
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  {t("chatWallpaperHint")}
+                </p>
+              </div>
+              <ChatWallpaperPicker
+                variant="popover"
+                onBeforeFileDialog={() => {
+                  wallpaperDialogUntil.current = Date.now() + 15_000;
+                }}
+              />
+            </PopoverContent>
+          </Popover>
 
           {/* Manual refresh — forces a refetch of the messages + the
               conversation list (the parent bumps its resyncToken). Useful
@@ -1299,7 +1395,7 @@ export function MessageThread({
               <div key={group.date}>
                 {/* Date separator */}
                 <div className="mb-4 flex items-center justify-center">
-                  <span className="rounded-full bg-muted px-3 py-1 text-[10px] font-medium text-muted-foreground">
+                  <span className="rounded-full bg-card px-3 py-1 text-[10px] font-medium text-muted-foreground shadow-sm ring-1 ring-border/70">
                     {formatDateSeparator(group.date, t)}
                   </span>
                 </div>

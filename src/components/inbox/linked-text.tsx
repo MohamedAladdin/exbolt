@@ -63,7 +63,10 @@ export function LinkedText({ text, className, onPrimary = false }: LinkedTextPro
   const segments = useMemo(() => segmentByPhone(text), [text]);
 
   return (
-    <p className={cn("whitespace-pre-wrap break-words text-sm", className)}>
+    // `text-[0.9375rem]` (15px, rem-based so it follows the Arabic type
+    // scale) + relaxed leading: message bodies are read for hours at a
+    // stretch and 14px/1.4 was the smallest, tightest text on the screen.
+    <p className={cn("whitespace-pre-wrap break-words text-[0.9375rem] leading-relaxed", className)}>
       {segments.map((segment, index) =>
         segment.kind === "phone" ? (
           <ContactPeek
