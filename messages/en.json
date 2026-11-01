@@ -2482,7 +2482,15 @@
       "saveFailed": "Could not save the name",
       "reset": "Reset to default",
       "adminOnly": "Only admins can change the system name.",
-      "creditNote": "The vendor credit “by {vendor}” is appended automatically. It is part of the licence and cannot be removed."
+      "creditNote": "The vendor credit “by {vendor}” is appended automatically. It is part of the licence and cannot be removed.",
+      "logoTitle": "Logo",
+      "logoDesc": "Shown on printed reports and in scheduled emails, above the system name.",
+      "logoUpload": "Upload logo",
+      "logoReplace": "Replace logo",
+      "logoRemove": "Remove",
+      "logoHint": "PNG, JPG, WebP or SVG · up to 1 MB · a wide mark reads best.",
+      "logoTooBig": "The file is larger than 1 MB.",
+      "logoFailed": "The logo could not be saved."
     },
     "plan": {
       "title": "Plan",

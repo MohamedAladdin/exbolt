@@ -67,6 +67,15 @@ describe('renderReportHtml', () => {
     expect(html).toContain('<td class="num">42</td>');
   });
 
+  it('renders the account logo only when it is an http(s) URL', () => {
+    const withLogo = renderReportHtml({ ...BASE, logoUrl: 'https://cdn.example.com/logo.png' });
+    expect(withLogo).toContain('<img class="logo" src="https://cdn.example.com/logo.png"');
+
+    // A javascript:/data: URL must never reach an <img src>.
+    expect(renderReportHtml({ ...BASE, logoUrl: 'javascript:alert(1)' })).not.toContain('<img class="logo"');
+    expect(renderReportHtml({ ...BASE, logoUrl: null })).not.toContain('<img class="logo"');
+  });
+
   it('is a self-contained printable document', () => {
     const html = renderReportHtml(BASE);
     expect(html).toContain('@page { size: A4;');

@@ -124,7 +124,7 @@ async function deliver(
   // has no Arabic name at all (the same signal the shell uses).
   const { data: account } = await db
     .from('accounts')
-    .select('name, brand_name')
+    .select('name, brand_name, logo_url')
     .eq('id', schedule.account_id)
     .maybeSingle();
 
@@ -151,6 +151,7 @@ async function deliver(
   const rendered = renderReportEmail({
     title: schedule.report_name,
     brandName: brandName((account?.brand_name as string | null) ?? (account?.name as string | null)),
+    logoUrl: (account?.logo_url as string | null) ?? null,
     vendorName: VENDOR_NAME,
     locale,
     periodLabel: labels.period(result.from, result.to),

@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { Eye, Loader2, RotateCcw, Sparkles } from "lucide-react";
+import { Eye, ImagePlus, Loader2, RotateCcw, Sparkles, Trash2 } from "lucide-react";
 
 import { useAuth } from "@/hooks/use-auth";
 import { createClient } from "@/lib/supabase/client";
@@ -37,11 +37,12 @@ export function BrandingPanel() {
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!account || loaded) return;
     setDraft(account.brand_name ?? "");
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoaded(true);
   }, [account, loaded]);
 
@@ -67,6 +68,69 @@ export function BrandingPanel() {
       router.refresh();
     } finally {
       setSaving(false);
+    }
+  }
+
+  /**
+   * Upload the mark and store its public URL.
+   *
+   * Public on purpose: the same URL is embedded in the printed report and in
+   * the scheduled email, and a signed URL would expire before a manager opens
+   * Monday's mail. Path is `account-<id>/…` so the storage policy can prove the
+   * uploader belongs to this account.
+   */
+  async function uploadLogo(file: File) {
+    if (!accountId || uploading) return;
+    if (file.size > 1_048_576) {
+      toast.error(t("logoTooBig"));
+      return;
+    }
+    setUploading(true);
+    try {
+      const supabase = createClient();
+      const extension = (file.name.split(".").pop() ?? "png").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const path = `account-${accountId}/logo-${Date.now()}.${extension || "png"}`;
+      const { error: uploadError } = await supabase.storage
+        .from("brand-assets")
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (uploadError) {
+        toast.error(t("logoFailed"));
+        return;
+      }
+      const { data: publicUrl } = supabase.storage.from("brand-assets").getPublicUrl(path);
+      const { error } = await supabase
+        .from("accounts")
+        .update({ logo_url: publicUrl.publicUrl })
+        .eq("id", accountId);
+      if (error) {
+        toast.error(t("logoFailed"));
+        return;
+      }
+      toast.success(t("saved"));
+      await refreshProfile();
+      router.refresh();
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function removeLogo() {
+    if (!accountId) return;
+    setUploading(true);
+    try {
+      const { error } = await createClient()
+        .from("accounts")
+        .update({ logo_url: null })
+        .eq("id", accountId);
+      if (error) {
+        toast.error(t("logoFailed"));
+        return;
+      }
+      toast.success(t("saved"));
+      await refreshProfile();
+      router.refresh();
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -158,6 +222,66 @@ export function BrandingPanel() {
           <p className="border-t border-border pt-3 text-[11px] text-muted-foreground">
             {t("creditNote", { vendor: VENDOR_NAME })}
           </p>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-foreground">
+            <ImagePlus className="size-4 text-primary" />
+            {t("logoTitle")}
+          </CardTitle>
+          <CardDescription className="text-muted-foreground">{t("logoDesc")}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex size-16 items-center justify-center rounded-lg border border-border bg-muted/40">
+              {account?.logo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={account.logo_url}
+                  alt={brandName(draft)}
+                  className="max-h-14 max-w-14 object-contain"
+                />
+              ) : (
+                <ExcalMark className="h-8 w-8 opacity-40" />
+              )}
+            </div>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void uploadLogo(file);
+                event.target.value = "";
+              }}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!canEditSettings || uploading}
+              onClick={() => fileRef.current?.click()}
+            >
+              {uploading ? <Loader2 className="size-4 animate-spin" /> : <ImagePlus className="size-4" />}
+              {account?.logo_url ? t("logoReplace") : t("logoUpload")}
+            </Button>
+            {account?.logo_url && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={!canEditSettings || uploading}
+                onClick={() => void removeLogo()}
+              >
+                <Trash2 className="size-4" />
+                {t("logoRemove")}
+              </Button>
+            )}
+          </div>
+          <p className="text-[11px] text-muted-foreground">{t("logoHint")}</p>
         </CardContent>
       </Card>
     </section>

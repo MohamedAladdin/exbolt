@@ -19,6 +19,7 @@ import type { PreparedTable } from './render';
 export interface ReportEmailInput {
   title: string;
   brandName: string;
+  logoUrl?: string | null;
   vendorName: string;
   locale: string;
   periodLabel: string;
@@ -63,12 +64,17 @@ export function renderReportEmail(input: ReportEmailInput): { subject: string; h
         .join('')}</tr>`
     : '';
 
+  const logo = input.logoUrl && /^https?:\/\//i.test(input.logoUrl) ? input.logoUrl : null;
+
   const html = `<!doctype html>
 <html lang="${rtl ? 'ar' : 'en'}" dir="${dir}">
 <body style="margin:0;padding:24px;background:#eef1f5;">
   <div style="max-width:720px;margin:0 auto;background:#ffffff;border-radius:10px;padding:24px;direction:${dir};">
     <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:4px;">
-      <div style="font:700 15px/1.4 'Segoe UI',Tahoma,Arial,sans-serif;color:#111827;">${escapeHtml(input.brandName)}</div>
+      <div style="font:700 15px/1.4 'Segoe UI',Tahoma,Arial,sans-serif;color:#111827;">
+        ${logo ? `<img src="${escapeHtml(logo)}" alt="" style="display:block;max-height:48px;max-width:180px;object-fit:contain;margin-bottom:6px">` : ''}
+        ${escapeHtml(input.brandName)}
+      </div>
       <div style="font:400 11px/1.6 'Segoe UI',Tahoma,Arial,sans-serif;color:#6b7280;">${escapeHtml(input.periodLabel)}</div>
     </div>
     <h1 style="margin:12px 0 4px;font:700 18px/1.3 'Segoe UI',Tahoma,Arial,sans-serif;color:#111827;">${escapeHtml(input.title)}</h1>

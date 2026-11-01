@@ -25,6 +25,8 @@ export interface ReportDocumentInput {
   title: string;
   subtitle?: string | null;
   brandName: string;
+  /** Public logo URL; only http(s) is emitted (a `javascript:` URL is dropped). */
+  logoUrl?: string | null;
   vendorName: string;
   vendorUrl?: string | null;
   locale: string;
@@ -39,6 +41,12 @@ export interface ReportDocumentInput {
   truncated: boolean;
   truncatedLabel: string;
   footerNote?: string | null;
+}
+
+/** Only an http(s) URL may reach an `<img src>`; anything else is dropped. */
+function safeImageUrl(value: string | null | undefined): string | null {
+  if (!value) return null;
+  return /^https?:\/\//i.test(value) ? value : null;
 }
 
 export function renderReportHtml(input: ReportDocumentInput): string {
@@ -95,6 +103,7 @@ export function renderReportHtml(input: ReportDocumentInput): string {
   }
   header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
   .brand { font-size: 18px; font-weight: 700; letter-spacing: .2px; }
+  .brand img.logo { display: block; max-height: 14mm; max-width: 55mm; object-fit: contain; margin-bottom: 3mm; }
   .brand small { display: block; font-weight: 500; font-size: 11px; color: #6b7280; margin-top: 2px; }
   .meta { font-size: 11px; color: #4b5563; text-align: ${rtl ? 'left' : 'right'}; line-height: 1.7; }
   h1 { font-size: 20px; margin: 18px 0 2px; }
@@ -128,6 +137,7 @@ export function renderReportHtml(input: ReportDocumentInput): string {
   <div class="sheet">
     <header>
       <div class="brand">
+        ${safeImageUrl(input.logoUrl) ? `<img class="logo" src="${escapeHtml(safeImageUrl(input.logoUrl))}" alt="">` : ''}
         ${escapeHtml(input.brandName)}
         <small>${escapeHtml(input.vendorName)}${
           input.vendorUrl ? ` · ${escapeHtml(input.vendorUrl)}` : ''

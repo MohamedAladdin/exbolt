@@ -46,6 +46,7 @@ interface AccountSummary {
   /** White-label system name shown in the sidebar and the browser title
    *  (migration 062). NULL = use the built-in product name. */
   brand_name: string | null;
+  logo_url: string | null;
   /** Tenant lifecycle status (migration 065): active | suspended |
    *  archived | banned. Anything but `active` locks the app shell. */
   status?: string;
@@ -245,7 +246,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .from('accounts')
             // default_currency added in migration 021; narrowed to the
             // USD fallback below for older schemas where it reads null.
-            .select('id, name, default_currency, brand_name, status')
+            .select('id, name, default_currency, brand_name, logo_url, status')
             .eq('id', data.account_id)
             .maybeSingle();
           if (accountErr) {
@@ -262,6 +263,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               default_currency: account.default_currency ?? DEFAULT_CURRENCY,
               // NULL when the account never set a white-label name.
               brand_name: (account.brand_name as string | null) ?? null,
+              logo_url: (account.logo_url as string | null) ?? null,
               // Migration 065 — absent on older schemas, hence the cast.
               status: ((account as { status?: string }).status ??
                 'active') as string,

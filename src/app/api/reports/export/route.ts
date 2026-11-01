@@ -149,10 +149,17 @@ export async function POST(request: Request) {
       index === 0 ? '' : formatCell(result.totals[column.key], column, cellContext),
     );
 
+    const { data: accountRow } = await ctx.supabase
+      .from('accounts')
+      .select('logo_url')
+      .eq('id', ctx.accountId)
+      .maybeSingle();
+
     const html = renderReportHtml({
       title: String(labels.title).slice(0, 120),
       subtitle: labels.subtitle ? String(labels.subtitle).slice(0, 160) : null,
       brandName: brandName(ctx.account.name),
+      logoUrl: (accountRow?.logo_url as string | null) ?? null,
       vendorName: VENDOR_NAME,
       vendorUrl: VENDOR_URL,
       locale,
