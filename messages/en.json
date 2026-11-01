@@ -3834,6 +3834,14 @@
       "close": "Close",
       "saveFailed": "The rule could not be saved.",
       "metricNotInReport": "That metric is not in this report."
+    },
+    "ai": {
+      "analyze": "Analyse with AI",
+      "title": "AI reading (assistive)",
+      "dismiss": "dismiss",
+      "disclaimer": "Draft reading from {model} over {count} rows — check the numbers before quoting it.",
+      "notConfigured": "Add an AI provider key in Settings → AI to use this.",
+      "failed": "The reading could not be generated."
     }
   }
 }

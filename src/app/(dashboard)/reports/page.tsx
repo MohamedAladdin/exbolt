@@ -108,6 +108,10 @@ export default function ReportsPage() {
   const [saveName, setSaveName] = useState('');
   const [saveDescription, setSaveDescription] = useState('');
   const [exporting, setExporting] = useState<'csv' | 'html' | null>(null);
+  const [aiAvailable, setAiAvailable] = useState(false);
+  const [analysing, setAnalysing] = useState(false);
+  const [analysis, setAnalysis] = useState<{ text: string; model: string; rows: number } | null>(null);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   // One source of truth for what the plan allows: the same object decides what
   // this page renders and what the server accepts.
@@ -252,7 +256,51 @@ export default function ReportsPage() {
   useEffect(() => {
     void loadSaved();
     void loadOptions();
+    // The button only exists when the account configured its own AI provider;
+    // the server is the one that decides, so ask it once.
+    fetch('/api/reports/analyze', { cache: 'no-store' })
+      .then((response) => (response.ok ? response.json() : { available: false }))
+      .then((payload) => setAiAvailable(payload?.available === true))
+      .catch(() => setAiAvailable(false));
   }, [loadSaved, loadOptions]);
+
+  const analyze = useCallback(async () => {
+    if (!result) return;
+    setAnalysing(true);
+    setAnalysisError(null);
+    try {
+      const response = await fetch('/api/reports/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          config,
+          locale,
+          currency: defaultCurrency,
+          title: saved.find((item) => item.id === activeSaved)?.name ?? t(`presets.${activePreset ?? 'volume'}`),
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        setAnalysisError(
+          payload?.error === 'ai_not_configured'
+            ? t('ai.notConfigured')
+            : payload?.error === 'empty_report'
+              ? t('empty')
+              : t('ai.failed'),
+        );
+        return;
+      }
+      setAnalysis({
+        text: payload.analysis as string,
+        model: payload.model as string,
+        rows: (payload.basedOn?.rows as number) ?? 0,
+      });
+    } catch {
+      setAnalysisError(t('ai.failed'));
+    } finally {
+      setAnalysing(false);
+    }
+  }, [activePreset, activeSaved, config, defaultCurrency, locale, result, saved, t]);
 
   // First paint runs the default preset so the page is never an empty form.
   useEffect(() => {
@@ -481,6 +529,15 @@ export default function ReportsPage() {
             <ReportResults
               result={result}
               currency={defaultCurrency}
+              aiAvailable={aiAvailable}
+              analysing={analysing}
+              analysis={analysis}
+              analysisError={analysisError}
+              onAnalyze={() => void analyze()}
+              onDismissAnalysis={() => {
+                setAnalysis(null);
+                setAnalysisError(null);
+              }}
               canSave={canSaveReport}
               saving={saving}
               exporting={exporting}

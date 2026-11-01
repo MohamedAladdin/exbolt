@@ -18,7 +18,7 @@
 //     asked of any breakdown.
 // ============================================================
 
-import { Download, FileText, Loader2, Save } from 'lucide-react';
+import { Download, FileText, Loader2, Save, Sparkles } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 
 import { BarChart } from '@/components/tremor/bar-chart';
@@ -32,6 +32,12 @@ import { formatCell, formatMetric, lowerIsBetter, type ReportResult } from '@/li
 export function ReportResults({
   result,
   currency,
+  aiAvailable,
+  onAnalyze,
+  analysing,
+  analysis,
+  analysisError,
+  onDismissAnalysis,
   canSave,
   saving,
   exporting,
@@ -40,6 +46,13 @@ export function ReportResults({
 }: {
   result: ReportResult | null;
   currency: string;
+  /** The account has an AI provider configured AND the plan allows it. */
+  aiAvailable?: boolean;
+  onAnalyze?: () => void;
+  analysing?: boolean;
+  analysis?: { text: string; model: string; rows: number } | null;
+  analysisError?: string | null;
+  onDismissAnalysis?: () => void;
   canSave: boolean;
   saving: boolean;
   exporting: 'csv' | 'html' | null;
@@ -107,6 +120,18 @@ export function ReportResults({
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
+          {aiAvailable && onAnalyze && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={analysing}
+              onClick={onAnalyze}
+            >
+              {analysing ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+              {t('ai.analyze')}
+            </Button>
+          )}
           <Button
             type="button"
             variant="outline"
@@ -181,6 +206,36 @@ export function ReportResults({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {(analysis || analysisError) && (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <span className="flex items-center gap-1.5 text-xs font-medium text-primary">
+              <Sparkles className="size-3.5" />
+              {t('ai.title')}
+            </span>
+            {onDismissAnalysis && (
+              <button
+                type="button"
+                onClick={onDismissAnalysis}
+                className="text-[11px] text-muted-foreground underline decoration-dotted"
+              >
+                {t('ai.dismiss')}
+              </button>
+            )}
+          </div>
+          {analysisError ? (
+            <p className="text-xs text-destructive">{analysisError}</p>
+          ) : (
+            <>
+              <p className="whitespace-pre-line text-sm leading-relaxed">{analysis?.text}</p>
+              <p className="mt-2 border-t border-primary/20 pt-1.5 text-[11px] text-muted-foreground">
+                {t('ai.disclaimer', { model: analysis?.model ?? '', count: analysis?.rows ?? 0 })}
+              </p>
+            </>
+          )}
         </div>
       )}
 
