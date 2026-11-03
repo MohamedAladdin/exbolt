@@ -20,6 +20,7 @@ import {
   ArrowRight,
   CheckCircle2,
   Clock,
+  Inbox,
   Loader2,
   MessageSquare,
   Target,
@@ -56,9 +57,13 @@ interface MemberProfileResponse {
     conversations: number;
     contacts: number;
     openAssigned: number;
+    /** Every conversation currently assigned to the member, any status. */
+    assignedConversations: number;
     resolved: number;
     onlineMinutes: number;
     onlinePerDay: number;
+    /** Days inside the window that actually carry presence data. */
+    trackedDays: number;
     replyTarget: number;
     lastActivityAt: string | null;
   };
@@ -188,13 +193,28 @@ export default function TeamMemberPage() {
   const slaRate =
     kpis.replies > 0 ? Math.round((kpis.withinTarget / kpis.replies) * 100) : null;
 
-  const kpiCards = [
+  const kpiCards: {
+    key: string;
+    icon: typeof Clock;
+    label: string;
+    value: string;
+    hint: string;
+    /** optional deep link rendered as a small footer action */
+    href?: string;
+    linkLabel?: string;
+  }[] = [
     {
       key: "online",
       icon: Clock,
       label: t("kpi.online"),
       value: hours(kpis.onlineMinutes),
-      hint: t("kpi.onlineHint", { perDay: hours(kpis.onlinePerDay) }),
+      // The divisor is the days that actually carry presence data, not the
+      // window length — tracking is younger than the account, and saying
+      // "52m/day" over 30 days when only 5 days exist was a lie.
+      hint: t("kpi.onlineHint", {
+        perDay: hours(kpis.onlinePerDay),
+        days: kpis.trackedDays,
+      }),
     },
     {
       key: "replies",
@@ -233,6 +253,15 @@ export default function TeamMemberPage() {
       label: t("kpi.resolved"),
       value: String(kpis.resolved),
       hint: t("kpi.resolvedHint", { open: kpis.openAssigned }),
+    },
+    {
+      key: "assigned",
+      icon: Inbox,
+      label: t("kpi.assigned"),
+      value: String(kpis.assignedConversations),
+      hint: t("kpi.assignedHint", { open: kpis.openAssigned }),
+      href: `/inbox?assignee=${member.userId}`,
+      linkLabel: t("kpi.assignedLink"),
     },
   ];
 
@@ -314,6 +343,15 @@ export default function TeamMemberPage() {
               <div className="text-muted-foreground mt-1 text-[11px]">
                 {kpi.hint}
               </div>
+              {kpi.href && (
+                <Link
+                  href={kpi.href}
+                  className="text-primary mt-2 inline-flex items-center gap-1 text-[11px] underline-offset-2 hover:underline"
+                >
+                  {kpi.linkLabel}
+                  <ArrowRight className="size-3 rotate-180" />
+                </Link>
+              )}
             </CardContent>
           </Card>
         ))}

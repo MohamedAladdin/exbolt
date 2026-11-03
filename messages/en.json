@@ -368,7 +368,9 @@
       "numberFilterLabel": "Filter by WhatsApp number",
       "allNumbers": "All numbers",
       "numberLabel": "Number",
-      "loadingMore": "Loading more conversations…"
+      "loadingMore": "Loading more conversations…",
+      "assignedTo": "Assigned to {name}",
+      "clearAssignee": "Show all conversations"
     },
     "messageThread": {
       "backToConversations": "Back to conversations",
@@ -3609,7 +3611,7 @@
       "days": "{days} days",
       "kpi": {
         "online": "Online time",
-        "onlineHint": "≈ {perDay} per day",
+        "onlineHint": "≈ {perDay} per day over {days} days with data",
         "replies": "Replies",
         "repliesHint": "Across {conv} conversations",
         "firstResponse": "Median first reply",
@@ -3620,7 +3622,10 @@
         "contacts": "Unique customers",
         "contactsHint": "People this member replied to",
         "resolved": "Resolved",
-        "resolvedHint": "{open} still assigned and open"
+        "resolvedHint": "{open} still assigned and open",
+        "assigned": "Assigned conversations",
+        "assignedHint": "{open} of them still open",
+        "assignedLink": "Open in Inbox"
       },
       "chartTitle": "Daily activity (bars = online time)",
       "chartEmpty": "No activity in this range yet — online time starts recording from this release.",

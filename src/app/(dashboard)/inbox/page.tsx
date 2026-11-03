@@ -54,6 +54,49 @@ function InboxPageInner() {
    */
   const deepLinkConvId = searchParams.get("c");
 
+  /**
+   * `?assignee=<userId>` — the member profile's "assigned conversations"
+   * card links here. The filter itself lives in ConversationList; this
+   * page only resolves the member's display name for the chip and keeps
+   * the param alive when the URL changes (thread select / mobile back).
+   */
+  const assigneeId = searchParams.get("assignee");
+  const [assigneeName, setAssigneeName] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!assigneeId) {
+      setAssigneeName(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("user_id", assigneeId)
+        .maybeSingle();
+      if (!cancelled) {
+        setAssigneeName((data?.full_name as string | null | undefined) ?? null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [assigneeId]);
+
+  /** Build an /inbox URL that keeps the assignee filter when present. */
+  const inboxUrl = useCallback(
+    (convId?: string | null) => {
+      const params = new URLSearchParams();
+      if (convId) params.set("c", convId);
+      if (assigneeId) params.set("assignee", assigneeId);
+      const qs = params.toString();
+      return qs ? `/inbox?${qs}` : "/inbox";
+    },
+    [assigneeId],
+  );
+
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversation, setActiveConversation] =
     useState<Conversation | null>(null);
@@ -219,9 +262,9 @@ function InboxPageInner() {
       setActiveConversation(fetched);
       setActiveContact(fetched.contact ?? null);
       setMessages([]);
-      router.replace(`/inbox?c=${convId}`, { scroll: false });
+      router.replace(inboxUrl(convId), { scroll: false });
     },
-    [router, t],
+    [inboxUrl, router, t],
   );
 
   // Bridge for components that are not wired to the list state (the
@@ -554,9 +597,9 @@ function InboxPageInner() {
       // Reflect the selection in the URL so a refresh lands the user
       // back in the same thread, and so copy-paste links work. Use
       // replace() to avoid polluting browser history with every click.
-      router.replace(`/inbox?c=${conv.id}`, { scroll: false });
+      router.replace(inboxUrl(conv.id), { scroll: false });
     },
-    [activeConversation?.id, router]
+    [activeConversation?.id, inboxUrl, router]
   );
 
   // Mobile "back" — deselect the conversation so the list pane comes
@@ -569,8 +612,8 @@ function InboxPageInner() {
     // Clearing the ref lets the deep-link auto-selector fire again if
     // the user later visits /inbox?c=<same-id> — desirable UX.
     autoSelectedForDeepLinkRef.current = null;
-    router.replace("/inbox", { scroll: false });
-  }, [router]);
+    router.replace(inboxUrl(), { scroll: false });
+  }, [inboxUrl, router]);
 
 
   const handleMessagesLoaded = useCallback(
@@ -668,6 +711,8 @@ function InboxPageInner() {
             resyncToken={resyncToken}
             initialFilter={parseInboxFilter(searchParams.get("filter"))}
             numbers={numbers}
+            assignee={assigneeId ? { id: assigneeId, name: assigneeName } : null}
+            onClearAssignee={() => router.replace("/inbox", { scroll: false })}
           />
         </div>
 

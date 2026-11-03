@@ -50,6 +50,18 @@ export function normalizeConversations(
   return rows.map(normalizeConversation);
 }
 
+/**
+ * Whether a conversation is assigned to `userId`. Used by the member
+ * profile's "assigned conversations" deep link (`/inbox?assignee=<id>`),
+ * where the count on the card and the rows in the list must agree.
+ */
+export function isAssignedTo(
+  conversation: Conversation,
+  userId: string,
+): boolean {
+  return conversation.assigned_agent_id === userId;
+}
+
 export interface ContactFilters {
   /** Tag ids; a conversation matches if its contact has ANY of them (OR). */
   tagIds: string[];

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  isAssignedTo,
   matchesContactFilters,
   normalizeConversation,
 } from "./conversations";
@@ -141,5 +142,19 @@ describe("normalizeConversation", () => {
     };
     // A contactless row passes through untouched (consumers use `?.`).
     expect(normalizeConversation(raw).contact).toBeNull();
+  });
+});
+
+describe("isAssignedTo", () => {
+  it("matches only the member the thread is assigned to", () => {
+    const conv = { ...makeConversation(null), assigned_agent_id: "u-agent" };
+    expect(isAssignedTo(conv, "u-agent")).toBe(true);
+    expect(isAssignedTo(conv, "u-other")).toBe(false);
+  });
+
+  it("treats an unassigned thread as matching nobody", () => {
+    const conv = { ...makeConversation(null), assigned_agent_id: undefined };
+    expect(isAssignedTo(conv, "")).toBe(false);
+    expect(isAssignedTo(conv, "u-agent")).toBe(false);
   });
 });

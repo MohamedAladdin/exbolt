@@ -5,13 +5,14 @@ import { createClient } from "@/lib/supabase/client";
 import {
   CONVERSATION_PAGE_SIZE,
   CONVERSATION_SELECT,
+  isAssignedTo,
   matchesContactFilters,
   normalizeConversations,
 } from "@/lib/inbox/conversations";
 import { applyInboxFilter, type InboxFilter } from "@/lib/inbox/inbox-filters";
 import { cn } from "@/lib/utils";
 import type { Conversation, ConversationStatus, Tag } from "@/types";
-import { Search, ChevronDown, X, Phone } from "lucide-react";
+import { Search, ChevronDown, X, Phone, UserRound } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,12 @@ interface ConversationListProps {
    * "one number or none", and the number filter row stays hidden.
    */
   numbers?: InboxNumberOption[];
+  /**
+   * Deep-link filter from a member's profile card
+   * (`/inbox?assignee=<userId>`): show only threads assigned to them.
+   */
+  assignee?: { id: string; name: string | null } | null;
+  onClearAssignee?: () => void;
 }
 
 /** Minimal shape the inbox needs to filter by number. */
@@ -68,6 +75,8 @@ export function ConversationList({
   resyncToken = 0,
   initialFilter = "all",
   numbers = [],
+  assignee = null,
+  onClearAssignee,
 }: ConversationListProps) {
   const t = useTranslations("Inbox.conversationList");
   
@@ -226,6 +235,13 @@ export function ConversationList({
   const filtered = useMemo(() => {
     let result = applyInboxFilter(conversations, filter, now);
 
+    // Assignee deep link (/inbox?assignee=<userId>) — the member profile's
+    // "assigned conversations" card lands here, so the list must show
+    // exactly the threads that card counted.
+    if (assignee) {
+      result = result.filter((c) => isAssignedTo(c, assignee.id));
+    }
+
     // Channel filter — matched on the conversation row, falling back to
     // the contact's channel for rows that predate migration 060.
     if (numberFilter !== "all") {
@@ -267,6 +283,7 @@ export function ConversationList({
     selectedCompany,
     channelFilter,
     numberFilter,
+    assignee,
   ]);
 
   /**
@@ -587,6 +604,23 @@ export function ConversationList({
             </DropdownMenu>
           )}
         </div>
+
+        {assignee && (
+          <div className="flex flex-wrap items-center gap-1">
+            <button
+              type="button"
+              onClick={onClearAssignee}
+              title={t("clearAssignee")}
+              className="bg-primary/15 text-foreground hover:bg-primary/25 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]"
+            >
+              <UserRound className="h-3 w-3" />
+              <span className="max-w-40 truncate">
+                {t("assignedTo", { name: assignee.name ?? "—" })}
+              </span>
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        )}
 
         {hasContactFilters && (
           <div className="flex flex-wrap items-center gap-1">

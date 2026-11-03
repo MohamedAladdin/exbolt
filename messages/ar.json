@@ -368,7 +368,9 @@
       "numberFilterLabel": "فلترة حسب رقم واتساب",
       "allNumbers": "كل الأرقام",
       "numberLabel": "الرقم",
-      "loadingMore": "جارٍ تحميل باقي المحادثات…"
+      "loadingMore": "جارٍ تحميل باقي المحادثات…",
+      "assignedTo": "مسندة لـ {name}",
+      "clearAssignee": "إظهار كل المحادثات"
     },
     "messageThread": {
       "backToConversations": "العودة إلى المحادثات",
@@ -3609,7 +3611,7 @@
       "days": "{days} يوم",
       "kpi": {
         "online": "مدة التواجد",
-        "onlineHint": "≈ {perDay} يوميًا",
+        "onlineHint": "≈ {perDay} يوميًا · محسوب على {days} أيام فيها بيانات",
         "replies": "عدد الردود",
         "repliesHint": "على {conv} محادثة",
         "firstResponse": "متوسط أول رد",
@@ -3620,7 +3622,10 @@
         "contacts": "عملاء مختلفون",
         "contactsHint": "عدد العملاء اللي تم الرد عليهم",
         "resolved": "محادثات مغلقة",
-        "resolvedHint": "{open} لسه مفتوحة ومسندة له"
+        "resolvedHint": "{open} لسه مفتوحة ومسندة له",
+        "assigned": "المحادثات المسندة",
+        "assignedHint": "منها {open} لسه مفتوحة",
+        "assignedLink": "افتح في الإنبوكس"
       },
       "chartTitle": "النشاط اليومي (الأعمدة = مدة التواجد)",
       "chartEmpty": "لا يوجد نشاط في الفترة دي — حساب مدة التواجد بدأ من التحديث دا.",
