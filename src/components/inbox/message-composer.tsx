@@ -71,6 +71,15 @@ export const CHAT_MEDIA_BUCKET = "chat-media";
 /** Meta caps media captions at 1024 chars. Enforced here and in the send route. */
 export const MEDIA_CAPTION_MAX = 1024;
 
+/**
+ * Meta rejects `text.body` over 4096 characters with
+ * `Param text.body must be at most 4096 characters long.` — mapped to a
+ * generic 502 by the send route, so the operator sees "failed" with no
+ * usable reason. Cap the composer instead: the server can never be handed
+ * a body it will refuse.
+ */
+export const TEXT_BODY_MAX = 4096;
+
 /** Hard cap on a single voice recording so it can't blow the upload/
  *  transcode limits — auto-stops the recorder when reached. */
 const MAX_RECORDING_SECONDS = 5 * 60;
@@ -328,6 +337,9 @@ export function MessageComposer({
   const handleSend = useCallback(async () => {
     const trimmed = text.trim();
     if (!trimmed || sending || sessionExpired) return;
+    // Belt-and-braces: `maxLength` on the textarea stops typing/pasting past
+    // the cap, but a draft restored from elsewhere could still arrive long.
+    if (trimmed.length > TEXT_BODY_MAX) return;
 
     setSending(true);
     try {
@@ -902,6 +914,7 @@ export function MessageComposer({
             }
             disabled={sessionExpired || readOnly}
             rows={1}
+            maxLength={TEXT_BODY_MAX}
             // Textarea keeps its own inline title — the GatedButton
             // wrapping pattern doesn't apply to non-button inputs.
             // The placeholder text also surfaces the read-only state.
@@ -930,7 +943,21 @@ export function MessageComposer({
           under the textarea left edge. */}
       {!draft && !recording && (
         <p className="mt-1 ps-1 text-[10px] text-muted-foreground sm:ps-[5.5rem]">
-          {t("draftHint")}
+          {text.length > TEXT_BODY_MAX - 300 ? (
+            // Near/at the cap: swap the draft hint for the count so the
+            // operator sees why the textarea stopped accepting characters.
+            <span
+              dir="ltr"
+              className={cn(
+                "tabular-nums",
+                text.length >= TEXT_BODY_MAX && "text-amber-400",
+              )}
+            >
+              {text.length} / {TEXT_BODY_MAX}
+            </span>
+          ) : (
+            t("draftHint")
+          )}
         </p>
       )}
 
