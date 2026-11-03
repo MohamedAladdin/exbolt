@@ -370,7 +370,9 @@
       "numberLabel": "الرقم",
       "loadingMore": "جارٍ تحميل باقي المحادثات…",
       "assignedTo": "مسندة لـ {name}",
-      "clearAssignee": "إظهار كل المحادثات"
+      "clearAssignee": "إظهار كل المحادثات",
+      "participatedIn": "شارك فيها: {name}",
+      "participating": "محادثات شارك فيها"
     },
     "messageThread": {
       "backToConversations": "العودة إلى المحادثات",
@@ -3625,7 +3627,8 @@
         "resolvedHint": "{open} لسه مفتوحة ومسندة له",
         "assigned": "المحادثات المسندة",
         "assignedHint": "منها {open} لسه مفتوحة",
-        "assignedLink": "افتح في الإنبوكس"
+        "assignedLink": "افتح في الإنبوكس",
+        "repliesLink": "افتح محادثاته"
       },
       "chartTitle": "النشاط اليومي (الأعمدة = مدة التواجد)",
       "chartEmpty": "لا يوجد نشاط في الفترة دي — حساب مدة التواجد بدأ من التحديث دا.",

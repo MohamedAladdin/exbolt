@@ -51,6 +51,17 @@ interface ConversationListProps {
    */
   assignee?: { id: string; name: string | null } | null;
   onClearAssignee?: () => void;
+  /**
+   * Deep-link filter from the member's replies card
+   * (`/inbox?participant=<userId>&days=<n>`). `ids` is the exact set the
+   * profile counted (member_conversation_ids); null while it loads.
+   */
+  participant?: {
+    id: string;
+    name: string | null;
+    days: number;
+    ids: Set<string> | null;
+  } | null;
 }
 
 /** Minimal shape the inbox needs to filter by number. */
@@ -77,6 +88,7 @@ export function ConversationList({
   numbers = [],
   assignee = null,
   onClearAssignee,
+  participant = null,
 }: ConversationListProps) {
   const t = useTranslations("Inbox.conversationList");
   
@@ -242,6 +254,13 @@ export function ConversationList({
       result = result.filter((c) => isAssignedTo(c, assignee.id));
     }
 
+    // Conversations-the-member-took-part-in (member profile → replies card).
+    // `ids` is null until the RPC answers; until then the list stays as-is
+    // rather than flashing every thread and collapsing a moment later.
+    if (participant?.ids) {
+      result = result.filter((c) => participant.ids!.has(c.id));
+    }
+
     // Channel filter — matched on the conversation row, falling back to
     // the contact's channel for rows that predate migration 060.
     if (numberFilter !== "all") {
@@ -284,6 +303,7 @@ export function ConversationList({
     channelFilter,
     numberFilter,
     assignee,
+    participant,
   ]);
 
   /**
@@ -619,6 +639,25 @@ export function ConversationList({
               </span>
               <X className="h-3 w-3" />
             </button>
+          </div>
+        )}
+
+        {participant && (
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="bg-muted text-foreground inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]">
+              <UserRound className="h-3 w-3" />
+              <span className="max-w-40 truncate">
+                {t("participatedIn", { name: participant.name ?? "—" })}
+              </span>
+              <span dir="ltr" className="text-muted-foreground tabular-nums">
+                · {participant.days}d
+              </span>
+              {participant.ids && (
+                <span className="text-muted-foreground tabular-nums">
+                  ({participant.ids.size})
+                </span>
+              )}
+            </span>
           </div>
         )}
 

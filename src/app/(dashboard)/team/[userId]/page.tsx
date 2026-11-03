@@ -222,6 +222,10 @@ export default function TeamMemberPage() {
       label: t("kpi.replies"),
       value: String(kpis.replies),
       hint: t("kpi.repliesHint", { conv: kpis.conversations }),
+      // Same window as the card: the Inbox link opens exactly the set the
+      // RPC counted (member_conversation_ids uses the identical `turns`).
+      href: `/inbox?participant=${member.userId}&days=${days}`,
+      linkLabel: t("kpi.repliesLink"),
     },
     {
       key: "first",

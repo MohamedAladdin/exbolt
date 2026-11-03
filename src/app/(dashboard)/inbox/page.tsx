@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useCallback, useEffect, useRef } from "react";
+import { Suspense, useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
@@ -85,16 +85,67 @@ function InboxPageInner() {
     };
   }, [assigneeId]);
 
-  /** Build an /inbox URL that keeps the assignee filter when present. */
+  /**
+   * `?participant=<userId>&days=<n>` — the member profile's replies card
+   * links here with the SAME window it counted, so the list shows exactly
+   * the conversations behind "على N محادثة". The ids come from
+   * `member_conversation_ids`, which reuses the profile's `turns` CTE.
+   */
+  const participantId = searchParams.get("participant");
+  const participantDays = useMemo(() => {
+    const raw = Number(searchParams.get("days"));
+    return [7, 30, 90].includes(raw) ? raw : 30;
+  }, [searchParams]);
+  const [participant, setParticipant] = useState<{
+    name: string | null;
+    ids: Set<string> | null;
+  }>({ name: null, ids: null });
+
+  useEffect(() => {
+    if (!participantId) {
+      setParticipant({ name: null, ids: null });
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const supabase = createClient();
+      const [{ data: profile }, { data: ids }] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("user_id", participantId)
+          .maybeSingle(),
+        supabase.rpc("member_conversation_ids", {
+          p_user: participantId,
+          p_days: participantDays,
+          p_tz: "Africa/Cairo",
+        }),
+      ]);
+      if (cancelled) return;
+      setParticipant({
+        name: (profile?.full_name as string | null | undefined) ?? null,
+        ids: new Set((ids as string[] | null) ?? []),
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [participantId, participantDays]);
+
+  /** Build an /inbox URL that keeps the active deep-link filters. */
   const inboxUrl = useCallback(
     (convId?: string | null) => {
       const params = new URLSearchParams();
       if (convId) params.set("c", convId);
       if (assigneeId) params.set("assignee", assigneeId);
+      if (participantId) {
+        params.set("participant", participantId);
+        params.set("days", String(participantDays));
+      }
       const qs = params.toString();
       return qs ? `/inbox?${qs}` : "/inbox";
     },
-    [assigneeId],
+    [assigneeId, participantId, participantDays],
   );
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -713,6 +764,16 @@ function InboxPageInner() {
             numbers={numbers}
             assignee={assigneeId ? { id: assigneeId, name: assigneeName } : null}
             onClearAssignee={() => router.replace("/inbox", { scroll: false })}
+            participant={
+              participantId
+                ? {
+                    id: participantId,
+                    name: participant.name,
+                    days: participantDays,
+                    ids: participant.ids,
+                  }
+                : null
+            }
           />
         </div>
 

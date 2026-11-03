@@ -370,7 +370,9 @@
       "numberLabel": "Number",
       "loadingMore": "Loading more conversations…",
       "assignedTo": "Assigned to {name}",
-      "clearAssignee": "Show all conversations"
+      "clearAssignee": "Show all conversations",
+      "participatedIn": "Took part: {name}",
+      "participating": "Conversations they took part in"
     },
     "messageThread": {
       "backToConversations": "Back to conversations",
@@ -3625,7 +3627,8 @@
         "resolvedHint": "{open} still assigned and open",
         "assigned": "Assigned conversations",
         "assignedHint": "{open} of them still open",
-        "assignedLink": "Open in Inbox"
+        "assignedLink": "Open in Inbox",
+        "repliesLink": "Open their conversations"
       },
       "chartTitle": "Daily activity (bars = online time)",
       "chartEmpty": "No activity in this range yet — online time starts recording from this release.",

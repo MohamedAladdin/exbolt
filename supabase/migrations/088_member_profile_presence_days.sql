@@ -296,3 +296,107 @@ $$;
 ALTER FUNCTION public.member_profile(UUID, INTEGER, TEXT) OWNER TO postgres;
 REVOKE ALL ON FUNCTION public.member_profile(UUID, INTEGER, TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.member_profile(UUID, INTEGER, TEXT) TO authenticated;
+
+-- ------------------------------------------------------------
+-- member_conversation_ids — the conversations a member "took part in"
+-- The member profile's replies card counts conversations through the same
+-- `turns` definition, so the Inbox deep link (which passes the same window)
+-- can filter to exactly that set instead of guessing from sender_id alone.
+-- ------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.member_conversation_ids(
+  p_user UUID,
+  p_days INTEGER DEFAULT 30,
+  p_tz TEXT DEFAULT 'UTC'
+) RETURNS UUID[]
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_account UUID;
+  v_role account_role_enum;
+  v_tz TEXT := 'UTC';
+  v_now TIMESTAMPTZ := now();
+  v_start TIMESTAMPTZ;
+  v_ids UUID[];
+BEGIN
+  SELECT p.account_id, p.account_role INTO v_account, v_role
+  FROM profiles p WHERE p.user_id = auth.uid();
+
+  IF v_account IS NULL THEN
+    RAISE EXCEPTION 'caller is not a member of an account' USING ERRCODE = '42501';
+  END IF;
+
+  IF p_days IS NULL OR p_days NOT IN (1, 7, 30, 90) THEN
+    RAISE EXCEPTION 'p_days must be one of 1, 7, 30, 90' USING ERRCODE = '22023';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM profiles p WHERE p.user_id = p_user AND p.account_id = v_account
+  ) THEN
+    RAISE EXCEPTION 'member not found in this account' USING ERRCODE = '22023';
+  END IF;
+
+  IF v_role NOT IN ('owner', 'admin') AND p_user <> auth.uid() THEN
+    RAISE EXCEPTION 'only admins can read another member''s conversations'
+      USING ERRCODE = '42501';
+  END IF;
+
+  IF p_tz IS NOT NULL THEN
+    BEGIN
+      PERFORM v_now AT TIME ZONE p_tz;
+      v_tz := p_tz;
+    EXCEPTION WHEN invalid_parameter_value THEN
+      v_tz := 'UTC';
+    END;
+  END IF;
+
+  v_start := (date_trunc('day', v_now AT TIME ZONE v_tz)
+              - make_interval(days => p_days - 1)) AT TIME ZONE v_tz;
+
+  WITH msgs AS (
+    SELECT m.id, m.conversation_id, m.sender_type, m.status, m.created_at
+    FROM messages m
+    JOIN conversations c ON c.id = m.conversation_id
+    WHERE c.account_id = v_account
+      AND m.created_at >= v_start - interval '1 day'
+  ),
+  streams AS (
+    SELECT conversation_id, created_at,
+           sender_type = 'customer' AS is_customer,
+           lag(sender_type = 'customer') OVER (
+             PARTITION BY conversation_id ORDER BY created_at, id
+           ) AS prev_customer
+    FROM msgs
+    WHERE sender_type = 'customer'
+       OR (sender_type = 'agent' AND status <> 'failed')
+  ),
+  turns AS (
+    SELECT s.conversation_id, r.sender_id AS reply_agent
+    FROM streams s
+    CROSS JOIN LATERAL (
+      SELECT m2.sender_id, m2.created_at
+      FROM messages m2
+      WHERE m2.conversation_id = s.conversation_id
+        AND m2.created_at > s.created_at
+        AND m2.status <> 'failed'
+        AND m2.sender_type = 'agent'
+      ORDER BY m2.created_at, m2.id
+      LIMIT 1
+    ) r
+    WHERE s.is_customer
+      AND s.prev_customer IS NOT TRUE
+      AND s.created_at >= v_start
+  )
+  SELECT COALESCE(array_agg(DISTINCT t.conversation_id), '{}'::UUID[])
+    INTO v_ids
+  FROM turns t
+  WHERE t.reply_agent = p_user;
+
+  RETURN v_ids;
+END;
+$$;
+
+ALTER FUNCTION public.member_conversation_ids(UUID, INTEGER, TEXT) OWNER TO postgres;
+REVOKE ALL ON FUNCTION public.member_conversation_ids(UUID, INTEGER, TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.member_conversation_ids(UUID, INTEGER, TEXT) TO authenticated;
