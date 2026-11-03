@@ -62,6 +62,7 @@ interface ConversationListProps {
     days: number;
     ids: Set<string> | null;
   } | null;
+  onClearParticipant?: () => void;
 }
 
 /** Minimal shape the inbox needs to filter by number. */
@@ -89,6 +90,7 @@ export function ConversationList({
   assignee = null,
   onClearAssignee,
   participant = null,
+  onClearParticipant,
 }: ConversationListProps) {
   const t = useTranslations("Inbox.conversationList");
   
@@ -644,7 +646,12 @@ export function ConversationList({
 
         {participant && (
           <div className="flex flex-wrap items-center gap-1">
-            <span className="bg-muted text-foreground inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]">
+            <button
+              type="button"
+              onClick={onClearParticipant}
+              title={t("clearAssignee")}
+              className="bg-muted text-foreground hover:bg-muted/70 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]"
+            >
               <UserRound className="h-3 w-3" />
               <span className="max-w-40 truncate">
                 {t("participatedIn", { name: participant.name ?? "—" })}
@@ -657,7 +664,8 @@ export function ConversationList({
                   ({participant.ids.size})
                 </span>
               )}
-            </span>
+              <X className="h-3 w-3" />
+            </button>
           </div>
         )}
 

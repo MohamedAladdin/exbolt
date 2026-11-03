@@ -764,6 +764,13 @@ function InboxPageInner() {
             numbers={numbers}
             assignee={assigneeId ? { id: assigneeId, name: assigneeName } : null}
             onClearAssignee={() => router.replace("/inbox", { scroll: false })}
+            onClearParticipant={() => {
+              const next = new URLSearchParams();
+              if (activeConversation?.id) next.set("c", activeConversation.id);
+              if (assigneeId) next.set("assignee", assigneeId);
+              const qs = next.toString();
+              router.replace(qs ? `/inbox?${qs}` : "/inbox", { scroll: false });
+            }}
             participant={
               participantId
                 ? {
