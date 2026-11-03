@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
+  CONVERSATION_PAGE_SIZE,
   CONVERSATION_SELECT,
   matchesContactFilters,
   normalizeConversations,
@@ -90,6 +91,9 @@ export function ConversationList({
     return () => window.clearInterval(id);
   }, []);
   const [loading, setLoading] = useState(true);
+  // True while pages beyond the first are still streaming in. The list is
+  // already interactive at that point — this only drives the footer hint.
+  const [loadingMore, setLoadingMore] = useState(false);
   // Contact-based filters (issue #272). Tags use OR logic (a conversation
   // matches if its contact carries any selected tag), consistent with
   // Broadcast audience filtering. Company is an exact match on the field.
@@ -127,30 +131,56 @@ export function ConversationList({
     let cancelled = false;
 
     (async () => {
-      const { data, error } = await supabase
-        .from("conversations")
-        .select(CONVERSATION_SELECT)
-        // NULLS LAST is not cosmetic: Postgres sorts NULLs FIRST on DESC, so a
-        // conversation with no messages (created by "open chat" before the
-        // first send) would pin itself to the top of the list forever.
-        .order("last_message_at", { ascending: false, nullsFirst: false });
+      // Progressive hydration. A single request returned every conversation
+      // (1.5 MB for ~1.3k threads) and PostgREST silently caps a response at
+      // 1000 rows, so the list sat empty until the whole payload landed and
+      // the oldest threads never appeared at all. Fetch in pages, publish
+      // after each one: the first 100 rows paint almost immediately and the
+      // rest stream in behind them.
+      const rowsById = new Map<string, Conversation>();
 
-      if (cancelled) return;
+      for (
+        let from = 0;
+        !cancelled;
+        from += CONVERSATION_PAGE_SIZE
+      ) {
+        const { data, error } = await supabase
+          .from("conversations")
+          .select(CONVERSATION_SELECT)
+          // NULLS LAST is not cosmetic: Postgres sorts NULLs FIRST on DESC, so a
+          // conversation with no messages (created by "open chat" before the
+          // first send) would pin itself to the top of the list forever.
+          .order("last_message_at", { ascending: false, nullsFirst: false })
+          // Tiebreaker for the paging: `range()` over a non-unique sort key
+          // can repeat or skip rows when two threads share a timestamp.
+          .order("id", { ascending: false })
+          .range(from, from + CONVERSATION_PAGE_SIZE - 1);
 
-      if (error) {
-        // Supabase errors have non-enumerable properties — log fields explicitly
-        console.error("Failed to fetch conversations:", {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code,
-        });
+        if (cancelled) return;
+
+        if (error) {
+          // Supabase errors have non-enumerable properties — log fields explicitly
+          console.error("Failed to fetch conversations:", {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code,
+          });
+          setLoading(false);
+          setLoadingMore(false);
+          return;
+        }
+
+        const page = normalizeConversations(data ?? []);
+        for (const conv of page) rowsById.set(conv.id, conv);
+
+        onConversationsLoadedRef.current(Array.from(rowsById.values()));
         setLoading(false);
-        return;
+        if (page.length < CONVERSATION_PAGE_SIZE) break;
+        setLoadingMore(true);
       }
 
-      onConversationsLoadedRef.current(normalizeConversations(data ?? []));
-      setLoading(false);
+      if (!cancelled) setLoadingMore(false);
     })();
 
     return () => {
@@ -630,6 +660,14 @@ export function ConversationList({
                 }
               />
             ))}
+            {loadingMore && (
+              <div className="flex items-center justify-center gap-2 py-3">
+                <div className="h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                <span className="text-[11px] text-muted-foreground">
+                  {t("loadingMore")}
+                </span>
+              </div>
+            )}
           </div>
         )}
       </ScrollArea>

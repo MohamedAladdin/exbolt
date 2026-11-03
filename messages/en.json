@@ -367,7 +367,8 @@
       "channelFilterLabel": "Filter by channel",
       "numberFilterLabel": "Filter by WhatsApp number",
       "allNumbers": "All numbers",
-      "numberLabel": "Number"
+      "numberLabel": "Number",
+      "loadingMore": "Loading more conversations…"
     },
     "messageThread": {
       "backToConversations": "Back to conversations",

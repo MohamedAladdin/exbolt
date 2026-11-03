@@ -367,7 +367,8 @@
       "channelFilterLabel": "تصفية حسب القناة",
       "numberFilterLabel": "فلترة حسب رقم واتساب",
       "allNumbers": "كل الأرقام",
-      "numberLabel": "الرقم"
+      "numberLabel": "الرقم",
+      "loadingMore": "جارٍ تحميل باقي المحادثات…"
     },
     "messageThread": {
       "backToConversations": "العودة إلى المحادثات",
