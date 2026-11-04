@@ -14,7 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ExcalMark } from "@/components/brand/excal-mark";
+import { ExboltMark } from "@/components/brand/exbolt-mark";
 import { CheckCircle, ArrowLeft } from "lucide-react";
 
 export default function ForgotPasswordPage() {
@@ -88,7 +88,7 @@ export default function ForgotPasswordPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <Card className="w-full max-w-md border-border bg-card">
         <CardHeader className="items-center text-center">
-          <ExcalMark className="mb-2 h-12 w-12" />
+          <ExboltMark className="mb-2 h-12 w-12" label="ExBolt" />
           <CardTitle className="text-xl text-foreground">{t("title")}</CardTitle>
           <CardDescription className="text-muted-foreground">
             {t("desc")}

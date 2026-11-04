@@ -9,7 +9,7 @@ import { Eye, ImagePlus, Loader2, RotateCcw, Sparkles, Trash2 } from "lucide-rea
 import { useAuth } from "@/hooks/use-auth";
 import { createClient } from "@/lib/supabase/client";
 import { brandName, composeBrandTitle, vendorSuffix, VENDOR_NAME } from "@/lib/branding";
-import { ExcalMark } from "@/components/brand/excal-mark";
+import { ExboltMark } from "@/components/brand/exbolt-mark";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -175,7 +175,7 @@ export function BrandingPanel() {
               {t("preview")}
             </p>
             <div className="mt-2 flex items-center gap-2">
-              <ExcalMark className="h-8 w-8 shrink-0" />
+              <ExboltMark className="h-8 w-8 shrink-0" />
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-foreground">
                   {brandName(draft)}
@@ -244,7 +244,7 @@ export function BrandingPanel() {
                   className="max-h-14 max-w-14 object-contain"
                 />
               ) : (
-                <ExcalMark className="h-8 w-8 opacity-40" />
+                <ExboltMark className="h-8 w-8 opacity-40" />
               )}
             </div>
             <input

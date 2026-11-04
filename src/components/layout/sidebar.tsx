@@ -9,7 +9,7 @@ import { useEntitlements } from "@/hooks/use-entitlements";
 import type { Feature } from "@/lib/plans/entitlements";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-import { ExcalMark } from "@/components/brand/excal-mark";
+import { ExboltMark } from "@/components/brand/exbolt-mark";
 import { useAuth } from "@/hooks/use-auth";
 import { useTotalUnread } from "@/hooks/use-total-unread";
 import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
@@ -241,7 +241,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
             close button is hidden since the sidebar is always-visible. */}
         <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border px-4">
           <Link href="/dashboard" className="flex min-w-0 items-center gap-2">
-            <ExcalMark className="h-8 w-8 shrink-0" />
+            <ExboltMark className="h-8 w-8 shrink-0" />
             <span className="min-w-0">
               <span className="block truncate text-sm font-semibold text-foreground">
                 {brandName(account?.brand_name)}

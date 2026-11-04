@@ -15,7 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ExcalMark } from "@/components/brand/excal-mark";
+import { ExboltMark } from "@/components/brand/exbolt-mark";
 import { UsersRound } from "lucide-react";
 
 // `useSearchParams` opts the component out of static prerendering
@@ -100,7 +100,7 @@ function LoginPageInner() {
               <UsersRound className="h-6 w-6 text-primary" />
             </div>
           ) : (
-            <ExcalMark className="mb-2 h-12 w-12" />
+            <ExboltMark className="mb-2 h-12 w-12" label="ExBolt" />
           )}
           <CardTitle className="text-xl text-foreground">
             {inviteToken ? t('titleAccept') : t('titleWelcome')}

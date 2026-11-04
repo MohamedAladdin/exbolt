@@ -1,8 +1,10 @@
 import { ImageResponse } from "next/og";
 
-// Favicon = the EXCAL "E" block (see src/components/brand/excal-mark.tsx):
-// a gold plate with the top-right corner cut at 45° and a dark E in the
-// cut-out. Flat fills, 64-unit grid, so the edges stay crisp at 16/32 px.
+// Favicon: the ExBolt bolt on the brand-blue plate — the same artwork the
+// landing page serves as `/landing/assets/favicon.svg`, so the tab icon does
+// not change identity when a visitor signs in. The bubble form of the mark
+// (src/components/brand/exbolt-mark.tsx) keeps its tail above ~24 px; the
+// plate is what reads at 16/32.
 // Next.js renders this at build time and auto-injects <link rel="icon">.
 
 export const runtime = "edge";
@@ -14,10 +16,10 @@ export default function Icon() {
     (
       <div style={{ width: "100%", height: "100%", display: "flex" }}>
         <svg width="32" height="32" viewBox="0 0 64 64">
-          <path d="M0 0 H45 L64 19 V64 H0 Z" fill="#F5C242" />
+          <rect width="64" height="64" rx="16" fill="#0A4DFF" />
           <path
-            d="M24 18 H44 V23.5 H30.5 V29 H41 V34.3 H30.5 V40.5 H44.5 V46 H24 Z"
-            fill="#0E1116"
+            d="M37.4 8.5 16.2 35.9c-.7.9-.05 2.2 1.1 2.2h10.4l-3.2 16.2c-.2 1.2 1.3 1.9 2.1 1l21.2-27.4c.7-.9.05-2.2-1.1-2.2H35.9l3.6-15.2c.2-1.2-1.3-1.9-2.1-1Z"
+            fill="#FFFFFF"
           />
         </svg>
       </div>

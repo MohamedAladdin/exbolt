@@ -15,7 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { ExcalMark } from '@/components/brand/excal-mark';
+import { ExboltMark } from '@/components/brand/exbolt-mark';
 import { CheckCircle, UsersRound, Lock } from 'lucide-react';
 
 // `useSearchParams` opts the component out of static prerendering
@@ -215,7 +215,7 @@ function SignupPageInner() {
               <UsersRound className="text-primary h-6 w-6" />
             </div>
           ) : (
-            <ExcalMark className="mb-2 h-12 w-12" />
+            <ExboltMark className="mb-2 h-12 w-12" label="ExBolt" />
           )}
           <CardTitle className="text-foreground text-xl">
             {inviteToken ? t('titleJoin') : t('title')}
