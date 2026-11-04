@@ -21,7 +21,8 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/ai/admin-client'
 import { loadAiConfig } from '@/lib/ai/config'
 import { extractFactsForContact } from '@/lib/ai/facts'
-import { suggestFromConversation } from '@/lib/ai/knowledge-suggest'
+import { collectSuggestions, insertSuggestions } from '@/lib/ai/knowledge-suggest'
+import { verifySuggestions } from '@/lib/ai/suggest-verify'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -30,6 +31,8 @@ export const maxDuration = 60
 const FACTS_PER_RUN = 10
 const FACTS_REFRESH_DAYS = 7
 const SUGGESTIONS_PER_RUN = 20
+/** One verification call per conversation: bound how many threads we scan. */
+const SUGGESTION_THREADS_PER_RUN = 6
 const TRANSCRIPT_LIMIT = 40
 const LOOKBACK_DAYS = 7
 
@@ -121,17 +124,36 @@ async function runAccount(
 
   const result = { facts: 0, suggestions: 0, failed: 0 }
 
-  // ---------- knowledge suggestions (deterministic, no model) ----------
+  // ---------- knowledge suggestions ----------
+  // Heuristic pairing first (free), then one model call per conversation to
+  // keep only pairs where the answer genuinely answers the question. If that
+  // call fails we insert NOTHING for the thread: unverified guesses in the KB
+  // are worse than an empty one.
   let suggestionsLeft = suggestionBudget
+  let threadsLeft = SUGGESTION_THREADS_PER_RUN
   for (const conversation of conversations ?? []) {
-    if (suggestionsLeft <= 0) break
-    const added = await suggestFromConversation(db, {
-      accountId,
+    if (suggestionsLeft <= 0 || threadsLeft <= 0) break
+    threadsLeft -= 1
+    const candidates = await collectSuggestions(db, {
       conversationId: conversation.id as string,
     })
-    if (added > 0) {
-      result.suggestions += added
-      suggestionsLeft -= added
+    if (candidates.length === 0) continue
+
+    try {
+      const verified = await verifySuggestions(config, candidates)
+      if (verified.length === 0) continue
+      const added = await insertSuggestions(db, {
+        accountId,
+        conversationId: conversation.id as string,
+        suggestions: verified,
+      })
+      if (added > 0) {
+        result.suggestions += added
+        suggestionsLeft -= added
+      }
+    } catch (err) {
+      console.warn(`[ai/cron] ${accountId}: suggestion review failed:`, err)
+      result.failed += 1
     }
   }
 

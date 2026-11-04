@@ -117,17 +117,13 @@ export function buildSuggestions(messages: MessageRow[]): KnowledgeSuggestion[] 
 }
 
 /**
- * Build suggestions for one conversation and store the new ones as drafts.
- *
- * Duplicates are ignored by the table's `UNIQUE (account_id, question)`, so a
- * weekly job re-reading the same thread is harmless. Returns how many rows
- * were actually inserted.
+ * Read one conversation and return its candidate pairs (no writes, no model).
  */
-export async function suggestFromConversation(
+export async function collectSuggestions(
   db: SupabaseClient,
-  args: { accountId: string; conversationId: string; limit?: number },
-): Promise<number> {
-  const { accountId, conversationId, limit = 60 } = args
+  args: { conversationId: string; limit?: number },
+): Promise<KnowledgeSuggestion[]> {
+  const { conversationId, limit = 60 } = args
 
   const { data, error } = await db
     .from('messages')
@@ -139,10 +135,27 @@ export async function suggestFromConversation(
 
   if (error || !data) {
     if (error) console.warn('[ai suggestions] read failed:', error.message)
-    return 0
+    return []
   }
+  return buildSuggestions(data as MessageRow[])
+}
 
-  const suggestions = buildSuggestions(data as MessageRow[])
+/**
+ * Store verified suggestions as drafts.
+ *
+ * Duplicates are ignored by the table's `UNIQUE (account_id, question)`, so a
+ * weekly job re-reading the same thread is harmless — and a dismissal stays a
+ * dismissal. Returns how many rows were actually inserted.
+ */
+export async function insertSuggestions(
+  db: SupabaseClient,
+  args: {
+    accountId: string
+    conversationId: string
+    suggestions: KnowledgeSuggestion[]
+  },
+): Promise<number> {
+  const { accountId, conversationId, suggestions } = args
   if (suggestions.length === 0) return 0
 
   const rows = suggestions.map((s) => ({
@@ -153,18 +166,13 @@ export async function suggestFromConversation(
     status: 'draft' as const,
   }))
 
-  // `ignoreDuplicates` keeps the existing row (and its review status) when the
-  // same question was already proposed or dismissed before.
-  const { data: inserted, error: insertErr } = await db
+  const { data: inserted, error } = await db
     .from('ai_knowledge_suggestions')
-    .upsert(rows, {
-      onConflict: 'account_id,question',
-      ignoreDuplicates: true,
-    })
+    .upsert(rows, { onConflict: 'account_id,question', ignoreDuplicates: true })
     .select('id')
 
-  if (insertErr) {
-    console.warn('[ai suggestions] insert failed:', insertErr.message)
+  if (error) {
+    console.warn('[ai suggestions] insert failed:', error.message)
     return 0
   }
   return inserted?.length ?? 0

@@ -1,9 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { AiError, type AiConfig, type ChatMessage } from './types'
-import { aiRequestTimeoutMs } from './defaults'
-import { generateOpenAi } from './providers/openai'
-import { generateOpenAiCompatible } from './providers/openai-compatible'
-import { generateAnthropic } from './providers/anthropic'
+import type { AiConfig, ChatMessage } from './types'
+import { completeOnce } from './complete'
 
 /**
  * What the assistant remembers about a customer — and the strict limits on it.
@@ -151,35 +148,6 @@ function buildExtractionPrompt(): string {
   ].join('\n')
 }
 
-/** Provider dispatch for a one-shot completion (no tools, no function calling). */
-async function complete(
-  config: AiConfig,
-  systemPrompt: string,
-  messages: ChatMessage[],
-): Promise<string> {
-  const providerArgs = {
-    apiKey: config.apiKey,
-    model: config.model,
-    systemPrompt,
-    messages,
-    timeoutMs: aiRequestTimeoutMs(),
-    baseUrl: config.baseUrl,
-  }
-  switch (config.provider) {
-    case 'openai':
-      return (await generateOpenAi(providerArgs)).text
-    case 'openai_compatible':
-      return (await generateOpenAiCompatible(providerArgs)).text
-    case 'anthropic':
-      return (await generateAnthropic(providerArgs)).text
-    default:
-      throw new AiError(`Unsupported AI provider: ${config.provider}`, {
-        code: 'unsupported_provider',
-        status: 400,
-      })
-  }
-}
-
 /**
  * Extract facts for one contact from one conversation and upsert them.
  *
@@ -199,7 +167,7 @@ export async function extractFactsForContact(
   const { accountId, contactId, config, transcript } = args
   if (transcript.length === 0) return 0
 
-  const raw = await complete(config, buildExtractionPrompt(), transcript)
+  const raw = await completeOnce(config, buildExtractionPrompt(), transcript)
   const facts = parseExtractedFacts(raw)
   if (facts.length === 0) {
     await stampExtracted(db, accountId, contactId)

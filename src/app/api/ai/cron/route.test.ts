@@ -3,7 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const h = vi.hoisted(() => ({
   configs: [{ account_id: 'acct-1' }] as { account_id: string }[],
   loadAiConfig: vi.fn(),
-  suggestFromConversation: vi.fn(),
+  collectSuggestions: vi.fn(),
+  insertSuggestions: vi.fn(),
+  verifySuggestions: vi.fn(),
   extractFactsForContact: vi.fn(),
   conversations: [] as { id: string; contact_id: string | null; last_message_at: string }[],
 }))
@@ -38,7 +40,11 @@ vi.mock('@/lib/ai/admin-client', () => ({
 vi.mock('@/lib/ai/config', () => ({ loadAiConfig: h.loadAiConfig }))
 vi.mock('@/lib/ai/facts', () => ({ extractFactsForContact: h.extractFactsForContact }))
 vi.mock('@/lib/ai/knowledge-suggest', () => ({
-  suggestFromConversation: h.suggestFromConversation,
+  collectSuggestions: h.collectSuggestions,
+  insertSuggestions: h.insertSuggestions,
+}))
+vi.mock('@/lib/ai/suggest-verify', () => ({
+  verifySuggestions: h.verifySuggestions,
 }))
 
 import { POST } from './route'
@@ -76,7 +82,9 @@ describe('/api/ai/cron', () => {
     h.configs = [{ account_id: 'acct-1' }]
     h.conversations = []
     h.loadAiConfig.mockResolvedValue(CONFIG)
-    h.suggestFromConversation.mockResolvedValue(0)
+    h.collectSuggestions.mockResolvedValue([])
+    h.insertSuggestions.mockResolvedValue(0)
+    h.verifySuggestions.mockResolvedValue([])
     h.extractFactsForContact.mockResolvedValue(0)
   })
 
@@ -107,14 +115,38 @@ describe('/api/ai/cron', () => {
     expect(body).toEqual({ accounts: 1, facts: 0, suggestions: 0, failed: 0 })
   })
 
-  it('counts the suggestions it stores', async () => {
+  it('stores only the pairs the reviewer kept', async () => {
     h.conversations = [
       { id: 'conv-1', contact_id: 'contact-1', last_message_at: new Date().toISOString() },
     ]
-    h.suggestFromConversation.mockResolvedValue(2)
+    h.collectSuggestions.mockResolvedValue([
+      { question: 'الكشف بكام؟', answer: '٦٥٠ جنيه.' },
+    ])
+    h.verifySuggestions.mockResolvedValue([
+      { question: 'الكشف بكام؟', answer: '٦٥٠ جنيه.' },
+    ])
+    h.insertSuggestions.mockResolvedValue(1)
+
     const res = await POST(request('cron-secret'))
     const body = await res.json()
-    expect(body.suggestions).toBe(2)
+    expect(h.verifySuggestions).toHaveBeenCalledTimes(1)
+    expect(body.suggestions).toBe(1)
+  })
+
+  it('stores nothing when the reviewer fails, and counts the failure', async () => {
+    h.conversations = [
+      { id: 'conv-1', contact_id: 'contact-1', last_message_at: new Date().toISOString() },
+    ]
+    h.collectSuggestions.mockResolvedValue([
+      { question: 'الكشف بكام؟', answer: '٦٥٠ جنيه.' },
+    ])
+    h.verifySuggestions.mockRejectedValue(new Error('provider down'))
+
+    const res = await POST(request('cron-secret'))
+    const body = await res.json()
+    expect(h.insertSuggestions).not.toHaveBeenCalled()
+    expect(body.suggestions).toBe(0)
+    expect(body.failed).toBe(1)
   })
 
   it('skips an account whose config cannot be loaded, and counts the failure', async () => {
