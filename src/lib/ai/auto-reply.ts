@@ -34,8 +34,12 @@ const AWAY_REPLY_COOLDOWN_MS = 6 * 60 * 60 * 1000
  * switched the assistant off for that customer and rang the team's bell. These
  * messages get silence, and the thread stays enabled.
  */
+// NB: greetings are NOT in this list. In this business a first message is
+// usually «السلام عليكم» or «مساء الخير», and staying silent on it reads as a
+// dead assistant — the model answers those with a greeting + intro. Only
+// acknowledgements (nothing to act on) and content-free messages are skipped.
 const TRIVIAL_INBOUND =
-  /^(?:[.،,?؟!\s\-]+|شكرا(?:ً|ا)?|شكرًا|متشكر(?:ة|ه)?|تسلم(?:ي|وا)?|تمام|اوك|أوك|اوكيه|ok(?:ay)?|thanks|thank you|thx|جزاك(?:م|ي)? الله(?: خيرا| خيرًا)?|ربنا يخليك(?:م|وا)?|يعطيك العافية|السلام عليكم|السلام عليكم ورحمة الله|وعليكم السلام|صباح الخير|صباح النور|مساء الخير|مساء النور)[\s.،,!؟🙏👍🌹❤️🤍💙😊😍]*$/iu
+  /^(?:[.،,?؟!\s\-]+|شكرا(?:ً|ا)?|شكرًا|متشكر(?:ة|ه)?|تسلم(?:ي|وا)?|تمام|اوك|أوك|اوكيه|ok(?:ay)?|thanks|thank you|thx|جزاك(?:م|ي)? الله(?: خيرا| خيرًا)?|ربنا يخليك(?:م|وا)?|يعطيك العافية)[\s.،,!؟🙏👍🌹❤️🤍💙😊😍]*$/iu
 
 /**
  * Does this inbound need a reply at all?
