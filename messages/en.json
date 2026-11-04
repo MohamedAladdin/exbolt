@@ -387,7 +387,8 @@
       "loadMore": "Load 25 more",
       "resultsCount": "{count} results",
       "loadAll": "Load all",
-      "loadingAll": "Loading all…"
+      "loadingAll": "Loading all…",
+      "backToTop": "Back to top"
     },
     "messageThread": {
       "backToConversations": "Back to conversations",

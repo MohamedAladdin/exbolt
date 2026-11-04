@@ -14,7 +14,7 @@ import {
 } from "@/lib/inbox/inbox-filters";
 import { cn } from "@/lib/utils";
 import type { Conversation, ConversationStatus, Tag } from "@/types";
-import { Search, X, Clock, SlidersHorizontal } from "lucide-react";
+import { Search, X, Clock, SlidersHorizontal, ArrowUp } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
@@ -380,6 +380,37 @@ export function ConversationList({
 
   const hasMore = rows.length < total;
 
+  // The floating actions follow the scroll direction: down reveals them
+  // (that is when the operator wants "load all" or "back to top"), up hides
+  // them again so they never sit on top of the thread they are reading.
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [showFloating, setShowFloating] = useState(false);
+
+  useEffect(() => {
+    const root = panelRef.current;
+    const el = root?.querySelector<HTMLElement>(
+      '[data-slot="scroll-area-viewport"]',
+    );
+    if (!el) return;
+    let last = el.scrollTop;
+    const onScroll = () => {
+      const y = el.scrollTop;
+      if (y > last + 2 && y > 120) setShowFloating(true);
+      else if (y < last - 2 || y <= 120) setShowFloating(false);
+      last = y;
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const scrollToTop = useCallback(() => {
+    const el = panelRef.current?.querySelector<HTMLElement>(
+      '[data-slot="scroll-area-viewport"]',
+    );
+    el?.scrollTo({ top: 0, behavior: "smooth" });
+    setShowFloating(false);
+  }, []);
+
   // Scroll trigger: a sentinel at the end of the list, one page ahead of the
   // fold. The button below it is the fallback when it never intersects.
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -526,7 +557,10 @@ export function ConversationList({
     // w-full on mobile so the list occupies the whole viewport when it's
     // the single pane showing; fixed 320px on desktop where it shares the
     // row with the thread + contact sidebar.
-    <div className="relative flex h-full w-full flex-col border-e border-border bg-card lg:w-80">
+    <div
+      ref={panelRef}
+      className="relative flex h-full w-full flex-col border-e border-border bg-card lg:w-80"
+    >
       {/* Search + filter.
           Two rows, always: the search box with one filter button, then the
           status tabs. Channel / number / tags / company / assignee live inside
@@ -889,21 +923,33 @@ export function ConversationList({
         )}
       </ScrollArea>
 
-      {/* Floating "load all" — the inline one was impossible to hit because
-          scrolling keeps pulling the next page under the cursor. It appears
-          after two pages (so the first screen stays clean) and only while
-          there is something left to load. */}
-      {hasMore && rows.length >= CONVERSATION_PAGE_SIZE * 2 && (
-        <button
-          type="button"
-          onClick={() => void loadAll()}
-          disabled={loadingAll}
-          className="bg-foreground text-background absolute bottom-4 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full px-4 py-2 text-[11px] font-medium shadow-lg transition-opacity hover:opacity-90 disabled:opacity-60"
-        >
-          {loadingAll
-            ? t("loadingAll")
-            : `${t("loadAll")} · ${total.toLocaleString("en-US")}`}
-        </button>
+      {/* Floating actions — direction-driven: sliding down reveals them,
+          sliding up hides them. "Load all" only while rows remain, "back to
+          top" whenever the list is long enough to have been scrolled. */}
+      {showFloating && (
+        <div className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2">
+          {hasMore && rows.length >= CONVERSATION_PAGE_SIZE * 2 && (
+            <button
+              type="button"
+              onClick={() => void loadAll()}
+              disabled={loadingAll}
+              className="bg-foreground text-background whitespace-nowrap rounded-full px-4 py-2 text-[11px] font-medium shadow-lg transition-opacity hover:opacity-90 disabled:opacity-60"
+            >
+              {loadingAll
+                ? t("loadingAll")
+                : `${t("loadAll")} · ${total.toLocaleString("en-US")}`}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={scrollToTop}
+            aria-label={t("backToTop")}
+            title={t("backToTop")}
+            className="bg-card text-foreground ring-foreground/15 flex size-9 items-center justify-center rounded-full shadow-lg ring-1 transition-colors hover:bg-muted"
+          >
+            <ArrowUp className="size-4" />
+          </button>
+        </div>
       )}
     </div>
   );
