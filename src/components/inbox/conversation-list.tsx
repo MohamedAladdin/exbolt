@@ -4,12 +4,9 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
   CONVERSATION_PAGE_SIZE,
-  CONVERSATION_SELECT,
-  isAssignedTo,
-  matchesContactFilters,
   normalizeConversations,
 } from "@/lib/inbox/conversations";
-import { applyInboxFilter, type InboxFilter } from "@/lib/inbox/inbox-filters";
+import type { InboxFilter } from "@/lib/inbox/inbox-filters";
 import { cn } from "@/lib/utils";
 import type { Conversation, ConversationStatus, Tag } from "@/types";
 import { Search, ChevronDown, X, Phone, UserRound } from "lucide-react";
@@ -60,7 +57,6 @@ interface ConversationListProps {
     id: string;
     name: string | null;
     days: number;
-    ids: Set<string> | null;
   } | null;
   onClearParticipant?: () => void;
 }
@@ -106,17 +102,26 @@ export function ConversationList({
   ], [t]);
 
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<InboxFilter>(initialFilter);
-  const [now, setNow] = useState(() => Date.now());
-
+  // Debounced copy: every keystroke must not become a query.
+  const [searchQuery, setSearchQuery] = useState("");
   useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), 60_000);
-    return () => window.clearInterval(id);
-  }, []);
+    const id = window.setTimeout(() => setSearchQuery(search.trim()), 300);
+    return () => window.clearTimeout(id);
+  }, [search]);
+
+  const [filter, setFilter] = useState<InboxFilter>(initialFilter);
   const [loading, setLoading] = useState(true);
-  // True while pages beyond the first are still streaming in. The list is
-  // already interactive at that point — this only drives the footer hint.
   const [loadingMore, setLoadingMore] = useState(false);
+  // Server-side results: the rows of the current page(s), the exact size of
+  // the filtered set, and the account-level chip counts.
+  const [rows, setRows] = useState<Conversation[]>([]);
+  const [total, setTotal] = useState(0);
+  const [counts, setCounts] = useState<{
+    total: number;
+    channels: Record<string, number>;
+    numbers: Record<string, number>;
+    companies: string[];
+  } | null>(null);
   // Contact-based filters (issue #272). Tags use OR logic (a conversation
   // matches if its contact carries any selected tag), consistent with
   // Broadcast audience filtering. Company is an exact match on the field.
@@ -149,101 +154,154 @@ export function ConversationList({
     onConversationsLoadedRef.current = onConversationsLoaded;
   });
 
-  // Everything loaded so far, in display order. A ref, not state: the
-  // scroll observer must read it without being re-created per page.
-  const rowsRef = useRef<Map<string, Conversation>>(new Map());
-  const hasMoreRef = useRef(true);
-  const [hasMore, setHasMore] = useState(true);
+  // Filters are applied by `inbox_page` in the database, so the list never
+  // argues with the chips: search, status, channel, number, assignee,
+  // participant, tags and company all narrow the query, and the response
+  // carries the exact total for the same predicate.
+  const filtersKey = useMemo(
+    () =>
+      JSON.stringify([
+        searchQuery,
+        filter,
+        channelFilter,
+        numberFilter,
+        selectedTagIds,
+        selectedCompany,
+        assignee?.id ?? null,
+        participant?.id ?? null,
+        participant?.days ?? null,
+      ]),
+    [
+      searchQuery,
+      filter,
+      channelFilter,
+      numberFilter,
+      selectedTagIds,
+      selectedCompany,
+      assignee?.id,
+      participant?.id,
+      participant?.days,
+    ],
+  );
 
-  const publish = useCallback(() => {
-    // Re-sort on every publish: page N+1 already arrives ordered, but a
-    // resync can move a thread up (new message) and the Map keeps insertion
-    // order, which would leave it stranded at its old position.
-    const ordered = Array.from(rowsRef.current.values()).sort((a, b) => {
-      const at = a.last_message_at ? Date.parse(a.last_message_at) : -Infinity;
-      const bt = b.last_message_at ? Date.parse(b.last_message_at) : -Infinity;
-      if (at !== bt) return bt - at;
-      return b.id.localeCompare(a.id);
-    });
-    onConversationsLoadedRef.current(ordered);
-  }, []);
-
-  const fetchPage = useCallback(async (from: number) => {
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from("conversations")
-      .select(CONVERSATION_SELECT)
-      // NULLS LAST is not cosmetic: Postgres sorts NULLs FIRST on DESC, so a
-      // conversation with no messages (created by "open chat" before the
-      // first send) would pin itself to the top of the list forever.
-      .order("last_message_at", { ascending: false, nullsFirst: false })
-      // Tiebreaker for the paging: `range()` over a non-unique sort key can
-      // repeat or skip rows when two threads share a timestamp.
-      .order("id", { ascending: false })
-      .range(from, from + CONVERSATION_PAGE_SIZE - 1);
-
-    if (error) {
-      // Supabase errors have non-enumerable properties — log fields explicitly
-      console.error("Failed to fetch conversations:", {
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code,
+  const fetchPage = useCallback(
+    async (offset: number) => {
+      const supabase = createClient();
+      const { data, error } = await supabase.rpc("inbox_page", {
+        p_limit: CONVERSATION_PAGE_SIZE,
+        p_offset: offset,
+        p_search: searchQuery || null,
+        p_filter: filter,
+        p_channel: channelFilter === "all" ? null : channelFilter,
+        p_number: numberFilter === "all" ? null : numberFilter,
+        p_assignee: assignee?.id ?? null,
+        p_participant: participant?.id ?? null,
+        p_participant_days: participant?.days ?? 30,
+        p_tag_ids: selectedTagIds.length ? selectedTagIds : null,
+        p_company: selectedCompany,
+        p_tz: "Africa/Cairo",
       });
-      return null;
-    }
-    return normalizeConversations(data ?? []);
-  }, []);
+      if (error) {
+        // Supabase errors have non-enumerable properties — log fields explicitly
+        console.error("Failed to fetch conversations:", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+        });
+        return null;
+      }
+      const payload = data as {
+        total: number;
+        rows: Parameters<typeof normalizeConversations>[0];
+        counts: {
+          total: number;
+          channels: Record<string, number>;
+          numbers: Record<string, number>;
+          companies: string[];
+        };
+      } | null;
+      if (!payload) return null;
+      return {
+        total: Number(payload.total ?? 0),
+        rows: normalizeConversations(payload.rows ?? []),
+        counts: payload.counts,
+      };
+    },
+    [
+      searchQuery,
+      filter,
+      channelFilter,
+      numberFilter,
+      selectedTagIds,
+      selectedCompany,
+      assignee?.id,
+      participant?.id,
+      participant?.days,
+    ],
+  );
 
-  // First paint is ONE page of 25. The rest arrives as the operator scrolls
-  // (`loadMore`), not in a background loop: a first visit used to pull the
-  // whole table (1.5 MB, 1.3k rows) for a glance at the top of the list.
+  // Any filter change resets the window: page 1 of the NEW predicate, which
+  // is the only way "search" can cover threads that were never loaded.
   useEffect(() => {
     let cancelled = false;
-    const firstPaint = rowsRef.current.size === 0;
-    if (firstPaint) setLoading(true);
-
+    setLoading(true);
     void (async () => {
       const page = await fetchPage(0);
       if (cancelled) return;
-      if (!page) {
-        setLoading(false);
-        return;
+      if (page) {
+        setRows(page.rows);
+        setTotal(page.total);
+        setCounts(page.counts ?? null);
+        onConversationsLoadedRef.current(page.rows);
       }
-      for (const conv of page) rowsRef.current.set(conv.id, conv);
-      publish();
-      if (firstPaint) {
-        hasMoreRef.current = page.length === CONVERSATION_PAGE_SIZE;
-        setHasMore(hasMoreRef.current);
-        setLoading(false);
-      }
+      setLoading(false);
     })();
-
     return () => {
       cancelled = true;
     };
-    // `resyncToken` refetches page 1 only: the rows below it are already
-    // loaded and realtime keeps them current, so a tab-focus resync must not
-    // throw the operator back to the top of a long list.
-  }, [fetchPage, publish, resyncToken]);
+  }, [fetchPage, filtersKey]);
+
+  // Soft refresh (tab focus / realtime reconnect): re-read page 1 and merge
+  // it into what is already on screen. A full reset here would throw the
+  // operator back to the top of a list they had scrolled.
+  const resyncRef = useRef(resyncToken);
+  useEffect(() => {
+    if (resyncToken === resyncRef.current) return;
+    resyncRef.current = resyncToken;
+    void (async () => {
+      const page = await fetchPage(0);
+      if (!page) return;
+      setTotal(page.total);
+      setCounts(page.counts ?? null);
+      setRows((prev) => {
+        const byId = new Map(page.rows.map((c) => [c.id, c]));
+        const merged = prev.map((c) => byId.get(c.id) ?? c);
+        const known = new Set(merged.map((c) => c.id));
+        const added = page.rows.filter((c) => !known.has(c.id));
+        return [...added, ...merged];
+      });
+    })();
+  }, [fetchPage, resyncToken]);
 
   const loadMore = useCallback(async () => {
-    if (loading || loadingMore || !hasMoreRef.current) return;
+    if (loading || loadingMore || rows.length >= total) return;
     setLoadingMore(true);
-    const page = await fetchPage(rowsRef.current.size);
+    const page = await fetchPage(rows.length);
     if (page) {
-      for (const conv of page) rowsRef.current.set(conv.id, conv);
-      publish();
-      hasMoreRef.current = page.length === CONVERSATION_PAGE_SIZE;
-      setHasMore(hasMoreRef.current);
+      setRows((prev) => {
+        const seen = new Set(prev.map((c) => c.id));
+        return [...prev, ...page.rows.filter((c) => !seen.has(c.id))];
+      });
+      setTotal(page.total);
     }
     setLoadingMore(false);
-  }, [fetchPage, loading, loadingMore, publish]);
+  }, [fetchPage, loading, loadingMore, rows.length, total]);
+
+  const hasMore = rows.length < total;
 
   // Scroll trigger: a sentinel at the end of the list, one page ahead of the
-  // fold so the next 25 rows are usually there before the operator reaches
-  // them. The button below it is the fallback when it never intersects
-  // (short filtered lists, an empty state).
+  // fold. The button below it is the fallback when it never intersects.
   const sentinelRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = sentinelRef.current;
@@ -272,17 +330,13 @@ export function ConversationList({
     };
   }, []);
 
-  // Company options are derived from the loaded conversations — there's no
-  // separate companies table, and only companies with a live conversation
-  // are worth offering as an inbox filter.
-  const companies = useMemo(() => {
-    const set = new Set<string>();
-    for (const c of conversations) {
-      const co = c.contact?.company?.trim();
-      if (co) set.add(co);
-    }
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [conversations]);
+  // Company options come from the account (served with every page), not
+  // from whatever happens to be loaded — a filter must never offer a
+  // partial list of the values that exist.
+  const companies = useMemo(
+    () => counts?.companies ?? [],
+    [counts],
+  );
 
   const tagsById = useMemo(() => {
     const m = new Map<string, Tag>();
@@ -290,85 +344,20 @@ export function ConversationList({
     return m;
   }, [tags]);
 
-  const filtered = useMemo(() => {
-    let result = applyInboxFilter(conversations, filter, now);
-
-    // Assignee deep link (/inbox?assignee=<userId>) — the member profile's
-    // "assigned conversations" card lands here, so the list must show
-    // exactly the threads that card counted.
-    if (assignee) {
-      result = result.filter((c) => isAssignedTo(c, assignee.id));
-    }
-
-    // Conversations-the-member-took-part-in (member profile → replies card).
-    // `ids` is null until the RPC answers; until then the list stays as-is
-    // rather than flashing every thread and collapsing a moment later.
-    if (participant?.ids) {
-      result = result.filter((c) => participant.ids!.has(c.id));
-    }
-
-    // Channel filter — matched on the conversation row, falling back to
-    // the contact's channel for rows that predate migration 060.
-    if (numberFilter !== "all") {
-      result = result.filter((c) => c.whatsapp_config_id === numberFilter);
-    }
-    if (channelFilter !== "all") {
-      result = result.filter(
-        (c) => toChannel(c.channel ?? c.contact?.channel) === channelFilter,
-      );
-    }
-
-    // Contact-based filters (tags via OR logic, exact company match).
-    if (selectedTagIds.length > 0 || selectedCompany !== null) {
-      result = result.filter((c) =>
-        matchesContactFilters(c, {
-          tagIds: selectedTagIds,
-          company: selectedCompany,
-        })
-      );
-    }
-
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      result = result.filter((c) => {
-        const name = c.contact?.name?.toLowerCase() ?? "";
-        const phone = c.contact?.phone?.toLowerCase() ?? "";
-        const lastMsg = c.last_message_text?.toLowerCase() ?? "";
-        return name.includes(q) || phone.includes(q) || lastMsg.includes(q);
-      });
-    }
-
-    return result;
-  }, [
-    conversations,
-    filter,
-    now,
-    search,
-    selectedTagIds,
-    selectedCompany,
-    channelFilter,
-    numberFilter,
-    assignee,
-    participant,
-  ]);
 
   /**
-   * Per-channel counts for the filter chips. Derived from the whole list
-   * (before the channel filter) so the numbers stay stable while a
-   * channel is selected instead of collapsing to the active one.
+   * Per-channel counts for the filter chips — from the account, so they are
+   * the same numbers whether one page or forty are loaded.
    */
   const channelCounts = useMemo(() => {
-    const counts: Record<"all" | Channel, number> = {
-      all: conversations.length,
-      whatsapp: 0,
-      messenger: 0,
-      instagram: 0,
-    };
-    for (const c of conversations) {
-      counts[toChannel(c.channel ?? c.contact?.channel)] += 1;
-    }
-    return counts;
-  }, [conversations]);
+    const api = counts?.channels ?? {};
+    return {
+      all: counts?.total ?? 0,
+      whatsapp: Number(api.whatsapp ?? 0),
+      messenger: Number(api.messenger ?? 0),
+      instagram: Number(api.instagram ?? 0),
+    } as Record<"all" | Channel, number>;
+  }, [counts]);
 
   // Only worth showing when the account actually runs more than one
   // transport — a WhatsApp-only workspace keeps the original single row.
@@ -390,13 +379,11 @@ export function ConversationList({
   }, []);
 
   const numberCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const c of conversations) {
-      const id = c.whatsapp_config_id;
-      if (id) counts[id] = (counts[id] ?? 0) + 1;
-    }
-    return counts;
-  }, [conversations]);
+    const api = counts?.numbers ?? {};
+    const out: Record<string, number> = {};
+    for (const [k, v] of Object.entries(api)) out[k] = Number(v);
+    return out;
+  }, [counts]);
 
   const showNumberFilter = numbers.length > 1;
 
@@ -703,11 +690,9 @@ export function ConversationList({
               <span dir="ltr" className="text-muted-foreground tabular-nums">
                 · {participant.days}d
               </span>
-              {participant.ids && (
-                <span className="text-muted-foreground tabular-nums">
-                  ({participant.ids.size})
-                </span>
-              )}
+              <span className="text-muted-foreground tabular-nums">
+                ({total})
+              </span>
               <X className="h-3 w-3" />
             </button>
           </div>
@@ -762,7 +747,7 @@ export function ConversationList({
           <div className="flex items-center justify-center py-12">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           </div>
-        ) : filtered.length === 0 ? (
+        ) : total === 0 ? (
           <div className="px-4 py-12 text-center">
             <p className="text-sm text-muted-foreground">{t("noConversations")}</p>
             {/* A filter can be satisfied only by threads further down the
@@ -780,7 +765,7 @@ export function ConversationList({
           </div>
         ) : (
           <div className="flex flex-col">
-            {filtered.map((conv) => (
+            {rows.map((conv) => (
               <ConversationItem
                 key={conv.id}
                 conversation={conv}

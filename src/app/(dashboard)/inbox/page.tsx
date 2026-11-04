@@ -96,41 +96,33 @@ function InboxPageInner() {
     const raw = Number(searchParams.get("days"));
     return [7, 30, 90].includes(raw) ? raw : 30;
   }, [searchParams]);
-  const [participant, setParticipant] = useState<{
-    name: string | null;
-    ids: Set<string> | null;
-  }>({ name: null, ids: null });
-
+  // Only the display name lives here now — the filtering itself happens in
+  // `inbox_page` (see ConversationList), so the list and the profile card
+  // count the same rows.
+  const [participantName, setParticipantName] = useState<string | null>(null);
   useEffect(() => {
     if (!participantId) {
-      setParticipant({ name: null, ids: null });
+      setParticipantName(null);
       return;
     }
     let cancelled = false;
     void (async () => {
       const supabase = createClient();
-      const [{ data: profile }, { data: ids }] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("full_name")
-          .eq("user_id", participantId)
-          .maybeSingle(),
-        supabase.rpc("member_conversation_ids", {
-          p_user: participantId,
-          p_days: participantDays,
-          p_tz: "Africa/Cairo",
-        }),
-      ]);
-      if (cancelled) return;
-      setParticipant({
-        name: (profile?.full_name as string | null | undefined) ?? null,
-        ids: new Set((ids as string[] | null) ?? []),
-      });
+      const { data } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("user_id", participantId)
+        .maybeSingle();
+      if (!cancelled) {
+        setParticipantName(
+          (data?.full_name as string | null | undefined) ?? null,
+        );
+      }
     })();
     return () => {
       cancelled = true;
     };
-  }, [participantId, participantDays]);
+  }, [participantId]);
 
   /** Build an /inbox URL that keeps the active deep-link filters. */
   const inboxUrl = useCallback(
@@ -775,9 +767,8 @@ function InboxPageInner() {
               participantId
                 ? {
                     id: participantId,
-                    name: participant.name,
+                    name: participantName,
                     days: participantDays,
-                    ids: participant.ids,
                   }
                 : null
             }
