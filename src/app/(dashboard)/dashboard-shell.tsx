@@ -90,8 +90,14 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
         <Sidebar open={sidebarOpen} onClose={closeSidebar} />
         <div className="flex flex-1 flex-col overflow-hidden">
           <Header onOpenSidebar={() => setSidebarOpen(true)} />
-          {/* Thinner horizontal padding on mobile so cards have room to breathe. */}
-          <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+          {/* Thinner horizontal padding on mobile so cards have room to breathe.
+              `relative` is load-bearing: page content contains absolutely
+              positioned helpers (`sr-only` labels, chart wrappers). Without a
+              positioned ancestor those lay out against <body> at their static
+              offset inside this scroller, growing the DOCUMENT past the
+              viewport — which produced a second, page-level scrollbar and a
+              blank band under the shell on mobile. */}
+          <main className="relative flex-1 overflow-y-auto p-4 sm:p-6">
             {/* Above every page: writes are being rejected and here's why.
               Renders nothing unless the account/role failed to resolve. */}
             <AccountAccessAlert />
