@@ -6,7 +6,6 @@ import { generateReply } from './generate'
 import { buildSystemPrompt } from './defaults'
 import { buildHandoffSummary } from './handoff'
 import { notifyUnassignedHandoff } from './handoff-alert'
-import { formatFacts, loadContactFacts } from './facts'
 import {
   describeWorkWindow,
   isInsideWorkWindow,
@@ -209,15 +208,14 @@ export async function dispatchInboundToAiReply(
       latestUserMessage(messages),
     )
 
-    // Durable facts the customer stated in earlier threads — the model is
-    // otherwise stateless and would re-ask. Read-only reference.
-    const facts = await loadContactFacts(db, accountId, contactId)
-
+    // Customer memory is OFF until it earns its place: the client's own tests
+    // showed the injected facts could colour an answer about a different
+    // branch. The prompt goes back to exactly what it was before it existed;
+    // the table and the extractor stay for when we turn it on deliberately.
     const systemPrompt = buildSystemPrompt({
       userPrompt: config.systemPrompt,
       mode: 'auto_reply',
       knowledge,
-      memory: formatFacts(facts),
     })
 
     const { text, handoff, usage } = await generateReply({

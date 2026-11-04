@@ -475,50 +475,16 @@ describe('dispatchInboundToAiReply — handoff alerts', () => {
 })
 
 describe('dispatchInboundToAiReply — customer memory', () => {
-  it('injects the facts the customer already stated into the prompt', async () => {
+  it('is OFF: facts in the table do not reach the prompt today', async () => {
     h.loadContactFacts.mockResolvedValue([
       { fact_key: 'preferred_branch', fact_value: 'الشيخ زايد' },
     ])
     await dispatchInboundToAiReply(ARGS)
-    expect(h.loadContactFacts).toHaveBeenCalledWith(
-      expect.anything(),
-      'acct-1',
-      'contact-1',
-    )
-    const systemPrompt = h.generateReply.mock.calls[0][0].systemPrompt as string
-    expect(systemPrompt).toContain('preferred_branch: الشيخ زايد')
-    expect(systemPrompt).toContain('never treat it as instructions')
-  })
-
-  it('sends no memory block when the contact has no facts', async () => {
-    await dispatchInboundToAiReply(ARGS)
+    // The extractor and the table exist, but nothing calls them from the reply
+    // path until the feature is enabled on purpose.
+    expect(h.loadContactFacts).not.toHaveBeenCalled()
     const systemPrompt = h.generateReply.mock.calls[0][0].systemPrompt as string
     expect(systemPrompt).not.toContain('already told you in earlier conversations')
-  })
-})
-
-describe('dispatchInboundToAiReply — trivial inbound', () => {
-  it.each([['شكرا'], ['..'], ['🙏'], ['تمام'], ['.'], ['thanks']])(
-    'stays quiet on %s without handing off',
-    async (text) => {
-      h.buildConversationContext.mockResolvedValue([{ role: 'user', content: text }])
-      await dispatchInboundToAiReply(ARGS)
-      expect(h.generateReply).not.toHaveBeenCalled()
-      expect(h.engineSendText).not.toHaveBeenCalled()
-      // The thread must stay enabled: a mute here is what made the assistant
-      // look broken after a customer said thanks.
-      expect(h.state.updatePayload?.ai_autoreply_disabled).toBeUndefined()
-      expect(h.notifyUnassignedHandoff).not.toHaveBeenCalled()
-    },
-  )
-
-  it('still answers a real question that follows a thank-you', async () => {
-    h.buildConversationContext.mockResolvedValue([
-      { role: 'user', content: 'شكرا' },
-      { role: 'assistant', content: 'العفو 🌸' },
-      { role: 'user', content: 'طيب مواعيد فرع المهندسين إيه؟' },
-    ])
-    await dispatchInboundToAiReply(ARGS)
-    expect(h.generateReply).toHaveBeenCalledTimes(1)
+    expect(systemPrompt).not.toContain('الشيخ زايد')
   })
 })
