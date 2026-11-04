@@ -107,23 +107,43 @@ export async function POST(request: Request) {
     if (!Number.isFinite(maxPer)) maxPer = 3
     maxPer = Math.min(20, Math.max(1, Math.floor(maxPer)))
 
-    // Handoff routing target for auto-reply. A non-empty string must be a
-    // member of this account (else the conversation would be assigned to a
-    // stranger); an empty string / null means "leave unassigned" (the
-    // shared queue). Absent → left unchanged on update below.
-    const rawHandoff =
-      typeof body.handoff_agent_id === 'string' ? body.handoff_agent_id.trim() : ''
-    const handoffProvided = 'handoff_agent_id' in body
-    let handoffAgentId: string | null = null
-    if (rawHandoff) {
-      const { data: member } = await supabase
-        .from('profiles')
-        .select('user_id')
-        .eq('account_id', accountId)
-        .eq('user_id', rawHandoff)
-        .maybeSingle()
-      if (!member) return bad(t('ai.handoffNotMember'))
-      handoffAgentId = rawHandoff
+    // Handoff routing targets for auto-reply. Every id must be a member of
+    // this account (else a conversation could be assigned to a stranger); an
+    // empty list means "leave unassigned" — the shared queue, which alerts
+    // the whole team. Absent → left unchanged on update below.
+    //
+    // `handoff_agent_ids` is the array (migration 102); `handoff_agent_id` is
+    // still accepted from older clients and folded into a one-item list.
+    const handoffListProvided =
+      'handoff_agent_ids' in body || 'handoff_agent_id' in body
+    let handoffAgentIds: string[] = []
+    {
+      const rawList = Array.isArray(body.handoff_agent_ids)
+        ? (body.handoff_agent_ids as unknown[])
+        : []
+      const fromArray = rawList
+        .map((value) => (typeof value === 'string' ? value.trim() : ''))
+        .filter((value) => value.length > 0)
+      const legacy =
+        typeof body.handoff_agent_id === 'string' ? body.handoff_agent_id.trim() : ''
+      const requested = [...new Set(fromArray.length > 0 ? fromArray : legacy ? [legacy] : [])]
+
+      if (requested.length > 20) return bad(t('ai.handoffTooMany'))
+
+      if (requested.length > 0) {
+        const { data: members } = await supabase
+          .from('profiles')
+          .select('user_id')
+          .eq('account_id', accountId)
+          .in('user_id', requested)
+        const found = new Set(
+          (members ?? []).map((row) => row.user_id as string),
+        )
+        if (requested.some((id) => !found.has(id))) {
+          return bad(t('ai.handoffNotMember'))
+        }
+      }
+      handoffAgentIds = requested
     }
 
     // The assistant's own working window — separate from the team's business
@@ -267,7 +287,7 @@ export async function POST(request: Request) {
           isActive,
           autoReplyEnabled,
           autoReplyMaxPerConversation: maxPer,
-          handoffAgentId: null,
+          handoffAgentIds: [],
           scheduleEnabled: false,
           scheduleStart: '09:00',
           scheduleEnd: '21:00',
@@ -318,7 +338,11 @@ export async function POST(request: Request) {
     }
     // Only touch the handoff target when the form actually sent the field,
     // so a partial save (e.g. flipping a toggle) doesn't wipe it.
-    if (handoffProvided) shared.handoff_agent_id = handoffAgentId
+    if (handoffListProvided) {
+      shared.handoff_agent_ids = handoffAgentIds
+      // Kept in step for one release: old readers still see the first target.
+      shared.handoff_agent_id = handoffAgentIds[0] ?? null
+    }
     if (scheduleProvided) {
       shared.ai_schedule_enabled = scheduleEnabled
       shared.ai_schedule_start = scheduleStart

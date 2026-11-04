@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { HANDOFF_ALERT_TYPE, notifyUnassignedHandoff } from './handoff-alert'
+import { HANDOFF_ALERT_TYPE, notifyHandoff } from './handoff-alert'
 
 /** Minimal Supabase double: records inserts, answers the existence probe. */
 function fakeDb(opts: {
@@ -44,6 +44,15 @@ const ARGS = {
   conversationId: 'conv-1',
   contactId: 'contact-1',
   summary: '🤖 AI agent handed off after 2 replies.',
+  fallbackToTeam: true,
+}
+
+const TARGETED = {
+  accountId: 'acct-1',
+  conversationId: 'conv-1',
+  contactId: 'contact-1',
+  summary: '🤖 AI agent handed off after 2 replies.',
+  targets: ['u-owner', 'u-agent'],
 }
 
 describe('notifyUnassignedHandoff', () => {
@@ -58,8 +67,8 @@ describe('notifyUnassignedHandoff', () => {
     })
     // The SQL filter runs server-side, so a stray viewer row is still
     // dropped by the null check only; assert on what we send.
-    const count = await notifyUnassignedHandoff(
-      db as unknown as Parameters<typeof notifyUnassignedHandoff>[0],
+    const count = await notifyHandoff(
+      db as unknown as Parameters<typeof notifyHandoff>[0],
       ARGS,
     )
     expect(count).toBe(3)
@@ -77,8 +86,8 @@ describe('notifyUnassignedHandoff', () => {
       existingAlerts: [{ id: 'n1' }],
       members: [{ user_id: 'u-owner', account_role: 'owner' }],
     })
-    const count = await notifyUnassignedHandoff(
-      db as unknown as Parameters<typeof notifyUnassignedHandoff>[0],
+    const count = await notifyHandoff(
+      db as unknown as Parameters<typeof notifyHandoff>[0],
       ARGS,
     )
     expect(count).toBe(0)
@@ -88,8 +97,8 @@ describe('notifyUnassignedHandoff', () => {
   it('never throws when the team list or the insert fails', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const failing = fakeDb({ membersError: { message: 'boom' } })
-    const count = await notifyUnassignedHandoff(
-      failing.db as unknown as Parameters<typeof notifyUnassignedHandoff>[0],
+    const count = await notifyHandoff(
+      failing.db as unknown as Parameters<typeof notifyHandoff>[0],
       ARGS,
     )
     expect(count).toBe(0)
@@ -98,8 +107,8 @@ describe('notifyUnassignedHandoff', () => {
       members: [{ user_id: 'u-owner', account_role: 'owner' }],
       insertError: { message: 'nope' },
     })
-    const second = await notifyUnassignedHandoff(
-      insertFails.db as unknown as Parameters<typeof notifyUnassignedHandoff>[0],
+    const second = await notifyHandoff(
+      insertFails.db as unknown as Parameters<typeof notifyHandoff>[0],
       ARGS,
     )
     expect(second).toBe(0)
@@ -108,8 +117,8 @@ describe('notifyUnassignedHandoff', () => {
 
   it('does nothing for an account with no members', async () => {
     const { db, inserted } = fakeDb({ members: [] })
-    const count = await notifyUnassignedHandoff(
-      db as unknown as Parameters<typeof notifyUnassignedHandoff>[0],
+    const count = await notifyHandoff(
+      db as unknown as Parameters<typeof notifyHandoff>[0],
       ARGS,
     )
     expect(count).toBe(0)

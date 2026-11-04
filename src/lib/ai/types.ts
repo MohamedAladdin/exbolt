@@ -23,10 +23,10 @@ export interface AiConfig {
   isActive: boolean
   autoReplyEnabled: boolean
   autoReplyMaxPerConversation: number
-  /** Where auto-reply hands a conversation off when the model bails: an
-   *  agent's `auth.users.id`, or null to leave it unassigned (drop into
-   *  the shared queue). */
-  handoffAgentId: string | null
+  /** Who gets alerted when auto-reply hands a conversation off. The first
+   *  entry also becomes the assignee; everyone on the list is notified.
+   *  Empty = notify every owner/admin/agent (the shared queue). */
+  handoffAgentIds: string[]
   /** The assistant's own working window (Agents → Setup → schedule),
    *  independent of the team's business hours used by the response-time
    *  metric. `scheduleEnabled: false` means "always available". */

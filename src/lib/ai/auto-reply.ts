@@ -5,7 +5,7 @@ import { retrieveKnowledge } from './knowledge'
 import { generateReply } from './generate'
 import { buildSystemPrompt } from './defaults'
 import { buildHandoffSummary } from './handoff'
-import { notifyUnassignedHandoff } from './handoff-alert'
+import { notifyHandoff } from './handoff-alert'
 import {
   describeWorkWindow,
   isInsideWorkWindow,
@@ -254,24 +254,29 @@ export async function dispatchInboundToAiReply(
         .from('conversations')
         .update({ ai_autoreply_disabled: true, ai_handoff_summary: summary })
         .eq('id', conversationId)
-      // Only set the assignee when a target is configured AND the thread
-      // isn't already owned — never stomp an existing human assignment.
-      if (config.handoffAgentId) {
+      // One owner (the first target) so the inbox says who has it; the whole
+      // list is alerted. Assigning fires the `on_conversation_assigned`
+      // trigger, so the assignee must not be notified twice.
+      const targets = config.handoffAgentIds
+      const owner = targets[0] ?? null
+      if (owner) {
         await db
           .from('conversations')
-          .update({ assigned_agent_id: config.handoffAgentId })
+          .update({ assigned_agent_id: owner })
           .eq('id', conversationId)
           .is('assigned_agent_id', null)
-      } else {
-        // Nobody owns it and nobody was told: the note lives inside the
-        // thread, so ring the whole team's bell instead of going quiet.
-        await notifyUnassignedHandoff(db, {
-          accountId,
-          conversationId,
-          contactId,
-          summary,
-        })
       }
+      // Empty list → the whole team (nobody owns it and nobody was told; the
+      // note lives inside the thread, so this is the only thing that reaches
+      // a human).
+      await notifyHandoff(db, {
+        accountId,
+        conversationId,
+        contactId,
+        summary,
+        targets: owner ? targets.slice(1) : [],
+        fallbackToTeam: !owner,
+      })
       return
     }
 

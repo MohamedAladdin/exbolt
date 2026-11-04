@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server'
+import { after, NextResponse } from 'next/server'
 import { requireRole, toErrorResponse } from '@/lib/auth/account'
 import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit'
 import { getT } from '@/lib/i18n/translate'
+import { dispatchInboundToAiReply } from '@/lib/ai/auto-reply'
 
 const t = getT('Api')
 
@@ -50,7 +51,7 @@ export async function POST(request: Request, { params }: Params) {
     // Confirm the conversation is in the caller's account before writing.
     const { data: conv, error: convErr } = await supabase
       .from('conversations')
-      .select('id')
+      .select('id, contact_id')
       .eq('id', conversationId)
       .eq('account_id', accountId)
       .maybeSingle()
@@ -97,6 +98,36 @@ export async function POST(request: Request, { params }: Params) {
         { error: t('ai.updateConversationFailed') },
         { status: 500 },
       )
+    }
+
+    // Resuming hands the thread back to the bot — so let it answer the message
+    // that is already waiting. Otherwise «استئناف AI» looks like a no-op until
+    // the customer writes again. Only the *customer's* last message counts: if
+    // a human just replied, the bot must not double-text.
+    if (!paused) {
+      const contactId = (conv as { contact_id?: string | null }).contact_id ?? null
+      if (contactId) {
+        const { data: last } = await supabase
+          .from('messages')
+          .select('sender_type, message_id')
+          .eq('conversation_id', conversationId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        if (last?.sender_type === 'customer') {
+          // Runs after the response: the LLM round-trip must not block the
+          // banner. The dispatcher owns its try/catch and every gate.
+          after(async () => {
+            await dispatchInboundToAiReply({
+              accountId,
+              conversationId,
+              contactId,
+              configOwnerUserId: userId,
+              inboundMessageId: (last.message_id as string | null) ?? undefined,
+            })
+          })
+        }
+      }
     }
 
     return NextResponse.json({ success: true, paused })

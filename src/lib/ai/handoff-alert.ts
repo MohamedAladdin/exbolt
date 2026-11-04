@@ -1,17 +1,19 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**
- * The alert a handoff raises when it has no human target.
+ * The alert a handoff raises: the people who must pick the thread up.
  *
  * The handoff itself already (a) stops the bot on the thread and (b) leaves
  * an internal note — but both live *inside* the conversation, so unless
  * somebody happens to open the inbox nobody learns that a customer is
- * waiting. This writes one notification per teammate who can act on it
- * (owner / admin / agent); the bell + realtime subscription the product
- * already has carries it to them.
+ * waiting.
  *
- * Never throws: a failed alert must not undo a handoff that already
- * happened.
+ * Who hears about it:
+ *   - an explicit target list (`ai_configs.handoff_agent_ids`) — the first one
+ *     is assigned by the caller, so only the rest are notified here;
+ *   - with no list, the whole team (owner/admin/agent) — the shared queue.
+ *
+ * Never throws: a failed alert must not undo a handoff that already happened.
  */
 export const HANDOFF_ALERT_TYPE = 'ai_handoff_unassigned'
 
@@ -26,24 +28,38 @@ export interface HandoffAlertArgs {
   contactId: string | null
   /** Internal note already written to the conversation. */
   summary: string
+  /** Agents to notify. Empty + `fallbackToTeam` → every owner/admin/agent. */
+  targets?: string[]
+  /** When true and `targets` is empty, alert the whole team. */
+  fallbackToTeam?: boolean
 }
 
 /**
- * Notify the account's team that a conversation is waiting, unassigned.
+ * Notify the people responsible for a handed-off conversation.
  *
  * Idempotent per conversation: a thread that hands off twice (re-enabled,
  * then bailed again) must not ring the bell twice.
  *
  * Returns how many notifications were written (0 when there was nothing to
- * do — no other members, or the alert already exists).
+ * do).
  */
-export async function notifyUnassignedHandoff(
+export async function notifyHandoff(
   db: SupabaseClient,
   args: HandoffAlertArgs,
 ): Promise<number> {
-  const { accountId, conversationId, contactId, summary } = args
+  const {
+    accountId,
+    conversationId,
+    contactId,
+    summary,
+    targets = [],
+    fallbackToTeam = false,
+  } = args
 
   try {
+    const explicit = [...new Set(targets.filter(Boolean))]
+    if (explicit.length === 0 && !fallbackToTeam) return 0
+
     const { data: existing, error: existingErr } = await db
       .from('notifications')
       .select('id')
@@ -60,20 +76,23 @@ export async function notifyUnassignedHandoff(
     }
     if (existing && existing.length > 0) return 0
 
-    const { data: members, error: membersErr } = await db
-      .from('profiles')
-      .select('user_id, account_role')
-      .eq('account_id', accountId)
-      .in('account_role', NOTIFY_ROLES as unknown as string[])
+    let recipients = explicit
+    if (recipients.length === 0) {
+      const { data: members, error: membersErr } = await db
+        .from('profiles')
+        .select('user_id, account_role')
+        .eq('account_id', accountId)
+        .in('account_role', NOTIFY_ROLES as unknown as string[])
 
-    if (membersErr) {
-      console.warn('[handoff alert] could not list the team:', membersErr.message)
-      return 0
+      if (membersErr) {
+        console.warn('[handoff alert] could not list the team:', membersErr.message)
+        return 0
+      }
+      recipients = (members ?? [])
+        .map((row) => row.user_id as string | null)
+        .filter((id): id is string => Boolean(id))
     }
 
-    const recipients = (members ?? [])
-      .map((row) => row.user_id as string | null)
-      .filter((id): id is string => Boolean(id))
     if (recipients.length === 0) return 0
 
     const rows = recipients.map((userId) => ({

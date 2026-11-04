@@ -12,7 +12,7 @@ const h = vi.hoisted(() => ({
   sendTypingIndicator: vi.fn(),
   loadAiSchedule: vi.fn(),
   isInsideWorkWindow: vi.fn(),
-  notifyUnassignedHandoff: vi.fn(),
+  notifyHandoff: vi.fn(),
   loadContactFacts: vi.fn(),
   state: {
     conv: null as Record<string, unknown> | null,
@@ -42,7 +42,7 @@ vi.mock('./hours', () => ({
   describeWorkWindow: () => 'Sun-Thu 09:00-21:00 (Africa/Cairo)',
 }))
 vi.mock('./handoff-alert', () => ({
-  notifyUnassignedHandoff: h.notifyUnassignedHandoff,
+  notifyHandoff: h.notifyHandoff,
 }))
 vi.mock('./facts', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./facts')>()
@@ -122,7 +122,7 @@ function aiConfig(overrides: Partial<AiConfig> = {}): AiConfig {
     isActive: true,
     autoReplyEnabled: true,
     autoReplyMaxPerConversation: 3,
-    handoffAgentId: null,
+    handoffAgentIds: [],
     scheduleEnabled: false,
     scheduleStart: '09:00',
     scheduleEnd: '21:00',
@@ -167,7 +167,7 @@ beforeEach(() => {
     timezone: 'UTC',
   })
   h.isInsideWorkWindow.mockReturnValue(true)
-  h.notifyUnassignedHandoff.mockResolvedValue(2)
+  h.notifyHandoff.mockResolvedValue(2)
   h.loadContactFacts.mockResolvedValue([])
 })
 
@@ -363,7 +363,7 @@ describe('dispatchInboundToAiReply — handoff', () => {
   })
 
   it('routes to the configured handoff agent on handoff', async () => {
-    h.loadAiConfig.mockResolvedValue(aiConfig({ handoffAgentId: 'agent-7' }))
+    h.loadAiConfig.mockResolvedValue(aiConfig({ handoffAgentIds: ['agent-7'] }))
     h.generateReply.mockResolvedValue({ text: '', handoff: true })
     await dispatchInboundToAiReply(ARGS)
     expect(h.state.updatePayload).toMatchObject({
@@ -373,7 +373,7 @@ describe('dispatchInboundToAiReply — handoff', () => {
   })
 
   it('assigns the handoff agent only while the thread is still unassigned', async () => {
-    h.loadAiConfig.mockResolvedValue(aiConfig({ handoffAgentId: 'agent-7' }))
+    h.loadAiConfig.mockResolvedValue(aiConfig({ handoffAgentIds: ['agent-7'] }))
     h.generateReply.mockResolvedValue({ text: '', handoff: true })
     await dispatchInboundToAiReply(ARGS)
     const pause = h.state.updates.find((u) => 'ai_autoreply_disabled' in u.payload)
@@ -454,8 +454,8 @@ describe('dispatchInboundToAiReply — handoff alerts', () => {
   it('alerts the team when the handoff lands in the shared queue', async () => {
     h.generateReply.mockResolvedValue({ text: '', handoff: true })
     await dispatchInboundToAiReply(ARGS)
-    expect(h.notifyUnassignedHandoff).toHaveBeenCalledTimes(1)
-    expect(h.notifyUnassignedHandoff).toHaveBeenCalledWith(
+    expect(h.notifyHandoff).toHaveBeenCalledTimes(1)
+    expect(h.notifyHandoff).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         accountId: 'acct-1',
@@ -465,13 +465,35 @@ describe('dispatchInboundToAiReply — handoff alerts', () => {
     )
   })
 
-  it('does not alert the team when a human target is configured', async () => {
+  it('assigns the first target and does not alert the team', async () => {
     h.generateReply.mockResolvedValue({ text: '', handoff: true })
-    h.loadAiConfig.mockResolvedValue(aiConfig({ handoffAgentId: 'user-9' }))
+    h.loadAiConfig.mockResolvedValue(aiConfig({ handoffAgentIds: ['user-9'] }))
     await dispatchInboundToAiReply(ARGS)
-    expect(h.notifyUnassignedHandoff).not.toHaveBeenCalled()
     expect(h.state.updatePayload).toMatchObject({ assigned_agent_id: 'user-9' })
+    // Only the remaining targets are notified; with a single target the list
+    // is empty and the team-wide fallback is off.
+    expect(h.notifyHandoff).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ targets: [], fallbackToTeam: false }),
+    )
   })
+
+  it('assigns the first target and alerts the rest of the list', async () => {
+    h.generateReply.mockResolvedValue({ text: '', handoff: true })
+    h.loadAiConfig.mockResolvedValue(
+      aiConfig({ handoffAgentIds: ['user-9', 'user-10', 'user-11'] }),
+    )
+    await dispatchInboundToAiReply(ARGS)
+    expect(h.state.updatePayload).toMatchObject({ assigned_agent_id: 'user-9' })
+    expect(h.notifyHandoff).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        targets: ['user-10', 'user-11'],
+        fallbackToTeam: false,
+      }),
+    )
+  })
+
 })
 
 describe('dispatchInboundToAiReply — customer memory', () => {

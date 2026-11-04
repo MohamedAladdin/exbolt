@@ -12,7 +12,7 @@ function config(overrides: Partial<AiConfig> = {}): AiConfig {
     isActive: true,
     autoReplyEnabled: false,
     autoReplyMaxPerConversation: 3,
-    handoffAgentId: null,
+    handoffAgentIds: [],
     scheduleEnabled: false,
     scheduleStart: '09:00',
     scheduleEnd: '21:00',

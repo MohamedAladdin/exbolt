@@ -2407,7 +2407,7 @@
       "maxAutoRepliesDesc": "After this many bot replies in one thread, the bot goes quiet.",
       "handoffTo": "Hand off to",
       "handoffToDesc": "When the bot can’t help — or hits the reply cap — it pauses and routes the chat here, with a short note on what happened.",
-      "handoffQueue": "Unassigned queue — the whole team is alerted",
+      "handoffQueue": "Nobody selected — the alert goes to the whole team (unassigned queue).",
       "remove": "Remove",
       "save": "Save",
       "missingModel": "Enter a model name.",
@@ -2443,7 +2443,9 @@
       "day3": "Wednesday",
       "day4": "Thursday",
       "day5": "Friday",
-      "day6": "Saturday"
+      "day6": "Saturday",
+      "handoffSelected": "Selected",
+      "handoffMultiHint": "The first one becomes the thread owner; everyone else is notified."
     },
     "aiKnowledge": {
       "loadFailed": "Failed to load knowledge base",
@@ -3503,7 +3505,8 @@
       "scheduleTimeInvalid": "Invalid schedule time",
       "scheduleRangeInvalid": "The start time must be before the end time",
       "scheduleDaysRequired": "Select at least one day",
-      "scheduleTimezoneInvalid": "Invalid timezone"
+      "scheduleTimezoneInvalid": "Invalid timezone",
+      "handoffTooMany": "At most 20 agents can be notified"
     },
     "automations": {
       "copyName": "{name} (Copy)",

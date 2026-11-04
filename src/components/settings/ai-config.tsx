@@ -75,8 +75,8 @@ export function AiConfig() {
   const [isActive, setIsActive] = useState(false);
   const [autoReplyEnabled, setAutoReplyEnabled] = useState(false);
   const [maxPerConversation, setMaxPerConversation] = useState(3);
-  // Empty string = leave unassigned (shared queue).
-  const [handoffAgentId, setHandoffAgentId] = useState('');
+  // Empty list = leave unassigned (shared queue alerts the whole team).
+  const [handoffAgentIds, setHandoffAgentIds] = useState<string[]>([]);
   const [outsideHoursMode, setOutsideHoursMode] = useState<
     'always' | 'silent' | 'message'
   >('always');
@@ -112,7 +112,13 @@ export function AiConfig() {
         setIsActive(data.is_active);
         setAutoReplyEnabled(data.auto_reply_enabled);
         setMaxPerConversation(data.auto_reply_max_per_conversation ?? 3);
-        setHandoffAgentId(data.handoff_agent_id ?? '');
+        setHandoffAgentIds(
+          Array.isArray(data.handoff_agent_ids) && data.handoff_agent_ids.length > 0
+            ? (data.handoff_agent_ids as string[])
+            : data.handoff_agent_id
+              ? [data.handoff_agent_id as string]
+              : [],
+        );
         setOutsideHoursMode(
           data.outside_hours_mode === 'silent' || data.outside_hours_mode === 'message'
             ? data.outside_hours_mode
@@ -181,11 +187,20 @@ export function AiConfig() {
         ? t('outsideModeMessage')
         : t('outsideModeAlways');
 
-  const handoffLabel = (agentId: string) => {
-    if (!agentId) return t('handoffQueue');
-    const member = members.find((m) => m.user_id === agentId);
-    return member ? memberLabel(member) : agentId;
+  const handoffLabel = (ids: string[]) => {
+    if (ids.length === 0) return t('handoffQueue');
+    return ids
+      .map((id) => {
+        const member = members.find((m) => m.user_id === id);
+        return member ? memberLabel(member) : id;
+      })
+      .join(' · ');
   };
+
+  const toggleHandoffAgent = (userId: string) =>
+    setHandoffAgentIds((prev) =>
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId],
+    );
 
   const keyPayload = () => (keyEdited ? apiKey.trim() : undefined);
 
@@ -203,7 +218,7 @@ export function AiConfig() {
     is_active: isActive,
     auto_reply_enabled: autoReplyEnabled,
     auto_reply_max_per_conversation: maxPerConversation,
-    handoff_agent_id: handoffAgentId || null,
+    handoff_agent_ids: handoffAgentIds,
     schedule_enabled: scheduleEnabled,
     schedule_start: scheduleStart,
     schedule_end: scheduleEnd,
@@ -290,7 +305,7 @@ export function AiConfig() {
         setIsActive(false);
         setAutoReplyEnabled(false);
         setSystemPrompt('');
-        setHandoffAgentId('');
+        setHandoffAgentIds([]);
       } else {
         const data = await res.json();
         toast.error(data.error ?? t('removeFailed'));
@@ -547,31 +562,41 @@ export function AiConfig() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="ai-handoff">{t('handoffTo')}</Label>
+              <Label>{t('handoffTo')}</Label>
+              <p className="text-xs text-muted-foreground">{t('handoffToDesc')}</p>
+              {handoffAgentIds.length > 0 && (
+                <p className="text-xs text-foreground">
+                  <span className="text-muted-foreground">{t('handoffSelected')}: </span>
+                  {handoffLabel(handoffAgentIds)}
+                </p>
+              )}
+              <div className="max-h-56 overflow-y-auto rounded-md border border-border">
+                {(members.length === 0 ? [] : members).map((m) => {
+                  const checked = handoffAgentIds.includes(m.user_id);
+                  return (
+                    <label
+                      key={m.user_id}
+                      className="flex cursor-pointer items-center gap-2 border-b border-border/60 px-3 py-2 text-sm last:border-b-0 hover:bg-muted/40"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleHandoffAgent(m.user_id)}
+                        disabled={disabled || !autoReplyEnabled}
+                        className="size-4 accent-primary"
+                      />
+                      <span className="min-w-0 truncate text-foreground">
+                        {memberLabel(m)}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
               <p className="text-xs text-muted-foreground">
-                {t('handoffToDesc')}
+                {handoffAgentIds.length === 0
+                  ? t('handoffQueue')
+                  : t('handoffMultiHint')}
               </p>
-              <Select
-                value={handoffAgentId || HANDOFF_QUEUE}
-                onValueChange={(v) =>
-                  setHandoffAgentId(!v || v === HANDOFF_QUEUE ? '' : v)
-                }
-                disabled={disabled || !autoReplyEnabled}
-              >
-                <SelectTrigger id="ai-handoff">
-                  <SelectValue>{handoffLabel(handoffAgentId)}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={HANDOFF_QUEUE}>
-                    {t('handoffQueue')}
-                  </SelectItem>
-                  {members.map((m) => (
-                    <SelectItem key={m.user_id} value={m.user_id}>
-                      {memberLabel(m)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
 
             <div className="space-y-4 border-t border-border pt-4">
