@@ -368,11 +368,12 @@
       "numberFilterLabel": "فلترة حسب رقم واتساب",
       "allNumbers": "كل الأرقام",
       "numberLabel": "الرقم",
-      "loadingMore": "جارٍ تحميل باقي المحادثات…",
+      "loadingMore": "بيتم تحميل 25 محادثة…",
       "assignedTo": "مسندة لـ {name}",
       "clearAssignee": "إظهار كل المحادثات",
       "participatedIn": "شارك فيها: {name}",
-      "participating": "محادثات شارك فيها"
+      "participating": "محادثات شارك فيها",
+      "loadMore": "حمّل 25 كمان"
     },
     "messageThread": {
       "backToConversations": "العودة إلى المحادثات",

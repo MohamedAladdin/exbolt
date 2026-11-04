@@ -149,70 +149,114 @@ export function ConversationList({
     onConversationsLoadedRef.current = onConversationsLoaded;
   });
 
-  useEffect(() => {
+  // Everything loaded so far, in display order. A ref, not state: the
+  // scroll observer must read it without being re-created per page.
+  const rowsRef = useRef<Map<string, Conversation>>(new Map());
+  const hasMoreRef = useRef(true);
+  const [hasMore, setHasMore] = useState(true);
+
+  const publish = useCallback(() => {
+    // Re-sort on every publish: page N+1 already arrives ordered, but a
+    // resync can move a thread up (new message) and the Map keeps insertion
+    // order, which would leave it stranded at its old position.
+    const ordered = Array.from(rowsRef.current.values()).sort((a, b) => {
+      const at = a.last_message_at ? Date.parse(a.last_message_at) : -Infinity;
+      const bt = b.last_message_at ? Date.parse(b.last_message_at) : -Infinity;
+      if (at !== bt) return bt - at;
+      return b.id.localeCompare(a.id);
+    });
+    onConversationsLoadedRef.current(ordered);
+  }, []);
+
+  const fetchPage = useCallback(async (from: number) => {
     const supabase = createClient();
+    const { data, error } = await supabase
+      .from("conversations")
+      .select(CONVERSATION_SELECT)
+      // NULLS LAST is not cosmetic: Postgres sorts NULLs FIRST on DESC, so a
+      // conversation with no messages (created by "open chat" before the
+      // first send) would pin itself to the top of the list forever.
+      .order("last_message_at", { ascending: false, nullsFirst: false })
+      // Tiebreaker for the paging: `range()` over a non-unique sort key can
+      // repeat or skip rows when two threads share a timestamp.
+      .order("id", { ascending: false })
+      .range(from, from + CONVERSATION_PAGE_SIZE - 1);
+
+    if (error) {
+      // Supabase errors have non-enumerable properties — log fields explicitly
+      console.error("Failed to fetch conversations:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      });
+      return null;
+    }
+    return normalizeConversations(data ?? []);
+  }, []);
+
+  // First paint is ONE page of 25. The rest arrives as the operator scrolls
+  // (`loadMore`), not in a background loop: a first visit used to pull the
+  // whole table (1.5 MB, 1.3k rows) for a glance at the top of the list.
+  useEffect(() => {
     let cancelled = false;
+    const firstPaint = rowsRef.current.size === 0;
+    if (firstPaint) setLoading(true);
 
-    (async () => {
-      // Progressive hydration. A single request returned every conversation
-      // (1.5 MB for ~1.3k threads) and PostgREST silently caps a response at
-      // 1000 rows, so the list sat empty until the whole payload landed and
-      // the oldest threads never appeared at all. Fetch in pages, publish
-      // after each one: the first 100 rows paint almost immediately and the
-      // rest stream in behind them.
-      const rowsById = new Map<string, Conversation>();
-
-      for (
-        let from = 0;
-        !cancelled;
-        from += CONVERSATION_PAGE_SIZE
-      ) {
-        const { data, error } = await supabase
-          .from("conversations")
-          .select(CONVERSATION_SELECT)
-          // NULLS LAST is not cosmetic: Postgres sorts NULLs FIRST on DESC, so a
-          // conversation with no messages (created by "open chat" before the
-          // first send) would pin itself to the top of the list forever.
-          .order("last_message_at", { ascending: false, nullsFirst: false })
-          // Tiebreaker for the paging: `range()` over a non-unique sort key
-          // can repeat or skip rows when two threads share a timestamp.
-          .order("id", { ascending: false })
-          .range(from, from + CONVERSATION_PAGE_SIZE - 1);
-
-        if (cancelled) return;
-
-        if (error) {
-          // Supabase errors have non-enumerable properties — log fields explicitly
-          console.error("Failed to fetch conversations:", {
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code,
-          });
-          setLoading(false);
-          setLoadingMore(false);
-          return;
-        }
-
-        const page = normalizeConversations(data ?? []);
-        for (const conv of page) rowsById.set(conv.id, conv);
-
-        onConversationsLoadedRef.current(Array.from(rowsById.values()));
+    void (async () => {
+      const page = await fetchPage(0);
+      if (cancelled) return;
+      if (!page) {
         setLoading(false);
-        if (page.length < CONVERSATION_PAGE_SIZE) break;
-        setLoadingMore(true);
+        return;
       }
-
-      if (!cancelled) setLoadingMore(false);
+      for (const conv of page) rowsRef.current.set(conv.id, conv);
+      publish();
+      if (firstPaint) {
+        hasMoreRef.current = page.length === CONVERSATION_PAGE_SIZE;
+        setHasMore(hasMoreRef.current);
+        setLoading(false);
+      }
     })();
 
     return () => {
       cancelled = true;
     };
-    // `resyncToken` is included so the parent can force a refetch when
-    // the realtime channel reconnects or the tab regains focus — catches
-    // up on any events sent while the WS was disconnected or throttled.
-  }, [resyncToken]);
+    // `resyncToken` refetches page 1 only: the rows below it are already
+    // loaded and realtime keeps them current, so a tab-focus resync must not
+    // throw the operator back to the top of a long list.
+  }, [fetchPage, publish, resyncToken]);
+
+  const loadMore = useCallback(async () => {
+    if (loading || loadingMore || !hasMoreRef.current) return;
+    setLoadingMore(true);
+    const page = await fetchPage(rowsRef.current.size);
+    if (page) {
+      for (const conv of page) rowsRef.current.set(conv.id, conv);
+      publish();
+      hasMoreRef.current = page.length === CONVERSATION_PAGE_SIZE;
+      setHasMore(hasMoreRef.current);
+    }
+    setLoadingMore(false);
+  }, [fetchPage, loading, loadingMore, publish]);
+
+  // Scroll trigger: a sentinel at the end of the list, one page ahead of the
+  // fold so the next 25 rows are usually there before the operator reaches
+  // them. The button below it is the fallback when it never intersects
+  // (short filtered lists, an empty state).
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) void loadMore();
+      },
+      { rootMargin: "240px 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [loadMore]);
 
   // Tag definitions for the filter picker — loaded once so labels/colours
   // stay stable regardless of which conversations happen to be loaded.
@@ -721,6 +765,18 @@ export function ConversationList({
         ) : filtered.length === 0 ? (
           <div className="px-4 py-12 text-center">
             <p className="text-sm text-muted-foreground">{t("noConversations")}</p>
+            {/* A filter can be satisfied only by threads further down the
+                table; with 25-row pages that reads as "no results" until the
+                operator asks for more. Say so instead of lying. */}
+            {hasMore && (
+              <button
+                type="button"
+                onClick={() => void loadMore()}
+                className="text-primary mt-3 text-[11px] underline-offset-2 hover:underline"
+              >
+                {t("loadMore")}
+              </button>
+            )}
           </div>
         ) : (
           <div className="flex flex-col">
@@ -741,12 +797,25 @@ export function ConversationList({
                 }
               />
             ))}
-            {loadingMore && (
-              <div className="flex items-center justify-center gap-2 py-3">
-                <div className="h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                <span className="text-[11px] text-muted-foreground">
-                  {t("loadingMore")}
-                </span>
+            {hasMore && (
+              <div
+                ref={sentinelRef}
+                className="flex flex-col items-center justify-center gap-1.5 py-4"
+              >
+                {loadingMore ? (
+                  <span className="text-muted-foreground flex items-center gap-2 text-[11px]">
+                    <span className="border-primary h-3 w-3 animate-spin rounded-full border-2 border-t-transparent" />
+                    {t("loadingMore")}
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void loadMore()}
+                    className="text-muted-foreground hover:text-foreground text-[11px] underline-offset-2 hover:underline"
+                  >
+                    {t("loadMore")}
+                  </button>
+                )}
               </div>
             )}
           </div>

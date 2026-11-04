@@ -368,11 +368,12 @@
       "numberFilterLabel": "Filter by WhatsApp number",
       "allNumbers": "All numbers",
       "numberLabel": "Number",
-      "loadingMore": "Loading more conversations…",
+      "loadingMore": "Loading 25 more…",
       "assignedTo": "Assigned to {name}",
       "clearAssignee": "Show all conversations",
       "participatedIn": "Took part: {name}",
-      "participating": "Conversations they took part in"
+      "participating": "Conversations they took part in",
+      "loadMore": "Load 25 more"
     },
     "messageThread": {
       "backToConversations": "Back to conversations",

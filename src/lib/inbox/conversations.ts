@@ -13,9 +13,10 @@ export const CONVERSATION_SELECT =
  * Rows per request for the Inbox. The list used to fetch every conversation
  * in a single response — 1.5 MB for ~1.3k threads on a live tenant, and
  * PostgREST caps that at 1000 rows anyway, so older threads never loaded.
- * The Inbox now hydrates page by page and paints on the first one.
+ * The Inbox now paints 25 rows and fetches the next 25 on scroll, so a
+ * glance at the list costs one small query instead of the whole table.
  */
-export const CONVERSATION_PAGE_SIZE = 100;
+export const CONVERSATION_PAGE_SIZE = 25;
 
 /** Raw shape returned by {@link CONVERSATION_SELECT} before flattening. */
 type RawContact = Contact & { contact_tags?: { tags: Tag | null }[] };
