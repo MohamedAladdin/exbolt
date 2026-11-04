@@ -9,7 +9,7 @@ import {
 import { DEFAULT_INBOX_FILTER, type InboxFilter } from "@/lib/inbox/inbox-filters";
 import { cn } from "@/lib/utils";
 import type { Conversation, ConversationStatus, Tag } from "@/types";
-import { Search, ChevronDown, X, Phone, UserRound, Clock } from "lucide-react";
+import { Search, ChevronDown, X, Phone, UserRound, Clock, Info } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
@@ -604,9 +604,13 @@ export function ConversationList({
 
         <div className="flex flex-wrap items-center gap-1">
           <DropdownMenu>
-            <DropdownMenuTrigger className="inline-flex items-center justify-center h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground rounded-md hover:bg-muted">
-                {activeFilter?.label ?? t("filterAll")}
-                {typeof filterCounts[filter] === "number" && (
+            <DropdownMenuTrigger className="inline-flex h-7 items-center justify-center gap-1 rounded-md border border-border bg-muted/60 px-2 text-xs font-medium text-foreground hover:bg-muted">
+                {/* The follow-up queue is its own predicate, not a status: when
+                    it is on, the status control reads «الحالة» with no count so
+                    the two controls never show the same label twice. */}
+                {activeFilter?.label ??
+                  (filter === "followup" ? t("filterStatusAny") : t("filterAll"))}
+                {activeFilter && typeof filterCounts[filter] === "number" && (
                   <span className="tabular-nums text-[10px] text-muted-foreground/80">
                     {filterCounts[filter]}
                   </span>
@@ -654,16 +658,27 @@ export function ConversationList({
               aria-pressed={filter === "followup"}
               title={t("filterFollowupHint")}
               className={cn(
-                "inline-flex h-7 items-center gap-1 rounded-full border px-2 text-xs font-medium transition-colors",
+                "inline-flex h-7 items-center gap-1 rounded-full border px-2 text-xs transition-colors",
                 filter === "followup"
-                  ? "border-amber-400 bg-amber-400 text-amber-950"
-                  : "border-amber-400/40 bg-amber-400/10 text-amber-400 hover:bg-amber-400/20",
+                  ? "border-amber-400 bg-amber-400 font-semibold text-amber-950"
+                  : "border-border text-muted-foreground hover:border-amber-400/50 hover:text-foreground",
               )}
             >
-              <Clock className="h-3 w-3" aria-hidden />
+              <Clock
+                className={cn(
+                  "h-3 w-3",
+                  filter === "followup" ? "opacity-90" : "text-amber-400/80",
+                )}
+                aria-hidden
+              />
               {t("filterFollowup")}
               {typeof filterCounts.followup === "number" && (
-                <span className="tabular-nums text-[10px] opacity-80">
+                <span
+                  className={cn(
+                    "tabular-nums text-[10px]",
+                    filter === "followup" ? "opacity-80" : "text-amber-400/90",
+                  )}
+                >
                   {filterCounts.followup}
                 </span>
               )}
@@ -760,6 +775,15 @@ export function ConversationList({
             </DropdownMenu>
           )}
         </div>
+
+        {/* The queue is not self-explanatory: name the rule on screen while it
+            is on, instead of trusting a hover title nobody reads. */}
+        {filter === "followup" && (
+          <div className="mt-2 flex gap-1.5 rounded-md border border-amber-400/25 bg-amber-400/[0.07] px-2.5 py-2 text-[11px] leading-relaxed text-amber-200/90">
+            <Info className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
+            <span>{t("filterFollowupExplain")}</span>
+          </div>
+        )}
 
         {assignee && (
           <div className="flex flex-wrap items-center gap-1">
