@@ -943,6 +943,16 @@ html[dir="rtl"] .channel-link svg.flip { transform: scaleX(-1); }
 .price-card .btn { margin-top: auto; }
 .pricing-note { margin-top: 20px; color: var(--muted-2); font-size: 0.76rem; }
 .pricing-note b { color: var(--ink-soft); font-weight: 600; }
+.pricing-note a {
+  color: var(--blue);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(10, 77, 255, 0.4);
+  transition: text-decoration-color 0.15s;
+}
+.pricing-note a:hover { text-decoration-color: var(--blue); }
 
 /* ---------- faq ---------- */
 

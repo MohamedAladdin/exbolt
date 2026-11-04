@@ -970,6 +970,16 @@ html[dir="rtl"] .channel-link svg.flip { transform: scaleX(-1); }
 .price-card .btn { margin-top: auto; }
 .pricing-note { margin-top: 20px; color: var(--muted-2); font-size: 0.76rem; }
 .pricing-note b { color: var(--ink-soft); font-weight: 600; }
+.pricing-note a {
+  color: var(--blue);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(10, 77, 255, 0.4);
+  transition: text-decoration-color 0.15s;
+}
+.pricing-note a:hover { text-decoration-color: var(--blue); }
 
 /* ---------- faq ---------- */
 
@@ -1255,7 +1265,7 @@ html[dir="rtl"] .btn:hover svg { transform: scaleX(-1) translateX(3px); }
       </span>
     </a>
     <nav class="nav-links" id="navLinks" aria-label="Main">
-      <a href="#features">النظام</a><a href="#screens">الشاشات</a><a href="#pricing">الأسعار</a><a href="#faq">الأسئلة</a><a href="#contact">تواصل</a>
+      <a href="#features">النظام</a><a href="#screens">الشاشات</a><a href="#pricing">الأسعار</a><a href="/meta-cost">حاسبة الرسائل</a><a href="#faq">الأسئلة</a><a href="#contact">تواصل</a>
       <a class="nav-login" href="/login">دخول</a>
     </nav>
     <div class="nav-actions">
@@ -1877,7 +1887,7 @@ html[dir="rtl"] .btn:hover svg { transform: scaleX(-1) translateX(3px); }
           <ul class="price-features"><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 12.5 5 5L20 6.5"/></svg>كل مزايا Growth</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 12.5 5 5L20 6.5"/></svg>إدارة الفروع</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 12.5 5 5L20 6.5"/></svg>API وWebhooks</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 12.5 5 5L20 6.5"/></svg>تكاملات مفتوحة</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 12.5 5 5L20 6.5"/></svg>أولوية دعم</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 12.5 5 5L20 6.5"/></svg>تدريب للفريق</li></ul>
           <a class="btn btn-ghost" href="#contact" data-plan="scale">كلّمنا عن Scale</a>
         </article></div>
-    <p class="pricing-note"><b>ملاحظة:</b> الأسعار لا تشمل رسوم Meta لرسائل واتساب. كل باقة فيها تدريب أولي ودعم عربي.</p>
+    <p class="pricing-note"><b>ملاحظة:</b> الأسعار لا تشمل رسوم Meta لرسائل واتساب — <a href="/meta-cost">شوف إزاي بتتحسب بالجنيه والدولار</a>. كل باقة فيها تدريب أولي ودعم عربي.</p>
   </div>
 </section>
 
