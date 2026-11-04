@@ -19,6 +19,8 @@ interface MessageRow {
   sender_type: string | null
   ai_generated: boolean | null
   content_text: string | null
+  /** ISO timestamp; when present the pairing is bounded in time. */
+  created_at?: string | null
 }
 
 const MIN_QUESTION_LEN = 8
@@ -26,8 +28,39 @@ const MIN_ANSWER_LEN = 15
 const MAX_QUESTION_LEN = 400
 const MAX_ANSWER_LEN = 2000
 const MAX_SUGGESTIONS = 10
+/** A human answering within half an hour is answering *this* customer. */
+const MAX_PAIR_GAP_MINUTES = 30
+
+/**
+ * Arabic question markers. A clinic thread is full of statements
+ * («نتيجة التحليل ظهرت خلاص»); pairing those with whatever the agent typed
+ * next produces noise, and noise in the knowledge base is worse than an
+ * empty one.
+ */
+const QUESTION_MARKERS =
+  /(\?|؟|\b(?:ايه|إيه|كام|فين|امتى|إمتى|متى|هل|ينفع|ممكن|عايز|عاوز|ازاي|إزاي|ليه|بتفتحوا|مواعيد|سعر|تكلفة|الأسعار)\b)/i
+
+/** Openers that are politeness, not an answer. */
+const GENERIC_ANSWER =
+  /^(?:تمام|تحت امرك|تحت أمرك|اهلا|أهلا|وعليكم السلام|السلام عليكم|شكرا|شكرًا|مساء الخير|صباح الخير|ابعت|أبعت)[\s.!،,]*$/i
 
 /** Collapse whitespace and unify the trailing punctuation so duplicates match. */
+/** Does this customer message look like something worth answering? */
+export function looksLikeQuestion(text: string): boolean {
+  const value = text.trim()
+  if (value.length < MIN_QUESTION_LEN || value.length > MAX_QUESTION_LEN) return false
+  return QUESTION_MARKERS.test(value)
+}
+
+/** Minutes between two ISO timestamps, or null when either is unusable. */
+function gapMinutes(fromIso?: string | null, toIso?: string | null): number | null {
+  if (!fromIso || !toIso) return null
+  const from = new Date(fromIso).getTime()
+  const to = new Date(toIso).getTime()
+  if (!Number.isFinite(from) || !Number.isFinite(to)) return null
+  return (to - from) / 60000
+}
+
 export function normalizeQuestion(text: string): string {
   return text
     .replace(/\s+/g, ' ')
@@ -54,10 +87,9 @@ export function buildSuggestions(messages: MessageRow[]): KnowledgeSuggestion[] 
   for (let i = 0; i < messages.length; i += 1) {
     const row = messages[i]
     if (row.sender_type !== 'customer') continue
-    const question = normalizeQuestion(row.content_text ?? '')
-    if (question.length < MIN_QUESTION_LEN || question.length > MAX_QUESTION_LEN) {
-      continue
-    }
+    const rawQuestion = row.content_text ?? ''
+    if (!looksLikeQuestion(rawQuestion)) continue
+    const question = normalizeQuestion(rawQuestion)
 
     for (let j = i + 1; j < messages.length; j += 1) {
       const next = messages[j]
@@ -67,6 +99,9 @@ export function buildSuggestions(messages: MessageRow[]): KnowledgeSuggestion[] 
       const answer = (next.content_text ?? '').trim()
       if (answer.length < MIN_ANSWER_LEN) break
       if (answer.length > MAX_ANSWER_LEN) break
+      if (GENERIC_ANSWER.test(answer)) break
+      const gap = gapMinutes(row.created_at, next.created_at)
+      if (gap !== null && (gap < 0 || gap > MAX_PAIR_GAP_MINUTES)) break
       const key = question.toLowerCase()
       if (!seen.has(key)) {
         seen.add(key)
@@ -96,7 +131,7 @@ export async function suggestFromConversation(
 
   const { data, error } = await db
     .from('messages')
-    .select('sender_type, ai_generated, content_text')
+    .select('sender_type, ai_generated, content_text, created_at')
     .eq('conversation_id', conversationId)
     .eq('content_type', 'text')
     .order('created_at', { ascending: true })
