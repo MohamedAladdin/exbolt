@@ -168,6 +168,25 @@ export function AiConfig() {
       prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort((a, b) => a - b),
     );
 
+  // Radix shows the raw `value` until the items are mounted once, so every
+  // trigger renders its label explicitly — `__queue__` must never reach a
+  // human's eyes.
+  const providerLabel = (p: AiProvider) =>
+    p === 'openai_compatible' ? t('providerOpenAiCompatible') : PROVIDER_LABEL[p];
+
+  const outsideModeLabel = (mode: 'always' | 'silent' | 'message') =>
+    mode === 'silent'
+      ? t('outsideModeSilent')
+      : mode === 'message'
+        ? t('outsideModeMessage')
+        : t('outsideModeAlways');
+
+  const handoffLabel = (agentId: string) => {
+    if (!agentId) return t('handoffQueue');
+    const member = members.find((m) => m.user_id === agentId);
+    return member ? memberLabel(member) : agentId;
+  };
+
   const keyPayload = () => (keyEdited ? apiKey.trim() : undefined);
 
   // undefined = leave unchanged; '' typed = null (clear); text = set.
@@ -327,7 +346,7 @@ export function AiConfig() {
                   disabled={disabled}
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue>{providerLabel(provider)}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="openai">{PROVIDER_LABEL.openai}</SelectItem>
@@ -540,7 +559,7 @@ export function AiConfig() {
                 disabled={disabled || !autoReplyEnabled}
               >
                 <SelectTrigger id="ai-handoff">
-                  <SelectValue />
+                  <SelectValue>{handoffLabel(handoffAgentId)}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={HANDOFF_QUEUE}>
@@ -643,7 +662,7 @@ export function AiConfig() {
                   disabled={disabled || !autoReplyEnabled || !scheduleEnabled}
                 >
                   <SelectTrigger id="ai-outside-mode">
-                    <SelectValue />
+                    <SelectValue>{outsideModeLabel(outsideHoursMode)}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="always">{t('outsideModeAlways')}</SelectItem>
