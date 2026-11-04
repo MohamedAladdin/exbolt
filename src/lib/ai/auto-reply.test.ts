@@ -27,7 +27,14 @@ const h = vi.hoisted(() => ({
 
 vi.mock('./config', () => ({ loadAiConfig: h.loadAiConfig }))
 vi.mock('./context', () => ({ buildConversationContext: h.buildConversationContext }))
-vi.mock('./knowledge', () => ({ retrieveKnowledge: h.retrieveKnowledge }))
+vi.mock('./knowledge', () => ({
+  // The dispatcher now asks for the pinned/variable split; keep the test
+  // surface as a flat list by returning everything as `retrieved`.
+  retrieveKnowledgeParts: async (...args: unknown[]) => ({
+    pinned: [],
+    retrieved: await h.retrieveKnowledge(...args),
+  }),
+}))
 vi.mock('./generate', () => ({ generateReply: h.generateReply }))
 vi.mock('@/lib/flows/meta-send', () => ({
   engineSendText: h.engineSendText,

@@ -1,9 +1,9 @@
 import { supabaseAdmin } from './admin-client'
 import { loadAiConfig } from './config'
 import { buildConversationContext } from './context'
-import { retrieveKnowledge } from './knowledge'
+import { retrieveKnowledgeParts } from './knowledge'
 import { generateReply } from './generate'
-import { buildSystemPrompt } from './defaults'
+import { buildSystemPromptParts } from './defaults'
 import { buildHandoffSummary } from './handoff'
 import { notifyHandoff } from './handoff-alert'
 import {
@@ -209,7 +209,7 @@ export async function dispatchInboundToAiReply(
     }
 
     // Ground the reply in the account's knowledge base (best-effort).
-    const knowledge = await retrieveKnowledge(
+    const knowledgeParts = await retrieveKnowledgeParts(
       db,
       accountId,
       config,
@@ -220,15 +220,23 @@ export async function dispatchInboundToAiReply(
     // showed the injected facts could colour an answer about a different
     // branch. The prompt goes back to exactly what it was before it existed;
     // the table and the extractor stay for when we turn it on deliberately.
-    const systemPrompt = buildSystemPrompt({
+    const prompt = buildSystemPromptParts({
       userPrompt: config.systemPrompt,
       mode: 'auto_reply',
-      knowledge,
+      knowledge: knowledgeParts.retrieved,
+      pinnedKnowledge: knowledgeParts.pinned,
     })
+    const systemPrompt = [prompt.stable, prompt.variable]
+      .filter(Boolean)
+      .join('\n\n')
 
     const { text, handoff, usage } = await generateReply({
       config,
       systemPrompt,
+      // Everything before the retrieved excerpts is identical on every call —
+      // providers with explicit prompt caching (Anthropic) get a breakpoint
+      // there, so the instructions stop being billed at full price each turn.
+      stablePrefixLength: prompt.stable.length,
       messages,
     })
 

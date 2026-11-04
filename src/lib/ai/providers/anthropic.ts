@@ -16,7 +16,13 @@ const ANTHROPIC_VERSION = '2023-06-01'
 
 interface AnthropicResponse {
   content?: { type?: string; text?: string }[]
-  usage?: { input_tokens?: number; output_tokens?: number }
+  usage?: {
+    input_tokens?: number
+    output_tokens?: number
+    /** Prompt-cache counters, present only when a breakpoint was sent. */
+    cache_read_input_tokens?: number
+    cache_creation_input_tokens?: number
+  }
 }
 
 /**
@@ -42,8 +48,47 @@ function normalizeForAnthropic(messages: ChatMessage[]): ChatMessage[] {
  * Returns the raw assistant text + token usage (handoff parsing happens
  * in `generateReply`).
  */
+/**
+ * Split the system prompt into [stable, variable] and mark the stable part as
+ * a cache breakpoint.
+ *
+ * Anthropic's prompt cache is opt-in: without `cache_control` every input token
+ * is billed in full, every call. The stable part (scaffold + the account's
+ * instructions + the pinned knowledge passages) is byte-identical between
+ * calls, so putting the breakpoint there turns it into ~10% of the price on
+ * every subsequent turn — but only if the *prefix* is identical, which is why
+ * the variable retrieved passages must come after the breakpoint, and why the
+ * provider caches a prefix (everything up to the marked block) rather than an
+ * arbitrary middle slice.
+ *
+ * Cache writes cost 1.25× once; reads 0.1×. Below the model's minimum
+ * cacheable length (2048 tokens on Haiku 4.5) the API silently ignores it —
+ * visible in the response's `cache_read_input_tokens` staying 0.
+ */
+export function buildAnthropicSystem(
+  systemPrompt: string,
+  stableLength?: number,
+): string | { type: 'text'; text: string; cache_control?: { type: 'ephemeral' } }[] {
+  const raw = Math.floor(stableLength ?? 0)
+  if (!Number.isFinite(raw) || raw <= 0) return systemPrompt
+  // A boundary at (or past) the end still deserves the breakpoint: there is
+  // simply no variable part after it.
+  const cut = Math.min(raw, systemPrompt.length)
+  const stable = systemPrompt.slice(0, cut).trimEnd()
+  const variable = systemPrompt.slice(cut).trimStart()
+  if (!stable) return systemPrompt
+  const blocks: {
+    type: 'text'
+    text: string
+    cache_control?: { type: 'ephemeral' }
+  }[] = [{ type: 'text', text: stable, cache_control: { type: 'ephemeral' } }]
+  if (variable) blocks.push({ type: 'text', text: variable })
+  return blocks
+}
+
 export async function generateAnthropic(args: ProviderArgs): Promise<ProviderResult> {
   const { apiKey, model, systemPrompt, messages, timeoutMs } = args
+  const system = buildAnthropicSystem(systemPrompt, args.stablePrefixLength)
 
   let res: Response
   try {
@@ -56,7 +101,7 @@ export async function generateAnthropic(args: ProviderArgs): Promise<ProviderRes
       },
       body: JSON.stringify({
         model,
-        system: systemPrompt,
+        system,
         max_tokens: MAX_OUTPUT_TOKENS,
         messages: normalizeForAnthropic(messages),
       }),
@@ -81,6 +126,17 @@ export async function generateAnthropic(args: ProviderArgs): Promise<ProviderRes
       code: 'empty_response',
     })
   }
+  // Proof that the cache breakpoint is doing something: a hit shows up as
+  // cache_read_input_tokens. Zero on every call means the prefix is shorter
+  // than the model's minimum cacheable length (or not byte-identical).
+  const cacheRead = data?.usage?.cache_read_input_tokens ?? 0
+  const cacheWrite = data?.usage?.cache_creation_input_tokens ?? 0
+  if (cacheRead > 0 || cacheWrite > 0) {
+    console.info(
+      `[ai cache] read=${cacheRead} write=${cacheWrite} input=${data?.usage?.input_tokens ?? 0}`,
+    )
+  }
+
   // Anthropic reports input/output but no total — normalizeUsage sums.
   const usage = normalizeUsage({
     prompt: data?.usage?.input_tokens,

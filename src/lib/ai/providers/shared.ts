@@ -11,6 +11,11 @@ export interface ProviderArgs {
   apiKey: string
   model: string
   systemPrompt: string
+  /** Character offset where the *variable* part of `systemPrompt` starts.
+   *  Everything before it is identical between calls (instructions + pinned
+   *  knowledge) and can be sent as a cacheable block on providers that support
+   *  explicit prompt caching (Anthropic). 0 / undefined = cache nothing. */
+  stablePrefixLength?: number
   messages: ChatMessage[]
   timeoutMs: number
   /** Custom OpenAI-compatible base URL; omitted for native providers. */

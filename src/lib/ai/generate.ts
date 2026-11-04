@@ -14,6 +14,9 @@ export interface GenerateArgs {
   config: AiConfig
   /** Fully-built system prompt (see `buildSystemPrompt`). */
   systemPrompt: string
+  /** Characters of `systemPrompt` that are identical between calls — the
+   *  cacheable prefix on providers with explicit prompt caching. */
+  stablePrefixLength?: number
   /** Recent conversation turns, oldest first. */
   messages: ChatMessage[]
 }
@@ -28,6 +31,7 @@ export async function generateReply(args: GenerateArgs): Promise<GenerateResult>
   const timeoutMs = aiRequestTimeoutMs()
   const providerArgs = {
     apiKey: config.apiKey,
+    stablePrefixLength: args.stablePrefixLength,
     model: config.model,
     systemPrompt,
     messages,

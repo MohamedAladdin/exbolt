@@ -186,15 +186,24 @@ export async function loadPinnedChunks(
   }
 }
 
-export async function retrieveKnowledge(
+export interface RetrievedKnowledge {
+  /** Pinned quick-facts passages — identical between calls. */
+  pinned: string[]
+  /** Excerpts retrieved for this question — different every call. */
+  retrieved: string[]
+}
+
+/** Same as `retrieveKnowledge` but keeps the stable and variable halves apart,
+ *  so the prompt builder can hand the provider a cacheable prefix. */
+export async function retrieveKnowledgeParts(
   db: SupabaseClient,
   accountId: string,
   config: Pick<AiConfig, 'embeddingsApiKey'>,
   queryText: string,
   k = 8,
-): Promise<string[]> {
+): Promise<RetrievedKnowledge> {
   const query = queryText.trim()
-  if (!query || k <= 0) return []
+  if (!query || k <= 0) return { pinned: [], retrieved: [] }
 
   // Skip everything when the account has no knowledge base — otherwise
   // every draft / auto-reply would pay for a query embedding + two RPCs
@@ -205,9 +214,9 @@ export async function retrieveKnowledge(
       .from('ai_knowledge_chunks')
       .select('id', { count: 'exact', head: true })
       .eq('account_id', accountId)
-    if (error || !count) return []
+    if (error || !count) return { pinned: [], retrieved: [] }
   } catch {
-    return []
+    return { pinned: [], retrieved: [] }
   }
 
   // Always-on grounding: the pinned document leads, whatever the question
@@ -258,5 +267,22 @@ export async function retrieveKnowledge(
     (content) => !pinned.includes(content),
   )
   const ranked = rerankByQueryTerms(rest, query)
-  return [...pinned, ...ranked].slice(0, Math.max(k, pinned.length))
+  const budget = Math.max(k, pinned.length)
+  return {
+    pinned: pinned.slice(0, budget),
+    retrieved: ranked.slice(0, Math.max(0, budget - pinned.length)),
+  }
+}
+
+/** Flat view of the same retrieval (pinned first) for callers that only need
+ *  the text. */
+export async function retrieveKnowledge(
+  db: SupabaseClient,
+  accountId: string,
+  config: Pick<AiConfig, 'embeddingsApiKey'>,
+  queryText: string,
+  k = 8,
+): Promise<string[]> {
+  const parts = await retrieveKnowledgeParts(db, accountId, config, queryText, k)
+  return [...parts.pinned, ...parts.retrieved]
 }
