@@ -90,5 +90,15 @@ export async function verifySuggestions(
   const raw = await completeOnce(config, SYSTEM_PROMPT, [
     { role: 'user', content: payload },
   ])
-  return parseVerified(raw, candidates)
+  const kept = parseVerified(raw, candidates)
+  if (kept.length === 0) {
+    // A silent zero is undebuggable: say whether the reviewer said "none" or
+    // answered in a shape we could not read (truncation, prose, fences).
+    console.warn(
+      `[ai suggestions] reviewer kept 0 of ${candidates.length} (raw ${raw.length} chars): ${raw
+        .slice(0, 240)
+        .replace(/\s+/g, ' ')}`,
+    )
+  }
+  return kept
 }
