@@ -2440,14 +2440,7 @@
       "day3": "Wednesday",
       "day4": "Thursday",
       "day5": "Friday",
-      "day6": "Saturday",
-      "suggestionsTitle": "Suggestions from conversations",
-      "suggestionsDesc": "Real questions customers asked and a teammate answered. Approving turns one into a knowledge-base document — until then the assistant never sees it.",
-      "approve": "Approve",
-      "dismiss": "Dismiss",
-      "reviewing": "Working…",
-      "suggestionApproved": "Added to the knowledge base",
-      "suggestionDismissed": "Dismissed"
+      "day6": "Saturday"
     },
     "aiKnowledge": {
       "loadFailed": "Failed to load knowledge base",
@@ -2478,7 +2471,14 @@
       "reindexTooltip": "Re-embed all documents (e.g. after adding an embeddings key)",
       "editDoc": "Edit",
       "deleteDoc": "Delete",
-      "loading": "Loading…"
+      "loading": "Loading…",
+      "suggestionsTitle": "Suggestions from conversations",
+      "suggestionsDesc": "Real questions customers asked and a teammate answered. Approving turns one into a knowledge-base document — until then the assistant never sees it.",
+      "approve": "Approve",
+      "dismiss": "Dismiss",
+      "reviewing": "Working…",
+      "suggestionApproved": "Added to the knowledge base",
+      "suggestionDismissed": "Dismissed"
     },
     "quickReplies": {
       "nameRequired": "Give the quick reply a name.",
