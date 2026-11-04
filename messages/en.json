@@ -584,7 +584,19 @@
       "deals": "Deals",
       "noTags": "No tags",
       "noDeals": "No deals",
-      "addNotePlaceholder": "Add a note..."
+      "addNotePlaceholder": "Add a note...",
+      "aiMemory": "Assistant memory",
+      "deleteFact": "Delete this fact",
+      "factKeys": {
+        "patient_name": "Patient name",
+        "preferred_branch": "Preferred branch",
+        "preferred_doctor": "Preferred doctor",
+        "insurance": "Insurance",
+        "file_number": "File number",
+        "alt_phone": "Alt. phone",
+        "preferred_time": "Preferred time",
+        "city": "City"
+      }
     },
     "aiBanner": {
       "pausedTitle": "AI assistant is paused here",
@@ -2428,7 +2440,14 @@
       "day3": "Wednesday",
       "day4": "Thursday",
       "day5": "Friday",
-      "day6": "Saturday"
+      "day6": "Saturday",
+      "suggestionsTitle": "Suggestions from conversations",
+      "suggestionsDesc": "Real questions customers asked and a teammate answered. Approving turns one into a knowledge-base document — until then the assistant never sees it.",
+      "approve": "Approve",
+      "dismiss": "Dismiss",
+      "reviewing": "Working…",
+      "suggestionApproved": "Added to the knowledge base",
+      "suggestionDismissed": "Dismissed"
     },
     "aiKnowledge": {
       "loadFailed": "Failed to load knowledge base",
@@ -3457,7 +3476,7 @@
         "nothingToUpdate": "Nothing to update",
         "contentEmpty": "content cannot be empty",
         "updateDocFailed": "Failed to update document",
-        "indexingFailed": "indexing failed",
+        "indexingFailed": "Indexing failed",
         "updatedIndexFailed": "Updated, but semantic indexing failed ({message}). Lexical search still works; use Reindex to retry.",
         "updatedNotIndexed": "Updated, but indexing failed ({message}). The document is not searchable yet; use Reindex to retry.",
         "updatedKeywordOnly": "Updated with keyword search only — your embeddings key could not be decrypted (check ENCRYPTION_KEY, then re-enter the key).",
@@ -3466,10 +3485,15 @@
         "reindexKeyCorrupt": "Your embeddings key could not be decrypted (check ENCRYPTION_KEY, then re-enter the key in Settings → AI Assistant). Nothing was reindexed.",
         "loadKbFailed": "Failed to load knowledge base",
         "titleContentRequired": "title and content are required",
-        "saveDocFailed": "Failed to save document",
-        "savedIndexFailed": "Saved, but semantic indexing failed ({message}). Lexical search still works; use Reindex to retry.",
-        "savedNotIndexed": "Saved, but indexing failed ({message}). The document is not searchable yet; use Reindex to retry.",
-        "savedKeywordOnly": "Saved with keyword search only — your embeddings key could not be decrypted (check ENCRYPTION_KEY, then re-enter the key)."
+        "saveDocFailed": "Could not save the document",
+        "savedIndexFailed": "Saved without full indexing: {message}",
+        "savedNotIndexed": "Saved but not indexed: {message}",
+        "savedKeywordOnly": "Saved, but search stays keyword-only (no embeddings key)",
+        "loadSuggestionsFailed": "Could not load suggestions",
+        "invalidReview": "Invalid review request",
+        "notFound": "Suggestion not found",
+        "alreadyReviewed": "This suggestion was already reviewed",
+        "reviewFailed": "Could not update the suggestion"
       },
       "outsideHoursModeInvalid": "Invalid outside-hours mode",
       "outsideHoursMessageRequired": "Enter the away message first",

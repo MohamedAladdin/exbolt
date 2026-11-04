@@ -2,7 +2,17 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Loader2, Plus, Trash2, Pencil, RefreshCw, BookOpen } from 'lucide-react';
+import {
+  Loader2,
+  Plus,
+  Trash2,
+  Pencil,
+  RefreshCw,
+  BookOpen,
+  Sparkles,
+  Check,
+  X,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,6 +25,13 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { useTranslations } from 'next-intl';
+
+interface SuggestionRow {
+  id: string;
+  question: string;
+  answer: string;
+  created_at: string;
+}
 
 interface DocSummary {
   id: string;
@@ -41,6 +58,8 @@ export function AiKnowledgeCard({
   const [content, setContent] = useState('');
   const [saving, setSaving] = useState(false);
   const [reindexing, setReindexing] = useState(false);
+  const [suggestions, setSuggestions] = useState<SuggestionRow[]>([]);
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
   const loadedAccountIdRef = useRef<string | null>(null);
   const t = useTranslations('Settings.aiKnowledge');
 
@@ -58,11 +77,53 @@ export function AiKnowledgeCard({
     }
   }, []);
 
+  const fetchSuggestions = useCallback(async () => {
+    try {
+      const res = await fetch('/api/ai/knowledge/suggestions', { cache: 'no-store' });
+      const data = await res.json();
+      if (res.ok) setSuggestions(data.suggestions ?? []);
+    } catch {
+      // Suggestions are an extra: a failed read must not break the card.
+    }
+  }, []);
+
   useEffect(() => {
     if (!accountId || loadedAccountIdRef.current === accountId) return;
     loadedAccountIdRef.current = accountId;
     void fetchDocs();
-  }, [accountId, fetchDocs]);
+    void fetchSuggestions();
+  }, [accountId, fetchDocs, fetchSuggestions]);
+
+  /** Approve turns the draft into a document; dismiss hides it for good. */
+  const review = useCallback(
+    async (id: string, action: 'approve' | 'dismiss') => {
+      setReviewingId(id);
+      try {
+        const res = await fetch('/api/ai/knowledge/suggestions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, action }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          toast.error(data.error ?? t('reviewFailed'));
+          return;
+        }
+        setSuggestions((prev) => prev.filter((s) => s.id !== id));
+        if (action === 'approve') {
+          toast.success(data.warning ?? t('suggestionApproved'));
+          void fetchDocs();
+        } else {
+          toast.success(t('suggestionDismissed'));
+        }
+      } catch {
+        toast.error(t('reviewFailed'));
+      } finally {
+        setReviewingId(null);
+      }
+    },
+    [fetchDocs, t],
+  );
 
   const openNew = () => {
     setEditing('new');
@@ -189,6 +250,65 @@ export function AiKnowledgeCard({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {suggestions.length > 0 && (
+          <div className="space-y-2 rounded-md border border-border bg-muted/30 p-3">
+            <div>
+              <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <Sparkles className="h-4 w-4 text-primary" />
+                {t('suggestionsTitle')}
+                <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs text-primary">
+                  {suggestions.length}
+                </span>
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t('suggestionsDesc')}
+              </p>
+            </div>
+            <ul className="space-y-2">
+              {suggestions.map((suggestion) => (
+                <li
+                  key={suggestion.id}
+                  className="rounded-md border border-border bg-background px-3 py-2"
+                >
+                  <p className="text-sm text-foreground" dir="auto">
+                    {suggestion.question}
+                  </p>
+                  <p className="mt-1 line-clamp-3 text-xs text-muted-foreground" dir="auto">
+                    {suggestion.answer}
+                  </p>
+                  {canEdit && (
+                    <div className="mt-2 flex gap-2">
+                      <Button
+                        size="sm"
+                        className="h-7"
+                        disabled={reviewingId === suggestion.id}
+                        onClick={() => void review(suggestion.id, 'approve')}
+                      >
+                        {reviewingId === suggestion.id ? (
+                          <Loader2 className="me-1 h-3 w-3 animate-spin" />
+                        ) : (
+                          <Check className="me-1 h-3 w-3" />
+                        )}
+                        {t('approve')}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7"
+                        disabled={reviewingId === suggestion.id}
+                        onClick={() => void review(suggestion.id, 'dismiss')}
+                      >
+                        <X className="me-1 h-3 w-3" />
+                        {t('dismiss')}
+                      </Button>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {loading ? (
           <div className="flex items-center py-4 text-sm text-muted-foreground">
             <Loader2 className="me-2 h-4 w-4 animate-spin" /> {t('loading')}

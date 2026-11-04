@@ -15,12 +15,23 @@ import {
   DollarSign,
   StickyNote,
   Plus,
+  Brain,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 import { useTranslations } from "next-intl";
 import { contactHandle } from "@/lib/whatsapp/wa-identity";
+import { canEditSettings as canEditRole } from "@/lib/auth/roles";
+
+/** One durable fact the assistant remembers about this customer. */
+interface ContactFactRow {
+  id: string;
+  fact_key: string;
+  fact_value: string;
+  source: string;
+}
 
 interface ContactSidebarProps {
   contact: Contact | null;
@@ -30,11 +41,14 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
   const tSidebar = useTranslations("Inbox.sidebar");
   const tThread = useTranslations("Inbox.messageThread");
 
-  const { accountId } = useAuth();
+  const { accountId, accountRole } = useAuth();
+  // Only admins/owners may correct the assistant's memory (RLS agrees).
+  const canManageFacts = accountRole ? canEditRole(accountRole) : false;
   const [copied, setCopied] = useState(false);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [notes, setNotes] = useState<ContactNote[]>([]);
   const [tags, setTags] = useState<(Tag & { contact_tag_id: string })[]>([]);
+  const [facts, setFacts] = useState<ContactFactRow[]>([]);
   const [newNote, setNewNote] = useState("");
   const [addingNote, setAddingNote] = useState(false);
 
@@ -44,7 +58,7 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
     const supabase = createClient();
 
     // Fetch deals, notes, and tags in parallel
-    const [dealsRes, notesRes, tagsRes] = await Promise.all([
+    const [dealsRes, notesRes, tagsRes, factsRes] = await Promise.all([
       supabase
         .from("deals")
         .select("*, stage:pipeline_stages(*)")
@@ -59,10 +73,16 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
         .from("contact_tags")
         .select("id, tag_id, tags(*)")
         .eq("contact_id", contact.id),
+      supabase
+        .from("contact_facts")
+        .select("id, fact_key, fact_value, source")
+        .eq("contact_id", contact.id)
+        .order("fact_key", { ascending: true }),
     ]);
 
     if (dealsRes.data) setDeals(dealsRes.data);
     if (notesRes.data) setNotes(notesRes.data);
+    if (factsRes.data) setFacts(factsRes.data as ContactFactRow[]);
     if (tagsRes.data) {
       const mapped = tagsRes.data
         .filter((ct: Record<string, unknown>) => ct.tags)
@@ -133,6 +153,15 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
 
   const displayName = contact.name || contactHandle(contact);
   const initials = displayName.charAt(0).toUpperCase();
+
+  // The assistant's memory is a proposal, not gospel: anyone with the admin
+  // role can drop a wrong fact (RLS enforces the same rule server-side).
+  const handleDeleteFact = useCallback(async (id: string) => {
+    const supabase = createClient();
+    const { error } = await supabase.from("contact_facts").delete().eq("id", id);
+    if (error) return;
+    setFacts((prev) => prev.filter((fact) => fact.id !== id));
+  }, []);
 
   return (
     <div className="flex h-full w-70 flex-col border-s border-border bg-card">
@@ -259,6 +288,48 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
 
           {/* Divider */}
           <div className="my-4 border-t border-border" />
+
+          {/* Assistant memory — what the bot remembers between chats */}
+          {facts.length > 0 && (
+            <>
+              <div className="my-4 border-t border-border" />
+              <div>
+                <div className="flex items-center gap-2 px-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  <Brain className="h-3 w-3" />
+                  {tSidebar("aiMemory")}
+                </div>
+                <div className="mt-2 space-y-1.5">
+                  {facts.map((fact) => (
+                    <div
+                      key={fact.id}
+                      className="group flex items-start justify-between gap-2 rounded-lg bg-muted px-3 py-1.5"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                          {tSidebar.has(`factKeys.${fact.fact_key}`)
+                            ? tSidebar(`factKeys.${fact.fact_key}`)
+                            : fact.fact_key}
+                        </p>
+                        <p className="truncate text-xs text-foreground" dir="auto">
+                          {fact.fact_value}
+                        </p>
+                      </div>
+                      {canManageFacts && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteFact(fact.id)}
+                          aria-label={tSidebar("deleteFact")}
+                          className="opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
+                        >
+                          <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Notes */}
           <div>

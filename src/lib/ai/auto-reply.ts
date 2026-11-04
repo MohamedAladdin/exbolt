@@ -6,6 +6,7 @@ import { generateReply } from './generate'
 import { buildSystemPrompt } from './defaults'
 import { buildHandoffSummary } from './handoff'
 import { notifyUnassignedHandoff } from './handoff-alert'
+import { formatFacts, loadContactFacts } from './facts'
 import {
   describeWorkWindow,
   isInsideWorkWindow,
@@ -172,10 +173,15 @@ export async function dispatchInboundToAiReply(
       latestUserMessage(messages),
     )
 
+    // Durable facts the customer stated in earlier threads — the model is
+    // otherwise stateless and would re-ask. Read-only reference.
+    const facts = await loadContactFacts(db, accountId, contactId)
+
     const systemPrompt = buildSystemPrompt({
       userPrompt: config.systemPrompt,
       mode: 'auto_reply',
       knowledge,
+      memory: formatFacts(facts),
     })
 
     const { text, handoff, usage } = await generateReply({

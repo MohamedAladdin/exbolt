@@ -584,7 +584,19 @@
       "deals": "الصفقات",
       "noTags": "لا وسوم",
       "noDeals": "لا صفقات",
-      "addNotePlaceholder": "أضف ملاحظة..."
+      "addNotePlaceholder": "أضف ملاحظة...",
+      "aiMemory": "ذاكرة المساعد",
+      "deleteFact": "امسح المعلومة دي",
+      "factKeys": {
+        "patient_name": "اسم المريض",
+        "preferred_branch": "الفرع المفضل",
+        "preferred_doctor": "طبيب مفضل",
+        "insurance": "التأمين",
+        "file_number": "رقم الملف",
+        "alt_phone": "رقم إضافي",
+        "preferred_time": "وقت مفضل",
+        "city": "المدينة"
+      }
     },
     "aiBanner": {
       "pausedTitle": "مساعد AI متوقف هنا",
@@ -2428,7 +2440,14 @@
       "day3": "الأربعاء",
       "day4": "الخميس",
       "day5": "الجمعة",
-      "day6": "السبت"
+      "day6": "السبت",
+      "suggestionsTitle": "مقترحات من المحادثات",
+      "suggestionsDesc": "أسئلة حقيقية عملاء سألوها وردّ عليها موظف. الموافقة بتحوّلها مستند في قاعدة المعرفة — لحد ما توافق، الوكيل مش شايفها.",
+      "approve": "موافقة وإضافة",
+      "dismiss": "رفض",
+      "reviewing": "جاري…",
+      "suggestionApproved": "اتضافت لقاعدة المعرفة",
+      "suggestionDismissed": "اترفض"
     },
     "aiKnowledge": {
       "loadFailed": "تعذّر تحميل قاعدة المعرفة",
@@ -3457,7 +3476,7 @@
         "nothingToUpdate": "لا شيء للتحديث",
         "contentEmpty": "لا يمكن أن يكون content فارغًا",
         "updateDocFailed": "تعذّر تحديث المستند",
-        "indexingFailed": "فشلت الفهرسة",
+        "indexingFailed": "الفهرسة فشلت",
         "updatedIndexFailed": "تم التحديث، لكن فشلت الفهرسة الدلالية ({message}). ما زال البحث اللفظي يعمل؛ استخدم «إعادة الفهرسة» للمحاولة مجددًا.",
         "updatedNotIndexed": "تم التحديث، لكن فشلت الفهرسة ({message}). المستند غير قابل للبحث بعد؛ استخدم «إعادة الفهرسة» للمحاولة مجددًا.",
         "updatedKeywordOnly": "تم التحديث بالبحث بالكلمات فقط — تعذّر فك تشفير مفتاح التضمينات (تحقق من ENCRYPTION_KEY ثم أعد إدخال المفتاح).",
@@ -3466,10 +3485,15 @@
         "reindexKeyCorrupt": "تعذّر فك تشفير مفتاح التضمينات (تحقق من ENCRYPTION_KEY ثم أعد إدخال المفتاح من الإعدادات ← مساعد AI). لم تُعد فهرسة أي شيء.",
         "loadKbFailed": "تعذّر تحميل قاعدة المعرفة",
         "titleContentRequired": "title و content مطلوبان",
-        "saveDocFailed": "تعذّر حفظ المستند",
-        "savedIndexFailed": "تم الحفظ، لكن فشلت الفهرسة الدلالية ({message}). ما زال البحث اللفظي يعمل؛ استخدم «إعادة الفهرسة» للمحاولة مجددًا.",
-        "savedNotIndexed": "تم الحفظ، لكن فشلت الفهرسة ({message}). المستند غير قابل للبحث بعد؛ استخدم «إعادة الفهرسة» للمحاولة مجددًا.",
-        "savedKeywordOnly": "تم الحفظ بالبحث بالكلمات فقط — تعذّر فك تشفير مفتاح التضمينات (تحقق من ENCRYPTION_KEY ثم أعد إدخال المفتاح)."
+        "saveDocFailed": "تعذر حفظ المستند",
+        "savedIndexFailed": "اتحفظ بدون فهرسة كاملة: {message}",
+        "savedNotIndexed": "اتحفظ بس مش اتوقفّس: {message}",
+        "savedKeywordOnly": "اتحفظ، بس البحث هيبقى بالكلمات بس (مفتاح embeddings مش موجود)",
+        "loadSuggestionsFailed": "تعذر تحميل المقترحات",
+        "invalidReview": "طلب مراجعة غير صحيح",
+        "notFound": "المقترح غير موجود",
+        "alreadyReviewed": "المقترح ده اتراجع قبل كده",
+        "reviewFailed": "تعذر تحديث المقترح"
       },
       "outsideHoursModeInvalid": "وضع خارج أوقات العمل غير صحيح",
       "outsideHoursMessageRequired": "اكتب نص رسالة خارج الدوام الأول",
