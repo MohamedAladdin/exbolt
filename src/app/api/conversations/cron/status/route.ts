@@ -64,19 +64,21 @@ async function applyStatus(
   admin: ReturnType<typeof supabaseAdmin>,
   ids: string[],
   status: Exclude<AutoStatusTarget, null>,
+  reason: 'auto_window' | 'auto_idle',
 ): Promise<number> {
   let changed = 0
   for (let i = 0; i < ids.length; i += UPDATE_CHUNK) {
     const chunk = ids.slice(i, i + UPDATE_CHUNK)
-    const { error, count } = await admin
-      .from('conversations')
-      // `status_auto` keeps the KPI honest: a retired-by-cron thread must not
-      // read as a human resolution.
-      .update({ status, status_auto: true }, { count: 'exact' })
-      .in('id', chunk)
-      .neq('status', status)
+    // One RPC, not an inline update: it flags `status_auto` (so a retired
+    // thread never reads as a human resolution) and sets the audit reason the
+    // status-history trigger records.
+    const { data, error } = await admin.rpc('apply_conversation_status', {
+      p_ids: chunk,
+      p_status: status,
+      p_reason: reason,
+    })
     if (error) throw new Error(`update ${status}: ${error.message}`)
-    changed += count ?? chunk.length
+    changed += Number(data ?? 0)
   }
   return changed
 }
@@ -145,8 +147,8 @@ export async function GET(request: Request) {
   let closedChanged = 0
   let pendingChanged = 0
   try {
-    closedChanged = await applyStatus(admin, closed, 'closed')
-    pendingChanged = await applyStatus(admin, pending, 'pending')
+    closedChanged = await applyStatus(admin, closed, 'closed', 'auto_idle')
+    pendingChanged = await applyStatus(admin, pending, 'pending', 'auto_window')
   } catch (err) {
     const message = err instanceof Error ? err.message : 'unknown error'
     return NextResponse.json({ error: message, scanned }, { status: 500 })

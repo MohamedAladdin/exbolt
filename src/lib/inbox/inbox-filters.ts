@@ -16,10 +16,18 @@ export type InboxFilter = (typeof INBOX_FILTERS)[number];
 const WINDOW_MS = 24 * 60 * 60 * 1000;
 const EXPIRING_WITHIN_MS = 2 * 60 * 60 * 1000;
 
+/**
+ * The inbox opens on "مفتوحة", not "الكل": a closed or pending thread is not
+ * work — it is a thread the day already moved past. "الكل" stays one click
+ * away and carries its own count, so nothing becomes invisible; the daily
+ * screen just stops opening on last month's leftovers.
+ */
+export const DEFAULT_INBOX_FILTER: InboxFilter = "open";
+
 export function parseInboxFilter(raw: string | null | undefined): InboxFilter {
   return (INBOX_FILTERS as readonly string[]).includes(raw ?? "")
     ? (raw as InboxFilter)
-    : "all";
+    : DEFAULT_INBOX_FILTER;
 }
 
 export function isAwaitingReply(c: Conversation): boolean {

@@ -119,6 +119,9 @@ export function ConversationList({
   const [total, setTotal] = useState(0);
   const [counts, setCounts] = useState<{
     total: number;
+    /** Per-filter counts under the active narrow set (migration 091) — the
+     *  number beside a filter is the number of rows clicking it returns. */
+    filters?: Partial<Record<InboxFilter, number>>;
     channels: Record<string, number>;
     numbers: Record<string, number>;
     companies: string[];
@@ -217,6 +220,7 @@ export function ConversationList({
         rows: Parameters<typeof normalizeConversations>[0];
         counts: {
           total: number;
+          filters?: Partial<Record<InboxFilter, number>>;
           channels: Record<string, number>;
           numbers: Record<string, number>;
           companies: string[];
@@ -392,6 +396,12 @@ export function ConversationList({
 
   // Only worth showing when the account actually runs more than one
   // transport — a WhatsApp-only workspace keeps the original single row.
+  /** Per-filter counts, computed server-side over the same narrow set. */
+  const filterCounts = useMemo<Partial<Record<InboxFilter, number>>>(
+    () => counts?.filters ?? {},
+    [counts],
+  );
+
   const activeChannels = CHANNELS.filter((ch) => channelCounts[ch] > 0);
   const showChannelFilter = activeChannels.length > 1;
 
@@ -596,6 +606,11 @@ export function ConversationList({
           <DropdownMenu>
             <DropdownMenuTrigger className="inline-flex items-center justify-center h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground rounded-md hover:bg-muted">
                 {activeFilter?.label ?? t("filterAll")}
+                {typeof filterCounts[filter] === "number" && (
+                  <span className="tabular-nums text-[10px] text-muted-foreground/80">
+                    {filterCounts[filter]}
+                  </span>
+                )}
                 <ChevronDown className="h-3 w-3" />
             </DropdownMenuTrigger>
             <DropdownMenuContent
@@ -607,13 +622,20 @@ export function ConversationList({
                   key={opt.value}
                   onClick={() => setFilter(opt.value)}
                   className={cn(
-                    "text-sm",
+                    "justify-between gap-6 text-sm",
                     filter === opt.value
                       ? "text-primary"
                       : "text-popover-foreground"
                   )}
                 >
-                  {opt.label}
+                  {/* nowrap: a long label ("نافذة الرد تُغلق") used to wrap to
+                      two lines and leave its count floating mid-row. */}
+                  <span className="whitespace-nowrap">{opt.label}</span>
+                  {typeof filterCounts[opt.value] === "number" && (
+                    <span className="shrink-0 tabular-nums text-xs text-muted-foreground">
+                      {filterCounts[opt.value]}
+                    </span>
+                  )}
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
@@ -661,8 +683,9 @@ export function ConversationList({
             </DropdownMenu>
           )}
 
-          {/* A single company value filters exactly one thread: noise. */}
-          {companies.length > 1 && (
+          {/* Always shown, even for a single company: hiding the control made
+              the row change shape between accounts and looked like a bug. */}
+          {companies.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger
                 className={cn(

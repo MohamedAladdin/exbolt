@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Conversation } from "@/types";
 import {
+  DEFAULT_INBOX_FILTER,
   applyInboxFilter,
   isAwaitingReply,
   isWindowClosing,
@@ -24,11 +25,15 @@ function conv(id: string, patch: Partial<Conversation> = {}): Conversation {
 }
 
 describe("parseInboxFilter", () => {
-  it("accepts every known filter and falls back to all", () => {
+  it("accepts every known filter and falls back to the default", () => {
     expect(parseInboxFilter("waiting")).toBe("waiting");
     expect(parseInboxFilter("expiring")).toBe("expiring");
-    expect(parseInboxFilter("bogus")).toBe("all");
-    expect(parseInboxFilter(null)).toBe("all");
+    expect(parseInboxFilter("bogus")).toBe(DEFAULT_INBOX_FILTER);
+    expect(parseInboxFilter(null)).toBe(DEFAULT_INBOX_FILTER);
+  });
+
+  it("opens on مفتوحة — a closed or pending thread is not today's work", () => {
+    expect(DEFAULT_INBOX_FILTER).toBe("open");
   });
 });
 

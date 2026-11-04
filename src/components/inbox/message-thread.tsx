@@ -61,6 +61,8 @@ import { MediaLightbox } from "./media-lightbox";
 import { collectMediaGallery } from "@/lib/media/gallery";
 import { MessageComposer, CHAT_MEDIA_BUCKET, type SendMediaPayload } from "./message-composer";
 import { StatusControl } from "./status-control";
+import { StatusHistory } from "./status-history";
+import { useFeature } from "@/hooks/use-entitlements";
 import { deleteAccountMedia } from "@/lib/storage/upload-media";
 import { TemplatePicker } from "./template-picker";
 import { AiThreadBanner } from "./ai-thread-banner";
@@ -104,7 +106,11 @@ interface MessageThreadProps {
   onOlderMessagesLoaded?: (messages: Message[]) => void;
   onNewMessage: (message: Message) => void;
   onUpdateMessage: (id: string, updates: Partial<Message>) => void;
-  onStatusChange: (conversationId: string, status: ConversationStatus) => void;
+  onStatusChange: (
+    conversationId: string,
+    status: ConversationStatus,
+    patch?: Partial<Pick<Conversation, "status_auto" | "closed_by">>,
+  ) => void;
   onAssignChange: (
     conversationId: string,
     assignedAgentId: string | null,
@@ -217,6 +223,7 @@ export function MessageThread({
   onToggleContactPanel,
 }: MessageThreadProps) {
   const t = useTranslations("Inbox.messageThread");
+  const canSeeHistory = useFeature("audit_log");
   const tTimer = useTranslations("Inbox.sessionTimer");
   const tQuote = useTranslations("Inbox.replyQuote");
   // The agent's chat wallpaper (Settings → Appearance, or the paint button in
@@ -868,7 +875,12 @@ export function MessageThread({
         .update({ status, status_auto: false })
         .eq("id", conversation.id);
 
-      onStatusChange(conversation.id, status);
+      // Keep the header honest without a refetch: the row would otherwise
+      // still say "النظام" (or show the previous closer) right after we close it.
+      onStatusChange(conversation.id, status, {
+        status_auto: false,
+        closed_by: status === "closed" ? (user?.id ?? null) : null,
+      });
     },
     [conversation, onStatusChange]
   );
@@ -1110,6 +1122,14 @@ export function MessageThread({
 
   const displayName = contact.name || contactHandle(contact);
   const messageGroups = groupMessagesByDate(messages);
+  // Never claim "النظام" without evidence: a legacy row (closed before the
+  // history existed) has no `closed_by` and no `status_auto` flag.
+  const closedByName = conversation.closed_by
+    ? (profiles.find((p) => p.user_id === conversation.closed_by)?.full_name?.trim() ||
+       t("statusActorUnknown"))
+    : conversation.status_auto
+      ? t("statusActorSystem")
+      : t("statusActorUnknown");
   const assignedAgentId = conversation.assigned_agent_id ?? null;
   const currentAssignee = profiles.find((p) => p.user_id === assignedAgentId);
   const assignLabel = assignedAgentId
@@ -1171,6 +1191,14 @@ export function MessageThread({
             <p className="truncate text-xs text-muted-foreground">
               {contactHandle(contact)}
             </p>
+            {/* Who put this thread to rest — and whether it was a person at
+                all. A closed thread with no owner is the one thing an ops lead
+                cannot tolerate ("مين قفل دي؟"). */}
+            {conversation.status === "closed" && (
+              <p className="truncate text-[11px] text-muted-foreground/80">
+                {t("closedBy", { name: closedByName })}
+              </p>
+            )}
           </div>
           {/* Session timer badge — hidden on the narrowest phones so
               the name + back arrow keep their room. */}
@@ -1273,6 +1301,18 @@ export function MessageThread({
                 className={cn("h-3.5 w-3.5", isRefreshing && "animate-spin")}
               />
             </button>
+          )}
+
+          {/* Status history — paid (audit_log). The timeline answers who
+              closed/reopened the thread and why. */}
+          {/* Hidden on the narrowest screens: the header already carries four
+              controls + the status group, and an audit affordance is a desktop
+              habit — it must not squeeze the customer's name to 28px. */}
+          {canSeeHistory && (
+            <StatusHistory
+              conversationId={conversation.id}
+              className="hidden sm:inline-flex"
+            />
           )}
 
           {/* Status control — the quick action (غلق / فتح) plus a chevron for

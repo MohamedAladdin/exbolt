@@ -685,12 +685,20 @@ function InboxPageInner() {
   );
 
   const handleStatusChange = useCallback(
-    (conversationId: string, status: ConversationStatus) => {
+    (
+      conversationId: string,
+      status: ConversationStatus,
+      patch?: Partial<Pick<Conversation, "status_auto" | "closed_by">>,
+    ) => {
       setConversations((prev) =>
-        prev.map((c) => (c.id === conversationId ? { ...c, status } : c))
+        prev.map((c) =>
+          c.id === conversationId ? { ...c, status, ...patch } : c
+        )
       );
       if (activeConversation?.id === conversationId) {
-        setActiveConversation((prev) => (prev ? { ...prev, status } : prev));
+        setActiveConversation((prev) =>
+          prev ? { ...prev, status, ...patch } : prev
+        );
       }
     },
     [activeConversation]

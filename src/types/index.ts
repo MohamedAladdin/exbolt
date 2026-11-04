@@ -182,6 +182,8 @@ export interface Conversation {
   /** True when the auto-status sweep (migration 090) set `status`; a human
    *  action, an inbound message or a reopen clears it. */
   status_auto?: boolean;
+  /** Who closed the thread; null when the system did (see status_auto). */
+  closed_by?: string | null;
   assigned_agent_id?: string;
   last_message_text?: string;
   last_message_at?: string;

@@ -20,6 +20,10 @@ const tablesWithoutDomainData = new Set([
   // created anything; the rows cascade with the old account.
   "member_sessions",
   "pending_message_statuses",
+  // Same reasoning as the activity trail: a thread's status history describes
+  // events inside the account that produced it, cascades with it, and must
+  // never be the reason a join is refused (migration 091).
+  "conversation_status_events",
   // The audit trail describes events INSIDE the account that produced
   // them, so it must not be moved to the new account, and an existing
   // log line must never block someone from joining a team — the rows
