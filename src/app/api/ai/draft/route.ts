@@ -4,9 +4,9 @@ import { requireFeature } from '@/lib/plans/guard'
 import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit'
 import { loadAiConfig } from '@/lib/ai/config'
 import { buildConversationContext } from '@/lib/ai/context'
-import { retrieveKnowledge } from '@/lib/ai/knowledge'
+import { retrieveKnowledgeParts } from '@/lib/ai/knowledge'
 import { generateReply } from '@/lib/ai/generate'
-import { buildSystemPrompt } from '@/lib/ai/defaults'
+import { buildSystemPromptParts } from '@/lib/ai/defaults'
 import { latestUserMessage } from '@/lib/ai/query'
 import { logAiUsage } from '@/lib/ai/usage'
 import { supabaseAdmin } from '@/lib/ai/admin-client'
@@ -101,20 +101,30 @@ export async function POST(request: Request) {
 
     // Ground the draft in the account's knowledge base (best-effort —
     // returns [] when there's no KB or retrieval fails).
-    const knowledge = await retrieveKnowledge(
+    const knowledgeParts = await retrieveKnowledgeParts(
       supabase,
       accountId,
       config,
       latestUserMessage(messages),
     )
 
-    const systemPrompt = buildSystemPrompt({
+    const prompt = buildSystemPromptParts({
       userPrompt: config.systemPrompt,
       mode: 'draft',
-      knowledge,
+      knowledge: knowledgeParts.retrieved,
+      pinnedKnowledge: knowledgeParts.pinned,
     })
+    const systemPrompt = [prompt.stable, prompt.variable]
+      .filter(Boolean)
+      .join('\n\n')
 
-    const { text, usage } = await generateReply({ config, systemPrompt, messages })
+    const { text, usage } = await generateReply({
+      config,
+      systemPrompt,
+      // Same cacheable prefix as the auto-reply path.
+      stablePrefixLength: prompt.stable.length,
+      messages,
+    })
 
     // Record spend on the account's BYO key. Best-effort + via the
     // service role (the log has no `authenticated` INSERT policy). This
