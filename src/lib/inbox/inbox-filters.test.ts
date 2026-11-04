@@ -88,7 +88,9 @@ describe("applyInboxFilter", () => {
 
   it("follow-up = pending, we wrote last, nothing unread", () => {
     const queue = [
-      conv("ours", { status: "pending", last_inbound_at: ago(60 * 24 * 3), last_reply_at: ago(60 * 24 * 2) }),
+      conv("ours", { status: "pending", last_inbound_at: ago(60 * 24 * 6), last_reply_at: ago(60 * 24 * 5) }),
+      // we nudged two days ago → cooling down, not due yet
+      conv("nudged", { status: "pending", last_inbound_at: ago(60 * 24 * 4), last_reply_at: ago(60 * 24 * 2) }),
       // the customer wrote after us → waiting, not a follow-up
       conv("theirs", { status: "pending", last_inbound_at: ago(30), last_reply_at: ago(60) }),
       // unread is work, not a nudge

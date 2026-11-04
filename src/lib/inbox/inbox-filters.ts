@@ -15,6 +15,9 @@ export const INBOX_FILTERS = [
 export type InboxFilter = (typeof INBOX_FILTERS)[number];
 
 const WINDOW_MS = 24 * 60 * 60 * 1000;
+/** A thread we nudged less than 3 days ago is not due again yet. Mirrors the
+ *  SQL in migration 094 — the two must stay in step. */
+export const FOLLOWUP_COOLDOWN_MS = 3 * 24 * 60 * 60 * 1000;
 const EXPIRING_WITHIN_MS = 2 * 60 * 60 * 1000;
 
 /**
@@ -64,17 +67,21 @@ export function applyInboxFilter(
     case "unassigned":
       return conversations.filter((c) => c.status === "open" && !c.assigned_agent_id);
     case "followup":
-      // Pending, we wrote last, nothing unread: the ball is in their court.
+      // Pending, we wrote last, nothing unread, and nobody tried recently:
+      // the ball is in their court AND the nudge is due.
       return conversations
-        .filter(
-          (c) =>
-            c.status === "pending" &&
-            !!c.last_inbound_at &&
-            (!c.last_reply_at ||
-              new Date(c.last_reply_at).getTime() >=
-                new Date(c.last_inbound_at).getTime()) &&
-            (c.unread_count ?? 0) === 0,
-        )
+        .filter((c) => {
+          if (c.status !== "pending" || !c.last_inbound_at) return false;
+          if ((c.unread_count ?? 0) > 0) return false;
+          const inbound = new Date(c.last_inbound_at).getTime();
+          if (c.last_reply_at && new Date(c.last_reply_at).getTime() < inbound) {
+            return false;
+          }
+          const lastAttempt = c.last_reply_at
+            ? new Date(c.last_reply_at).getTime()
+            : inbound;
+          return now - lastAttempt >= FOLLOWUP_COOLDOWN_MS;
+        })
         .sort(byOldestInbound);
     default:
       return conversations.filter((c) => c.status === (filter as ConversationStatus));

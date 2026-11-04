@@ -357,7 +357,7 @@
       "filterPending": "معلّقة",
       "filterClosed": "مغلقة",
       "filterFollowup": "محتاجة متابعة",
-      "filterFollowupHint": "محادثات معلّقة إحنا آخر من كتب فيها — العميل ساكت والكرة في ملعبه",
+      "filterFollowupHint": "محادثات معلّقة إحنا آخر من كتب فيها، وعدّى 3 أيام على آخر محاولة — العميل ساكت والكرة في ملعبه",
       "followupSilent": "{count, plural, =0 {ساكت النهارده} =1 {ساكت يوم} =2 {ساكت يومين} other {ساكت # أيام}}",
       "followupLastFromUs": "آخر رسالة مننا",
       "tags": "الوسوم",

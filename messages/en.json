@@ -357,7 +357,7 @@
       "filterPending": "Pending",
       "filterClosed": "Closed",
       "filterFollowup": "Needs follow-up",
-      "filterFollowupHint": "Pending threads where we wrote last — the customer went quiet and the ball is in their court",
+      "filterFollowupHint": "Pending threads where we wrote last and the last attempt is 3+ days old — the ball is in the customer's court",
       "followupSilent": "{count, plural, =0 {Silent since today} =1 {Silent 1 day} other {Silent # days}}",
       "followupLastFromUs": "Last message from us",
       "tags": "Tags",
