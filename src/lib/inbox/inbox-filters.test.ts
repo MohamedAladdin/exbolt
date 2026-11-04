@@ -86,6 +86,21 @@ describe("applyInboxFilter", () => {
     expect(applyInboxFilter(list, "unassigned", NOW).map((c) => c.id)).toEqual(["recent", "answered"]);
   });
 
+  it("follow-up = pending, we wrote last, nothing unread", () => {
+    const queue = [
+      conv("ours", { status: "pending", last_inbound_at: ago(60 * 24 * 3), last_reply_at: ago(60 * 24 * 2) }),
+      // the customer wrote after us → waiting, not a follow-up
+      conv("theirs", { status: "pending", last_inbound_at: ago(30), last_reply_at: ago(60) }),
+      // unread is work, not a nudge
+      conv("unread-pending", { status: "pending", unread_count: 1, last_inbound_at: ago(60 * 24), last_reply_at: ago(60 * 24 * 2) }),
+      // not pending at all
+      conv("open-one", { status: "open", last_inbound_at: ago(60 * 24 * 4), last_reply_at: ago(60 * 24 * 3) }),
+      // never wrote: the window never opened
+      conv("never", { status: "pending", last_inbound_at: null }),
+    ];
+    expect(applyInboxFilter(queue, "followup", NOW).map((c) => c.id)).toEqual(["ours"]);
+  });
+
   it("keeps the existing unread and status filters", () => {
     expect(applyInboxFilter(list, "unread", NOW).map((c) => c.id)).toEqual(["unread"]);
     expect(applyInboxFilter(list, "pending", NOW).map((c) => c.id)).toEqual(["pending"]);

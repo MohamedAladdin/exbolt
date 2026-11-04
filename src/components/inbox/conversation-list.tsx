@@ -6,10 +6,10 @@ import {
   CONVERSATION_PAGE_SIZE,
   normalizeConversations,
 } from "@/lib/inbox/conversations";
-import type { InboxFilter } from "@/lib/inbox/inbox-filters";
+import { DEFAULT_INBOX_FILTER, type InboxFilter } from "@/lib/inbox/inbox-filters";
 import { cn } from "@/lib/utils";
 import type { Conversation, ConversationStatus, Tag } from "@/types";
-import { Search, ChevronDown, X, Phone, UserRound } from "lucide-react";
+import { Search, ChevronDown, X, Phone, UserRound, Clock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
@@ -641,6 +641,35 @@ export function ConversationList({
             </DropdownMenuContent>
           </DropdownMenu>
 
+          {/* «محتاجة متابعة» — the only filter worth its own one-click chip
+              next to the status control: a pending thread where we wrote last
+              and the customer never came back. Pending is derived, so this is
+              a view, never a fourth status. */}
+          {(filterCounts.followup ?? 0) > 0 || filter === "followup" ? (
+            <button
+              type="button"
+              onClick={() =>
+                setFilter(filter === "followup" ? DEFAULT_INBOX_FILTER : "followup")
+              }
+              aria-pressed={filter === "followup"}
+              title={t("filterFollowupHint")}
+              className={cn(
+                "inline-flex h-7 items-center gap-1 rounded-full border px-2 text-xs font-medium transition-colors",
+                filter === "followup"
+                  ? "border-amber-400 bg-amber-400 text-amber-950"
+                  : "border-amber-400/40 bg-amber-400/10 text-amber-400 hover:bg-amber-400/20",
+              )}
+            >
+              <Clock className="h-3 w-3" aria-hidden />
+              {t("filterFollowup")}
+              {typeof filterCounts.followup === "number" && (
+                <span className="tabular-nums text-[10px] opacity-80">
+                  {filterCounts.followup}
+                </span>
+              )}
+            </button>
+          ) : null}
+
           {tags.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger
@@ -846,6 +875,7 @@ export function ConversationList({
                 isActive={conv.id === activeConversationId}
                 onSelect={handleSelect}
                 t={t}
+                showFollowup={filter === "followup"}
                 numberBadge={
                   showNumberFilter && conv.whatsapp_config_id
                     ? (() => {
@@ -908,6 +938,9 @@ interface ConversationItemProps {
   t: ReturnType<typeof useTranslations>;
   /** e.g. "…9292" when the account has more than one number. */
   numberBadge?: string | null;
+  /** True while the «محتاجة متابعة» queue is showing: the row then reports
+   *  how long the customer has been silent, which is what the sort uses. */
+  showFollowup?: boolean;
 }
 
 function ConversationItem({
@@ -916,7 +949,16 @@ function ConversationItem({
   onSelect,
   t,
   numberBadge = null,
+  showFollowup = false,
 }: ConversationItemProps) {
+  const silentDays = conversation.last_inbound_at
+    ? Math.max(
+        0,
+        Math.floor(
+          (Date.now() - new Date(conversation.last_inbound_at).getTime()) / 86_400_000,
+        ),
+      )
+    : 0;
   const contact = conversation.contact;
   const displayName = contact?.name || contact?.phone || t("unknown");
   const initials = displayName.charAt(0).toUpperCase();
@@ -998,6 +1040,23 @@ function ConversationItem({
               )}
               title={conversation.status}
             />
+            {showFollowup && conversation.last_inbound_at ? (
+              <>
+                <span
+                  className={cn(
+                    "rounded-full border px-1.5 py-px text-[10px] font-semibold tabular-nums",
+                    silentDays >= 3
+                      ? "border-red-500/40 bg-red-500/15 text-red-400"
+                      : "border-amber-400/40 bg-amber-400/15 text-amber-400",
+                  )}
+                >
+                  {t("followupSilent", { count: silentDays })}
+                </span>
+                {/* No «آخر رسالة مننا» tag here: every row in this queue is
+                    by definition ours, and two pills per row made a 340px list
+                    read as clutter. */}
+              </>
+            ) : null}
           </div>
         </div>
       </div>

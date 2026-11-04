@@ -9,6 +9,7 @@ export const INBOX_FILTERS = [
   "open",
   "pending",
   "closed",
+  "followup",
 ] as const;
 
 export type InboxFilter = (typeof INBOX_FILTERS)[number];
@@ -62,6 +63,19 @@ export function applyInboxFilter(
       return conversations.filter((c) => isWindowClosing(c, now)).sort(byOldestInbound);
     case "unassigned":
       return conversations.filter((c) => c.status === "open" && !c.assigned_agent_id);
+    case "followup":
+      // Pending, we wrote last, nothing unread: the ball is in their court.
+      return conversations
+        .filter(
+          (c) =>
+            c.status === "pending" &&
+            !!c.last_inbound_at &&
+            (!c.last_reply_at ||
+              new Date(c.last_reply_at).getTime() >=
+                new Date(c.last_inbound_at).getTime()) &&
+            (c.unread_count ?? 0) === 0,
+        )
+        .sort(byOldestInbound);
     default:
       return conversations.filter((c) => c.status === (filter as ConversationStatus));
   }
