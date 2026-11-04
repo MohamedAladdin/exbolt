@@ -133,7 +133,7 @@ function SignupPageInner() {
     return (
       <div className="bg-background flex min-h-screen items-center justify-center px-4">
         <Card className="border-border bg-card w-full max-w-md">
-          <CardHeader className="items-center text-center">
+          <CardHeader className="items-center justify-items-center text-center">
             <div className="bg-primary/10 mb-2 flex h-12 w-12 items-center justify-center rounded-xl">
               <CheckCircle className="text-primary h-6 w-6" />
             </div>
@@ -174,7 +174,7 @@ function SignupPageInner() {
     return (
       <div className="bg-background flex min-h-screen items-center justify-center px-4">
         <Card className="border-border bg-card w-full max-w-md">
-          <CardHeader className="items-center text-center">
+          <CardHeader className="items-center justify-items-center text-center">
             <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10">
               <Lock className="h-6 w-6 text-amber-500" />
             </div>
@@ -209,7 +209,7 @@ function SignupPageInner() {
   return (
     <div className="bg-background flex min-h-screen items-center justify-center px-4">
       <Card className="border-border bg-card w-full max-w-md">
-        <CardHeader className="items-center text-center">
+        <CardHeader className="items-center justify-items-center text-center">
           {inviteToken ? (
             <div className="bg-primary/10 mb-2 flex h-12 w-12 items-center justify-center rounded-xl">
               <UsersRound className="text-primary h-6 w-6" />
