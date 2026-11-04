@@ -14,10 +14,11 @@ import {
 } from "@/lib/inbox/inbox-filters";
 import { cn } from "@/lib/utils";
 import type { Conversation, ConversationStatus, Tag } from "@/types";
-import { Search, ChevronDown, X, Phone, UserRound, Clock, Info } from "lucide-react";
+import { Search, X, Clock, SlidersHorizontal } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -74,6 +75,12 @@ export interface InboxNumberOption {
   display_phone_number: string | null;
   verified_name: string | null;
 }
+
+/** The tabs the list stays on. Every other filter is one click away behind the
+ *  funnel: statuses are what an agent switches between all day, the rest are
+ *  occasional narrowing. */
+const STATUS_TABS: InboxFilter[] = ["all", "open", "pending", "closed", "followup"];
+const QUICK_FILTERS: InboxFilter[] = ["unread", "waiting", "unassigned", "expiring"];
 
 const STATUS_COLORS: Record<ConversationStatus, string> = {
   open: "bg-primary",
@@ -167,6 +174,8 @@ export function ConversationList({
   // Broadcast audience filtering. Company is an exact match on the field.
   const [tags, setTags] = useState<Tag[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
   const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
   // Channel filter (migration 060). 'all' keeps the historical behaviour;
   // picking a channel narrows the list to threads that arrived on it, so
@@ -464,6 +473,16 @@ export function ConversationList({
 
   const showNumberFilter = numbers.length > 1;
 
+  /** Filters that narrow the list but are not statuses — they live inside the
+   *  funnel button, and this is the number on its badge. */
+  const extraFilterCount =
+    (channelFilter === "all" ? 0 : 1) +
+    (numberFilter === "all" ? 0 : 1) +
+    selectedTagIds.length +
+    (selectedCompany ? 1 : 0) +
+    (assignee ? 1 : 0) +
+    (participant ? 1 : 0);
+
   const toggleTag = useCallback((id: string) => {
     setSelectedTagIds((prev) =>
       prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]
@@ -508,397 +527,296 @@ export function ConversationList({
     // the single pane showing; fixed 320px on desktop where it shares the
     // row with the thread + contact sidebar.
     <div className="relative flex h-full w-full flex-col border-e border-border bg-card lg:w-80">
-      {/* Search + Filter */}
-      <div className="shrink-0 space-y-2.5 border-b border-border bg-card p-3">
-        <div className="relative">
-          <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={handleSearchChange}
-            placeholder={t("searchPlaceholder")}
-            className="border-border bg-muted ps-9 text-sm text-foreground placeholder-muted-foreground focus:border-primary/50"
-          />
+      {/* Search + filter.
+          Two rows, always: the search box with one filter button, then the
+          status tabs. Channel / number / tags / company / assignee live inside
+          the button — five stacked rows turned a 320px panel into a wall of
+          chips, and every extra row pushed the actual conversations down. */}
+      <div className="shrink-0 space-y-2 border-b border-border bg-card p-3">
+        <div className="flex items-center gap-1.5">
+          <div className="relative flex-1">
+            <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={handleSearchChange}
+              placeholder={t("searchPlaceholder")}
+              className="border-border bg-muted ps-9 text-sm text-foreground placeholder-muted-foreground focus:border-primary/50"
+            />
+          </div>
+
+          <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
+            <PopoverTrigger
+              aria-label={t("filtersLabel")}
+              title={t("filtersLabel")}
+              className={cn(
+                "relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors",
+                extraFilterCount > 0
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              {extraFilterCount > 0 && (
+                <span className="absolute -end-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                  {extraFilterCount}
+                </span>
+              )}
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-72 gap-3 p-3">
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-foreground">{t("filtersLabel")}</p>
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  {t("filtersHint")}
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {t("quickFiltersLabel")}
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  {FILTER_OPTIONS.filter((opt) => QUICK_FILTERS.includes(opt.value)).map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() =>
+                        setFilter(filter === opt.value ? DEFAULT_INBOX_FILTER : opt.value)
+                      }
+                      aria-pressed={filter === opt.value}
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] transition-colors",
+                        filter === opt.value
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {opt.label}
+                      {typeof filterCounts[opt.value] === "number" && (
+                        <span className="tabular-nums text-[10px] opacity-70">
+                          {filterCounts[opt.value]}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {t("channelFilterLabel")}
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setChannelFilter("all")}
+                    aria-pressed={channelFilter === "all"}
+                    className={cn(
+                      "rounded-full border px-2 py-1 text-[11px] transition-colors",
+                      channelFilter === "all"
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {t("allChannels")}
+                  </button>
+                  {activeChannels.map((ch) => {
+                    const { Icon } = CHANNEL_VISUAL[ch];
+                    const isActive = channelFilter === ch;
+                    return (
+                      <button
+                        key={ch}
+                        type="button"
+                        onClick={() => setChannelFilter(ch)}
+                        aria-pressed={isActive}
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] transition-colors",
+                          isActive
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        <Icon className="h-3 w-3" aria-hidden />
+                        <span className="tabular-nums">{channelCounts[ch]}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {showNumberFilter && (
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    {t("numberFilterLabel")}
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setNumberFilter("all")}
+                      aria-pressed={numberFilter === "all"}
+                      className={cn(
+                        "rounded-full border px-2 py-1 text-[11px] transition-colors",
+                        numberFilter === "all"
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {t("allNumbers")}
+                    </button>
+                    {numbers.map((n) => {
+                      const isActive = numberFilter === n.id;
+                      return (
+                        <button
+                          key={n.id}
+                          type="button"
+                          onClick={() => setNumberFilter(n.id)}
+                          aria-pressed={isActive}
+                          title={`${n.display_phone_number ?? n.id} · ${n.verified_name ?? ""}`}
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] transition-colors",
+                            isActive
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border text-muted-foreground hover:text-foreground",
+                          )}
+                        >
+                          <span dir="ltr" className="tabular-nums">{last4(n)}</span>
+                          <span className="tabular-nums text-[10px] opacity-70">
+                            {numberCounts[n.id] ?? 0}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {tags.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    {t("tags")}
+                  </p>
+                  <div className="flex max-h-32 flex-wrap gap-1 overflow-y-auto">
+                    {tags.map((tag) => {
+                      const isActive = selectedTagIds.includes(tag.id);
+                      return (
+                        <button
+                          key={tag.id}
+                          type="button"
+                          onClick={() => toggleTag(tag.id)}
+                          aria-pressed={isActive}
+                          className={cn(
+                            "inline-flex max-w-full items-center gap-1 rounded-full border px-2 py-1 text-[11px] transition-colors",
+                            isActive
+                              ? "border-primary bg-primary/15 text-primary"
+                              : "border-border text-muted-foreground hover:text-foreground",
+                          )}
+                        >
+                          <span
+                            className="h-1.5 w-1.5 shrink-0 rounded-full"
+                            style={{ backgroundColor: tag.color }}
+                          />
+                          <span className="truncate">{tag.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {companies.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    {t("company")}
+                  </p>
+                  <select
+                    value={selectedCompany ?? ""}
+                    onChange={(e) => setSelectedCompany(e.target.value || null)}
+                    className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs text-foreground focus:border-foreground/30 focus:outline-none"
+                  >
+                    <option value="">{t("allCompanies")}</option>
+                    {companies.map((co) => (
+                      <option key={co} value={co}>
+                        {co}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {extraFilterCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setChannelFilter("all");
+                    setNumberFilter("all");
+                    setSelectedCompany(null);
+                    setSelectedTagIds([]);
+                    onClearAssignee?.();
+                    onClearParticipant?.();
+                  }}
+                  className="w-full rounded-md border border-border px-2 py-1.5 text-[11px] text-muted-foreground hover:text-foreground"
+                >
+                  {t("clearFilters")}
+                </button>
+              )}
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        {/* Status tabs: one click, and the count the filter would return. */}
+        <div
+          role="tablist"
+          className="flex gap-0.5 overflow-x-auto rounded-lg border border-border bg-muted/40 p-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {STATUS_TABS.map((value) => {
+            const isActive = filter === value;
+            const isFollowup = value === "followup";
+            const label =
+              FILTER_OPTIONS.find((opt) => opt.value === value)?.label ??
+              t("filterFollowupShort");
+            return (
+              <button
+                key={value}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => setFilter(value)}
+                className={cn(
+                  "inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[11.5px] transition-colors",
+                  isActive
+                    ? isFollowup
+                      ? "bg-amber-400 font-semibold text-amber-950"
+                      : "bg-card font-medium text-foreground shadow-sm"
+                    : isFollowup
+                      ? "text-amber-400 hover:bg-muted"
+                      : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {isFollowup && <Clock className="h-3 w-3" aria-hidden />}
+                {isFollowup ? t("filterFollowupShort") : label}
+                {typeof filterCounts[value] === "number" && (
+                  <span className="tabular-nums text-[10px] opacity-70">
+                    {filterCounts[value]}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {/* Search runs against the whole table, so the honest answer to "how
-            many matched" is the server's total — show it instead of letting
-            the operator guess from a scrolling list. */}
-        {hasActiveFilters && !loading && (
+            many matched" is the server's total. */}
+        {searchQuery !== "" && !loading && (
           <div className="text-muted-foreground px-1 text-[11px] tabular-nums">
             {t("resultsCount", { count: total })}
           </div>
         )}
 
-        {showNumberFilter && (
-          <div
-            role="tablist"
-            aria-label={t("numberFilterLabel")}
-            className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          >
-            <span className="inline-flex shrink-0 items-center gap-1 pe-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/80">
-              <Phone className="h-3 w-3" aria-hidden />
-              {t("numberLabel")}
-            </span>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={numberFilter === "all"}
-              onClick={() => setNumberFilter("all")}
-              className={cn(
-                "shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors",
-                numberFilter === "all"
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground",
-              )}
-            >
-              {t("allNumbers")}
-            </button>
-            {numbers.map((n) => {
-              const isActive = numberFilter === n.id;
-              const label = n.verified_name
-                ? `${n.verified_name} · …${last4(n)}`
-                : `…${last4(n)}`;
-              return (
-                <button
-                  key={n.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={isActive}
-                  aria-label={`${n.display_phone_number ?? n.id} (${numberCounts[n.id] ?? 0})`}
-                  title={`${n.display_phone_number ?? n.id} · ${n.verified_name ?? ""}`}
-                  onClick={() => setNumberFilter(n.id)}
-                  className={cn(
-                    "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors",
-                    isActive
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground",
-                  )}
-                >
-                  <span dir="ltr" className="tabular-nums">
-                    {last4(n)}
-                  </span>
-                  <span
-                    className={cn(
-                      "tabular-nums text-[10px]",
-                      isActive ? "opacity-80" : "opacity-60",
-                    )}
-                  >
-                    {numberCounts[n.id] ?? 0}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {showChannelFilter && (
-          <div
-            role="tablist"
-            aria-label={t("channelFilterLabel")}
-            className="flex items-center gap-0.5 rounded-lg bg-muted/60 p-0.5"
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={channelFilter === "all"}
-              onClick={() => setChannelFilter("all")}
-              className={cn(
-                "flex-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors",
-                channelFilter === "all"
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {t("allChannels")}
-            </button>
-            {activeChannels.map((ch) => {
-              const { Icon, label } = CHANNEL_VISUAL[ch];
-              const isActive = channelFilter === ch;
-              return (
-                <button
-                  key={ch}
-                  type="button"
-                  role="tab"
-                  aria-selected={isActive}
-                  aria-label={`${label} (${channelCounts[ch]})`}
-                  title={`${label} (${channelCounts[ch]})`}
-                  onClick={() => setChannelFilter(ch)}
-                  className={cn(
-                    "flex flex-1 items-center justify-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium transition-colors",
-                    isActive
-                      ? "bg-card text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  <Icon className="h-3 w-3" aria-hidden />
-                  <span className="tabular-nums">{channelCounts[ch]}</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        <div className="flex flex-wrap items-center gap-1">
-          <DropdownMenu>
-            <DropdownMenuTrigger className="inline-flex h-7 items-center justify-center gap-1 rounded-md border border-border bg-muted/60 px-2 text-xs font-medium text-foreground hover:bg-muted">
-                {/* The follow-up queue is its own predicate, not a status: when
-                    it is on, the status control reads «الحالة» with no count so
-                    the two controls never show the same label twice. */}
-                {activeFilter?.label ??
-                  (filter === "followup" ? t("filterStatusAny") : t("filterAll"))}
-                {activeFilter && typeof filterCounts[filter] === "number" && (
-                  <span className="tabular-nums text-[10px] text-muted-foreground/80">
-                    {filterCounts[filter]}
-                  </span>
-                )}
-                <ChevronDown className="h-3 w-3" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="start"
-              className="border-border bg-popover"
-            >
-              {FILTER_OPTIONS.map((opt) => (
-                <DropdownMenuItem
-                  key={opt.value}
-                  onClick={() => setFilter(opt.value)}
-                  className={cn(
-                    "justify-between gap-6 text-sm",
-                    filter === opt.value
-                      ? "text-primary"
-                      : "text-popover-foreground"
-                  )}
-                >
-                  {/* nowrap: a long label ("نافذة الرد تُغلق") used to wrap to
-                      two lines and leave its count floating mid-row. */}
-                  <span className="whitespace-nowrap">{opt.label}</span>
-                  {typeof filterCounts[opt.value] === "number" && (
-                    <span className="shrink-0 tabular-nums text-xs text-muted-foreground">
-                      {filterCounts[opt.value]}
-                    </span>
-                  )}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* «محتاجة متابعة» — the only filter worth its own one-click chip
-              next to the status control: a pending thread where we wrote last
-              and the customer never came back. Pending is derived, so this is
-              a view, never a fourth status. */}
-          {(filterCounts.followup ?? 0) > 0 || filter === "followup" ? (
-            <button
-              type="button"
-              onClick={() =>
-                setFilter(filter === "followup" ? DEFAULT_INBOX_FILTER : "followup")
-              }
-              aria-pressed={filter === "followup"}
-              title={t("filterFollowupHint")}
-              className={cn(
-                "inline-flex h-7 items-center gap-1 rounded-full border px-2 text-xs transition-colors",
-                filter === "followup"
-                  ? "border-amber-400 bg-amber-400 font-semibold text-amber-950"
-                  : "border-border text-muted-foreground hover:border-amber-400/50 hover:text-foreground",
-              )}
-            >
-              <Clock
-                className={cn(
-                  "h-3 w-3",
-                  filter === "followup" ? "opacity-90" : "text-amber-400/80",
-                )}
-                aria-hidden
-              />
-              {t("filterFollowup")}
-              {typeof filterCounts.followup === "number" && (
-                <span
-                  className={cn(
-                    "tabular-nums text-[10px]",
-                    filter === "followup" ? "opacity-80" : "text-amber-400/90",
-                  )}
-                >
-                  {filterCounts.followup}
-                </span>
-              )}
-            </button>
-          ) : null}
-
-          {tags.length > 0 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                className={cn(
-                  "inline-flex items-center justify-center h-7 gap-1 px-2 text-xs rounded-md hover:bg-muted",
-                  selectedTagIds.length > 0
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {t("tags")}
-                {selectedTagIds.length > 0 && (
-                  <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
-                    {selectedTagIds.length}
-                  </span>
-                )}
-                <ChevronDown className="h-3 w-3" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="start"
-                className="max-h-64 w-56 border-border bg-popover"
-              >
-                {tags.map((t) => (
-                  <DropdownMenuCheckboxItem
-                    key={t.id}
-                    checked={selectedTagIds.includes(t.id)}
-                    onCheckedChange={() => toggleTag(t.id)}
-                    className="text-sm text-popover-foreground"
-                  >
-                    <span className="flex items-center gap-2">
-                      <span
-                        className="h-2 w-2 shrink-0 rounded-full"
-                        style={{ backgroundColor: t.color }}
-                      />
-                      <span className="truncate">{t.name}</span>
-                    </span>
-                  </DropdownMenuCheckboxItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-
-          {/* Always shown, even for a single company: hiding the control made
-              the row change shape between accounts and looked like a bug. */}
-          {companies.length > 0 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                className={cn(
-                  "inline-flex max-w-40 items-center justify-center h-7 gap-1 px-2 text-xs rounded-md hover:bg-muted",
-                  selectedCompany
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <span className="truncate">{selectedCompany ?? t("company")}</span>
-                <ChevronDown className="h-3 w-3 shrink-0" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="start"
-                className="max-h-64 w-56 border-border bg-popover"
-              >
-                <DropdownMenuItem
-                  onClick={() => setSelectedCompany(null)}
-                  className={cn(
-                    "text-sm",
-                    selectedCompany === null
-                      ? "text-primary"
-                      : "text-popover-foreground"
-                  )}
-                >
-                  {t("allCompanies")}
-                </DropdownMenuItem>
-                {companies.map((co) => (
-                  <DropdownMenuItem
-                    key={co}
-                    onClick={() => setSelectedCompany(co)}
-                    className={cn(
-                      "text-sm",
-                      selectedCompany === co
-                        ? "text-primary"
-                        : "text-popover-foreground"
-                    )}
-                  >
-                    <span className="truncate">{co}</span>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
-
-        {/* The queue is not self-explanatory: name the rule on screen while it
-            is on, instead of trusting a hover title nobody reads. */}
         {filter === "followup" && (
-          <div className="mt-2 flex gap-1.5 rounded-md border border-amber-400/25 bg-amber-400/[0.07] px-2.5 py-2 text-[11px] leading-relaxed text-amber-200/90">
-            <Info className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
-            <span>{t("filterFollowupExplain")}</span>
-          </div>
-        )}
-
-        {assignee && (
-          <div className="flex flex-wrap items-center gap-1">
-            <button
-              type="button"
-              onClick={onClearAssignee}
-              title={t("clearAssignee")}
-              className="bg-primary/15 text-foreground hover:bg-primary/25 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]"
-            >
-              <UserRound className="h-3 w-3" />
-              <span className="max-w-40 truncate">
-                {t("assignedTo", { name: assignee.name ?? "—" })}
-              </span>
-              <X className="h-3 w-3" />
-            </button>
-          </div>
-        )}
-
-        {participant && (
-          <div className="flex flex-wrap items-center gap-1">
-            <button
-              type="button"
-              onClick={onClearParticipant}
-              title={t("clearAssignee")}
-              className="bg-muted text-foreground hover:bg-muted/70 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]"
-            >
-              <UserRound className="h-3 w-3" />
-              <span className="max-w-40 truncate">
-                {t("participatedIn", { name: participant.name ?? "—" })}
-              </span>
-              <span dir="ltr" className="text-muted-foreground tabular-nums">
-                · {participant.days}d
-              </span>
-              <span className="text-muted-foreground tabular-nums">
-                ({total})
-              </span>
-              <X className="h-3 w-3" />
-            </button>
-          </div>
-        )}
-
-        {hasContactFilters && (
-          <div className="flex flex-wrap items-center gap-1">
-            {selectedTagIds.map((id) => {
-              const tag = tagsById.get(id);
-              return (
-                <button
-                  key={id}
-                  onClick={() => toggleTag(id)}
-                  className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] text-foreground hover:bg-muted/70"
-                >
-                  <span
-                    className="h-1.5 w-1.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: tag?.color ?? "var(--muted-foreground)" }}
-                  />
-                  <span className="max-w-24 truncate">{tag?.name ?? t("tags")}</span>
-                  <X className="h-3 w-3" />
-                </button>
-              );
-            })}
-            {selectedCompany && (
-              <button
-                onClick={() => setSelectedCompany(null)}
-                className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] text-foreground hover:bg-muted/70"
-              >
-                <span className="max-w-24 truncate">{selectedCompany}</span>
-                <X className="h-3 w-3" />
-              </button>
-            )}
-            <button
-              onClick={clearContactFilters}
-              className="px-1 text-[11px] text-muted-foreground hover:text-foreground"
-            >
-              {t("clearAll")}
-            </button>
-          </div>
+          <p className="px-1 text-[11px] leading-relaxed text-muted-foreground">
+            {t("filterFollowupExplain")}
+          </p>
         )}
       </div>
-
       {/* Conversation Items.
           `min-h-0` is load-bearing: a flex child defaults to
           min-height:auto, so without it this ScrollArea grows to fit
