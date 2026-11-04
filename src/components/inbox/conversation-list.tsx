@@ -461,7 +461,7 @@ export function ConversationList({
     // w-full on mobile so the list occupies the whole viewport when it's
     // the single pane showing; fixed 320px on desktop where it shares the
     // row with the thread + contact sidebar.
-    <div className="flex h-full w-full flex-col border-e border-border bg-card lg:w-80">
+    <div className="relative flex h-full w-full flex-col border-e border-border bg-card lg:w-80">
       {/* Search + Filter */}
       <div className="shrink-0 space-y-2.5 border-b border-border bg-card p-3">
         <div className="relative">
@@ -661,7 +661,8 @@ export function ConversationList({
             </DropdownMenu>
           )}
 
-          {companies.length > 0 && (
+          {/* A single company value filters exactly one thread: noise. */}
+          {companies.length > 1 && (
             <DropdownMenu>
               <DropdownMenuTrigger
                 className={cn(
@@ -843,30 +844,36 @@ export function ConversationList({
                     {t("loadingMore")}
                   </span>
                 ) : (
-                  <span className="flex items-center gap-2 text-[11px]">
-                    <button
-                      type="button"
-                      onClick={() => void loadMore()}
-                      className="text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
-                    >
-                      {t("loadMore")}
-                    </button>
-                    <span className="text-muted-foreground/40">·</span>
-                    <button
-                      type="button"
-                      onClick={() => void loadAll()}
-                      disabled={loadingAll}
-                      className="text-muted-foreground hover:text-foreground underline-offset-2 hover:underline disabled:opacity-50"
-                    >
-                      {loadingAll ? t("loadingAll") : t("loadAll")}
-                    </button>
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => void loadMore()}
+                    className="text-muted-foreground hover:text-foreground text-[11px] underline-offset-2 hover:underline"
+                  >
+                    {t("loadMore")}
+                  </button>
                 )}
               </div>
             )}
           </div>
         )}
       </ScrollArea>
+
+      {/* Floating "load all" — the inline one was impossible to hit because
+          scrolling keeps pulling the next page under the cursor. It appears
+          after two pages (so the first screen stays clean) and only while
+          there is something left to load. */}
+      {hasMore && rows.length >= CONVERSATION_PAGE_SIZE * 2 && (
+        <button
+          type="button"
+          onClick={() => void loadAll()}
+          disabled={loadingAll}
+          className="bg-foreground text-background absolute bottom-4 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full px-4 py-2 text-[11px] font-medium shadow-lg transition-opacity hover:opacity-90 disabled:opacity-60"
+        >
+          {loadingAll
+            ? t("loadingAll")
+            : `${t("loadAll")} · ${total.toLocaleString("en-US")}`}
+        </button>
+      )}
     </div>
   );
 }
