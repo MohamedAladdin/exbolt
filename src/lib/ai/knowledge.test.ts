@@ -7,7 +7,13 @@ vi.mock('./embeddings', () => ({
   toVectorLiteral: (v: number[]) => `[${v.join(',')}]`,
 }))
 
-import { retrieveKnowledge, ingestDocument, queryTerms, rerankByQueryTerms } from './knowledge'
+import {
+  retrieveKnowledge,
+  ingestDocument,
+  loadPinnedChunks,
+  queryTerms,
+  rerankByQueryTerms,
+} from './knowledge'
 
 interface FakeState {
   semantic: { id: string; content: string }[]
@@ -225,5 +231,78 @@ describe('queryTerms / rerankByQueryTerms', () => {
     ])
     expect(rerankByQueryTerms([OTHER], 'المنصورة')).toEqual([OTHER])
     expect(rerankByQueryTerms([GENERIC, SPECIFIC], '')).toEqual([GENERIC, SPECIFIC])
+  })
+})
+
+describe('pinned QUICK FACTS document', () => {
+  const PINNED = 'بيانات سريعة — الفروع: المهندسين 650 · المنصورة 450.'
+  const RETRIEVED = 'فقرة مسترجعة عن البواسير.'
+
+  /** Double that answers both the pinned lookups and the normal retrieval. */
+  function pinnedDb(pinned: string[]) {
+    const db = {
+      from: (table: string) => ({
+        select: (_cols?: unknown, opts?: { count?: string; head?: boolean }) => {
+          // The empty-KB guard asks for a COUNT on the same table the pinned
+          // lookup reads rows from — tell them apart by the options argument.
+          if (opts?.count) {
+            return { eq: async () => ({ count: 5, data: [], error: null }) }
+          }
+          if (table === 'ai_knowledge_documents') {
+            return {
+              eq: () => ({
+                ilike: async () => ({ data: pinned.length ? [{ id: 'doc-1' }] : [], error: null }),
+              }),
+            }
+          }
+          if (table === 'ai_knowledge_chunks') {
+            return {
+              eq: () => ({
+                in: () => ({
+                  order: () => ({
+                    limit: async () => ({
+                      data: pinned.map((content) => ({ content })),
+                      error: null,
+                    }),
+                  }),
+                }),
+              }),
+            }
+          }
+          return { eq: async () => ({ count: 5, data: [], error: null }) }
+        },
+      }),
+      rpc: async (name: string) =>
+        name === 'match_ai_knowledge_fts'
+          ? { data: [{ id: 'c1', content: RETRIEVED }], error: null }
+          : { data: [], error: null },
+    }
+    return db as unknown as SupabaseClient
+  }
+
+  it('loads the pinned passages', async () => {
+    const out = await loadPinnedChunks(pinnedDb([PINNED]), 'acct')
+    expect(out).toEqual([PINNED])
+  })
+
+  it('puts the pinned passage first even when nothing else matches', async () => {
+    const out = await retrieveKnowledge(
+      pinnedDb([PINNED]),
+      'acct',
+      { embeddingsApiKey: null },
+      'عايز أحجز',
+    )
+    expect(out[0]).toBe(PINNED)
+    expect(out).toContain(RETRIEVED)
+  })
+
+  it('degrades to normal retrieval when the account has no pinned document', async () => {
+    const out = await retrieveKnowledge(
+      pinnedDb([]),
+      'acct',
+      { embeddingsApiKey: null },
+      'البواسير',
+    )
+    expect(out).toEqual([RETRIEVED])
   })
 })

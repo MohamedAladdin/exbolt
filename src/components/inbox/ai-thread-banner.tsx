@@ -122,8 +122,22 @@ export function AiThreadBanner({
     );
   }
 
-  // Active, but a human already owns it → the bot won't fire; no banner.
-  if (assignedAgentId) return null;
+  // Active, but a human already owns it → the bot stands down. Say so:
+  // an unexplained silence reads as a broken assistant, and «استئناف AI»
+  // is exactly how you hand the thread back.
+  if (assignedAgentId) {
+    return (
+      <Banner tone="muted">
+        <div className="min-w-0 flex-1">
+          <p className="font-medium text-foreground">{t("assignedTitle")}</p>
+          <p className="truncate text-muted-foreground">{t("assignedHint")}</p>
+        </div>
+        <BannerButton onClick={() => toggle(false)} busy={busy} icon={Sparkles}>
+          {t("resume")}
+        </BannerButton>
+      </Banner>
+    );
+  }
 
   // Active on this thread.
   return (

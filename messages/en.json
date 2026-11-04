@@ -607,7 +607,9 @@
       "tookOver": "You’ve taken over this chat.",
       "resumed": "AI resumed.",
       "updateError": "Couldn’t update the AI assistant.",
-      "networkError": "Couldn’t reach the server."
+      "networkError": "Couldn’t reach the server.",
+      "assignedTitle": "The assistant is paused here: a human owns this thread",
+      "assignedHint": "It never answers a thread assigned to a person. Press “Resume AI” to hand it back."
     },
     "contactPeek": {
       "triggerTitle": "Show contact",

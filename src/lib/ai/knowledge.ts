@@ -67,6 +67,20 @@ export function rerankByQueryTerms(chunks: string[], query: string): string[] {
     .map((row) => row.content)
 }
 
+/**
+ * The document whose passages are ALWAYS in the prompt.
+ *
+ * Behaviour lives in `system_prompt`; facts live in the knowledge base. But
+ * the retrieval is lexical, so a question that never uses the word «فرع»
+ * («عايز أحجز») retrieves nothing useful and the model fills the gap from its
+ * general knowledge of Cairo — it invented «المعادي» and «6 أكتوبر» in a live
+ * test. Pinning one editable document ("QUICK FACTS": branches, fees, doctor
+ * days, contact numbers) gives every reply the real, short list in front of it,
+ * while the client keeps owning the content.
+ */
+const PINNED_DOCUMENT_TITLE = 'QUICK FACTS'
+const PINNED_CHUNK_LIMIT = 3
+
 interface MatchRow {
   id: string
   content: string
@@ -138,6 +152,40 @@ export async function ingestDocument(
  * any failure (no KB, embedding error, RPC error) degrades to fewer or
  * zero results and never throws into the draft / auto-reply path.
  */
+/**
+ * Passages of the pinned document, oldest first. Never throws: an account
+ * without one behaves exactly as before.
+ */
+export async function loadPinnedChunks(
+  db: SupabaseClient,
+  accountId: string,
+  limit = PINNED_CHUNK_LIMIT,
+): Promise<string[]> {
+  try {
+    const { data: docs, error: docErr } = await db
+      .from('ai_knowledge_documents')
+      .select('id')
+      .eq('account_id', accountId)
+      .ilike('title', `%${PINNED_DOCUMENT_TITLE}%`)
+    if (docErr || !docs || docs.length === 0) return []
+
+    const ids = docs.map((doc: { id: string }) => doc.id)
+    const { data: rows, error: chunkErr } = await db
+      .from('ai_knowledge_chunks')
+      .select('content')
+      .eq('account_id', accountId)
+      .in('document_id', ids)
+      .order('chunk_index', { ascending: true })
+      .limit(limit)
+    if (chunkErr || !rows) return []
+    return rows
+      .map((row: { content: string }) => row.content)
+      .filter((content: string) => Boolean(content && content.trim()))
+  } catch {
+    return []
+  }
+}
+
 export async function retrieveKnowledge(
   db: SupabaseClient,
   accountId: string,
@@ -161,6 +209,10 @@ export async function retrieveKnowledge(
   } catch {
     return []
   }
+
+  // Always-on grounding: the pinned document leads, whatever the question
+  // wording. Retrieved passages fill the rest of the budget.
+  const pinned = await loadPinnedChunks(db, accountId)
 
   const picked = new Map<string, string>() // id → content, preserves order
 
@@ -202,5 +254,9 @@ export async function retrieveKnowledge(
     }
   }
 
-  return rerankByQueryTerms(Array.from(picked.values()), query).slice(0, k)
+  const rest = Array.from(picked.values()).filter(
+    (content) => !pinned.includes(content),
+  )
+  const ranked = rerankByQueryTerms(rest, query)
+  return [...pinned, ...ranked].slice(0, Math.max(k, pinned.length))
 }
