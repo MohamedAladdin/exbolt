@@ -36,7 +36,7 @@ export async function GET() {
       // `api_key` is selected only to derive `has_key` — it is stripped
       // out below and never returned to the client.
       .select(
-        'provider, model, base_url, system_prompt, is_active, auto_reply_enabled, auto_reply_max_per_conversation, handoff_agent_id, handoff_agent_ids, ai_schedule_enabled, ai_schedule_start, ai_schedule_end, ai_schedule_days, ai_schedule_timezone, outside_hours_mode, outside_hours_message, api_key, embeddings_api_key',
+        'provider, model, base_url, system_prompt, is_active, auto_reply_enabled, auto_reply_max_per_conversation, context_message_limit, handoff_agent_id, handoff_agent_ids, ai_schedule_enabled, ai_schedule_start, ai_schedule_end, ai_schedule_days, ai_schedule_timezone, outside_hours_mode, outside_hours_message, api_key, embeddings_api_key',
       )
       .eq('account_id', accountId)
       .maybeSingle()
@@ -106,6 +106,16 @@ export async function POST(request: Request) {
     let maxPer = Number(body.auto_reply_max_per_conversation)
     if (!Number.isFinite(maxPer)) maxPer = 3
     maxPer = Math.min(20, Math.max(1, Math.floor(maxPer)))
+
+    // How many recent thread messages each reply carries. Below 4 the model
+    // loses the question; above 50 the input cost outgrows the benefit.
+    const contextProvided = 'context_message_limit' in body
+    let contextLimit = 20
+    if (contextProvided) {
+      const raw = Number(body.context_message_limit)
+      if (!Number.isFinite(raw)) return bad(t('ai.contextLimitInvalid'))
+      contextLimit = Math.min(50, Math.max(4, Math.floor(raw)))
+    }
 
     // Handoff routing targets for auto-reply. Every id must be a member of
     // this account (else a conversation could be assigned to a stranger); an
@@ -287,6 +297,7 @@ export async function POST(request: Request) {
           isActive,
           autoReplyEnabled,
           autoReplyMaxPerConversation: maxPer,
+          contextMessageLimit: 20,
           handoffAgentIds: [],
           scheduleEnabled: false,
           scheduleStart: '09:00',
@@ -336,6 +347,7 @@ export async function POST(request: Request) {
       auto_reply_enabled: autoReplyEnabled,
       auto_reply_max_per_conversation: maxPer,
     }
+    if (contextProvided) shared.context_message_limit = contextLimit
     // Only touch the handoff target when the form actually sent the field,
     // so a partial save (e.g. flipping a toggle) doesn't wipe it.
     if (handoffListProvided) {

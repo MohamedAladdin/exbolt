@@ -23,6 +23,8 @@ export interface AiConfig {
   isActive: boolean
   autoReplyEnabled: boolean
   autoReplyMaxPerConversation: number
+  /** Recent thread messages sent with each reply (4–50). */
+  contextMessageLimit: number
   /** Who gets alerted when auto-reply hands a conversation off. The first
    *  entry also becomes the assignee; everyone on the list is notified.
    *  Empty = notify every owner/admin/agent (the shared queue). */

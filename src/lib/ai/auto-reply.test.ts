@@ -122,6 +122,7 @@ function aiConfig(overrides: Partial<AiConfig> = {}): AiConfig {
     isActive: true,
     autoReplyEnabled: true,
     autoReplyMaxPerConversation: 3,
+    contextMessageLimit: 20,
     handoffAgentIds: [],
     scheduleEnabled: false,
     scheduleStart: '09:00',
@@ -508,5 +509,50 @@ describe('dispatchInboundToAiReply — customer memory', () => {
     const systemPrompt = h.generateReply.mock.calls[0][0].systemPrompt as string
     expect(systemPrompt).not.toContain('already told you in earlier conversations')
     expect(systemPrompt).not.toContain('الشيخ زايد')
+  })
+})
+
+describe('dispatchInboundToAiReply — trivial inbound', () => {
+  it.each([['شكرا'], ['..'], ['🙏'], ['تمام'], ['.'], ['thanks']])(
+    'stays quiet on %s without handing off',
+    async (text) => {
+      h.buildConversationContext.mockResolvedValue([{ role: 'user', content: text }])
+      await dispatchInboundToAiReply(ARGS)
+      expect(h.generateReply).not.toHaveBeenCalled()
+      expect(h.engineSendText).not.toHaveBeenCalled()
+      expect(h.state.updatePayload?.ai_autoreply_disabled).toBeUndefined()
+      expect(h.notifyHandoff).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([['السلام عليكم'], ['مساء الخير'], ['صباح الخير']])(
+    'answers the greeting %s instead of going silent',
+    async (text) => {
+      h.buildConversationContext.mockResolvedValue([{ role: 'user', content: text }])
+      await dispatchInboundToAiReply(ARGS)
+      expect(h.generateReply).toHaveBeenCalledTimes(1)
+    },
+  )
+
+  it('still answers a real question that follows a thank-you', async () => {
+    h.buildConversationContext.mockResolvedValue([
+      { role: 'user', content: 'شكرا' },
+      { role: 'assistant', content: 'العفو 🌸' },
+      { role: 'user', content: 'طيب مواعيد فرع المهندسين إيه؟' },
+    ])
+    await dispatchInboundToAiReply(ARGS)
+    expect(h.generateReply).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('dispatchInboundToAiReply — context window', () => {
+  it('sends only the configured number of recent messages', async () => {
+    h.loadAiConfig.mockResolvedValue(aiConfig({ contextMessageLimit: 8 }))
+    await dispatchInboundToAiReply(ARGS)
+    expect(h.buildConversationContext).toHaveBeenCalledWith(
+      expect.anything(),
+      'conv-1',
+      8,
+    )
   })
 })

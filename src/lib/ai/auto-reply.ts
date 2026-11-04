@@ -166,7 +166,11 @@ export async function dispatchInboundToAiReply(
       }
     }
 
-    const messages = await buildConversationContext(db, conversationId)
+    const messages = await buildConversationContext(
+      db,
+      conversationId,
+      config.contextMessageLimit,
+    )
     if (messages.length === 0) return
 
     // «شكرًا» / «..» get silence — not a handoff, which would mute the thread

@@ -99,6 +99,7 @@ export async function POST(request: Request) {
         isActive: true,
         autoReplyEnabled: false,
         autoReplyMaxPerConversation: 3,
+        contextMessageLimit: 20,
         handoffAgentIds: [],
         scheduleEnabled: false,
         scheduleStart: '09:00',

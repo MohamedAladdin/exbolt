@@ -75,6 +75,7 @@ export function AiConfig() {
   const [isActive, setIsActive] = useState(false);
   const [autoReplyEnabled, setAutoReplyEnabled] = useState(false);
   const [maxPerConversation, setMaxPerConversation] = useState(3);
+  const [contextLimit, setContextLimit] = useState(20);
   // Empty list = leave unassigned (shared queue alerts the whole team).
   const [handoffAgentIds, setHandoffAgentIds] = useState<string[]>([]);
   const [outsideHoursMode, setOutsideHoursMode] = useState<
@@ -112,6 +113,7 @@ export function AiConfig() {
         setIsActive(data.is_active);
         setAutoReplyEnabled(data.auto_reply_enabled);
         setMaxPerConversation(data.auto_reply_max_per_conversation ?? 3);
+        setContextLimit(data.context_message_limit ?? 20);
         setHandoffAgentIds(
           Array.isArray(data.handoff_agent_ids) && data.handoff_agent_ids.length > 0
             ? (data.handoff_agent_ids as string[])
@@ -218,6 +220,7 @@ export function AiConfig() {
     is_active: isActive,
     auto_reply_enabled: autoReplyEnabled,
     auto_reply_max_per_conversation: maxPerConversation,
+    context_message_limit: contextLimit,
     handoff_agent_ids: handoffAgentIds,
     schedule_enabled: scheduleEnabled,
     schedule_start: scheduleStart,
@@ -555,6 +558,27 @@ export function AiConfig() {
                   setMaxPerConversation(
                     Math.min(20, Math.max(1, Number(e.target.value) || 1)),
                   )
+                }
+                disabled={disabled || !autoReplyEnabled}
+                className="w-20"
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <Label htmlFor="ai-context-limit">{t('contextLimit')}</Label>
+                <p className="text-xs text-muted-foreground">
+                  {t('contextLimitDesc')}
+                </p>
+              </div>
+              <Input
+                id="ai-context-limit"
+                type="number"
+                min={4}
+                max={50}
+                value={contextLimit}
+                onChange={(e) =>
+                  setContextLimit(Math.min(50, Math.max(4, Number(e.target.value) || 20)))
                 }
                 disabled={disabled || !autoReplyEnabled}
                 className="w-20"
