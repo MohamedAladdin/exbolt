@@ -9,7 +9,10 @@ import {
 } from '@/lib/whatsapp/meta-api'
 import type { InteractiveMessagePayload } from '@/lib/whatsapp/interactive'
 import { decrypt } from '@/lib/whatsapp/encryption'
-import { getDefaultWhatsAppConfig } from '@/lib/whatsapp/config-resolver'
+import {
+  getDefaultWhatsAppConfig,
+  resolveWhatsAppConfigForConversation,
+} from '@/lib/whatsapp/config-resolver'
 import {
   phoneVariants,
   isRecipientNotAllowedError,
@@ -47,6 +50,38 @@ export async function loadAccountMetaCredentials(
   accountId: string,
 ): Promise<{ phoneNumberId: string; accessToken: string }> {
   const config = await getDefaultWhatsAppConfig(db, accountId)
+  if (!config) {
+    throw new Error(t('send.notConfigured'))
+  }
+  return {
+    phoneNumberId: config.phone_number_id,
+    accessToken: decrypt(config.access_token),
+  }
+}
+
+/**
+ * Resolve the Meta sending credentials for ONE conversation.
+ *
+ * Always the number the customer actually wrote to. Meta tracks the
+ * 24-hour service window **per business number**, so replying from the
+ * account default to a thread that lives on a second number is rejected
+ * with 131047 («more than 24 hours have passed since the customer last
+ * replied to this number») seconds after the inbound landed — the reply
+ * never reaches the customer and the inbox shows a failed bubble.
+ *
+ * Falls back to the account default for threads created before 075 or
+ * whose number was deleted, exactly like the resolver.
+ */
+export async function loadConversationMetaCredentials(
+  db: ReturnType<typeof supabaseAdmin>,
+  accountId: string,
+  conversationId: string | null | undefined,
+): Promise<{ phoneNumberId: string; accessToken: string }> {
+  const config = await resolveWhatsAppConfigForConversation(
+    db,
+    accountId,
+    conversationId,
+  )
   if (!config) {
     throw new Error(t('send.notConfigured'))
   }
@@ -115,9 +150,10 @@ export async function engineSendText(
   }
   const sanitized = sendTarget.target
 
-  const { phoneNumberId, accessToken } = await loadAccountMetaCredentials(
+  const { phoneNumberId, accessToken } = await loadConversationMetaCredentials(
     db,
     args.accountId,
+    args.conversationId,
   )
 
   const attempt = async (phone: string): Promise<string> => {
@@ -229,9 +265,10 @@ export async function engineSendMedia(
   }
   const sanitized = sendTarget.target
 
-  const { phoneNumberId, accessToken } = await loadAccountMetaCredentials(
+  const { phoneNumberId, accessToken } = await loadConversationMetaCredentials(
     db,
     args.accountId,
+    args.conversationId,
   )
 
   const attempt = async (phone: string): Promise<string> => {
@@ -385,9 +422,10 @@ async function sendInteractiveViaMeta(
   }
   const sanitized = sendTarget.target
 
-  const { phoneNumberId, accessToken } = await loadAccountMetaCredentials(
+  const { phoneNumberId, accessToken } = await loadConversationMetaCredentials(
     db,
     input.accountId,
+    input.conversationId,
   )
 
   const attempt = async (phone: string): Promise<string> => {

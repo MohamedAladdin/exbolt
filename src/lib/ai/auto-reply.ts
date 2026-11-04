@@ -9,7 +9,7 @@ import { logAiUsage } from './usage'
 import { latestUserMessage } from './query'
 import {
   engineSendText,
-  loadAccountMetaCredentials,
+  loadConversationMetaCredentials,
 } from '@/lib/flows/meta-send'
 import { sendTypingIndicator } from '@/lib/whatsapp/meta-api'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
@@ -119,7 +119,7 @@ export async function dispatchInboundToAiReply(
     // nothing to undo on the handoff / no-text path. Strictly
     // best-effort: a failed indicator must never cost us the reply.
     if (inboundMessageId) {
-      await showTypingIndicator(db, accountId, inboundMessageId)
+      await showTypingIndicator(db, accountId, conversationId, inboundMessageId)
     }
 
     // Ground the reply in the account's knowledge base (best-effort).
@@ -250,12 +250,16 @@ async function hasNewerInbound(
 async function showTypingIndicator(
   db: ReturnType<typeof supabaseAdmin>,
   accountId: string,
+  conversationId: string,
   inboundMessageId: string,
 ): Promise<void> {
   try {
-    const { phoneNumberId, accessToken } = await loadAccountMetaCredentials(
+    // Same number the reply will leave from — the indicator is scoped to
+    // the thread's own phone number, not the account default.
+    const { phoneNumberId, accessToken } = await loadConversationMetaCredentials(
       db,
       accountId,
+      conversationId,
     )
     await sendTypingIndicator({
       phoneNumberId,

@@ -5,7 +5,7 @@ import {
   engineSendInteractiveList,
 } from '@/lib/flows/meta-send'
 import { decrypt } from '@/lib/whatsapp/encryption'
-import { getDefaultWhatsAppConfig } from '@/lib/whatsapp/config-resolver'
+import { resolveWhatsAppConfigForConversation } from '@/lib/whatsapp/config-resolver'
 import {
   phoneVariants,
   isRecipientNotAllowedError,
@@ -149,7 +149,15 @@ async function sendViaMeta(input: SendInput): Promise<{ whatsapp_message_id: str
   }
   const sanitized = sendTarget.target
 
-  const config = await getDefaultWhatsAppConfig(db, input.accountId)
+  // The thread's own number, not the account default: Meta's 24h
+  // service window is per business number, so a reply from the default
+  // number to a thread that lives on a second one is rejected with
+  // 131047 («more than 24 hours have passed…») right after the inbound.
+  const config = await resolveWhatsAppConfigForConversation(
+    db,
+    input.accountId,
+    input.conversationId,
+  )
   if (!config) {
     throw new Error(t('send.notConfigured'))
   }
