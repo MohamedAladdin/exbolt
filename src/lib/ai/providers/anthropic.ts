@@ -131,9 +131,12 @@ export async function generateAnthropic(args: ProviderArgs): Promise<ProviderRes
   // than the model's minimum cacheable length (or not byte-identical).
   const cacheRead = data?.usage?.cache_read_input_tokens ?? 0
   const cacheWrite = data?.usage?.cache_creation_input_tokens ?? 0
-  if (cacheRead > 0 || cacheWrite > 0) {
+  if (Array.isArray(system)) {
+    // Always log when a breakpoint was actually sent: zeros here mean the API
+    // ignored it (prefix below the model's minimum cacheable length) rather
+    // than "the feature is off".
     console.info(
-      `[ai cache] read=${cacheRead} write=${cacheWrite} input=${data?.usage?.input_tokens ?? 0}`,
+      `[ai cache] sent stableChars=${system[0]?.text?.length ?? 0} read=${cacheRead} write=${cacheWrite} input=${data?.usage?.input_tokens ?? 0}`,
     )
   }
 
