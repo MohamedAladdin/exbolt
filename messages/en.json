@@ -2642,6 +2642,7 @@
       "footer": "Read-only trail — cannot be edited or deleted, not even by the owner.",
       "actions": {
         "account_created": "Account created",
+        "conversation_status_changed": "Conversation status changed",
         "account_updated": "Account updated",
         "settings_whatsapp_connected": "WhatsApp number connected",
         "settings_whatsapp_updated": "WhatsApp settings updated",
@@ -2765,6 +2766,11 @@
         "blocked_reason": "Blocked reason",
         "assignee": "Assignee",
         "created_by": "Created by"
+      },
+      "values": {
+        "open": "Open",
+        "pending": "Pending",
+        "closed": "Closed"
       },
       "adminOnly": "The activity log is for admins",
       "adminOnlyHint": "Ask an account admin if you need the details of a specific change.",
@@ -3691,7 +3697,8 @@
     "exportCsv": "CSV",
     "exportPrint": "Print / PDF",
     "metricsLabel": "Metrics",
-    "dimensionsLabel": "Break down by (up to two)",
+    "dimensionsLabel": "Break down by (max 2)",
+    "systemActor": "System",
     "filtersLabel": "Filters",
     "period": {
       "from": "From",
@@ -3751,6 +3758,7 @@
       "within_target_rate": "Within target %"
     },
     "dimensions": {
+      "closed_by": "Closed by",
       "period": "Period",
       "channel": "Channel",
       "agent": "Team member",

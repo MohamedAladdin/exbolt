@@ -2642,6 +2642,7 @@
       "footer": "سجل للقراءة فقط — لا يمكن تعديله أو حذفه، حتى بواسطة المالك.",
       "actions": {
         "account_created": "أُنشئ الحساب",
+        "conversation_status_changed": "تغيير حالة محادثة",
         "account_updated": "تحديث بيانات الحساب",
         "settings_whatsapp_connected": "ربط رقم واتساب",
         "settings_whatsapp_updated": "تحديث إعدادات واتساب",
@@ -2765,6 +2766,11 @@
         "blocked_reason": "سبب الحجب",
         "assignee": "الموظف المسؤول",
         "created_by": "أنشأه"
+      },
+      "values": {
+        "open": "مفتوحة",
+        "pending": "معلّقة",
+        "closed": "مغلقة"
       },
       "adminOnly": "سجل الأحداث للمسؤولين فقط",
       "adminOnlyHint": "اطلب من مسؤول الحساب إن كنت تحتاج تفاصيل تغيير معيّن.",
@@ -3692,6 +3698,7 @@
     "exportPrint": "طباعة / PDF",
     "metricsLabel": "المقاييس",
     "dimensionsLabel": "التقسيم (حتى قسمين)",
+    "systemActor": "النظام",
     "filtersLabel": "الفلاتر",
     "period": {
       "from": "من",
@@ -3751,6 +3758,7 @@
       "within_target_rate": "نسبة داخل المستهدف"
     },
     "dimensions": {
+      "closed_by": "مين قفلها",
       "period": "الفترة",
       "channel": "القناة",
       "agent": "الموظف",

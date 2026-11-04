@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { UNASSIGNED_AGENT, agentPlaceholderKey } from './catalog';
+import { CLOSED_BY_SYSTEM, UNASSIGNED_AGENT, agentPlaceholderKey } from './catalog';
 import { formatCell, formatDuration, formatMetric } from './run';
 
 const context = {
@@ -10,7 +10,20 @@ const context = {
   grain: 'day' as const,
   timeZone: 'Africa/Cairo',
   agentPlaceholder: 'بدون موظف مسجّل',
+  systemPlaceholder: 'النظام',
 };
+
+describe('closed-by system sentinel', () => {
+  it('names the sweep instead of leaking "__system"', () => {
+    const column = { key: 'closed_by', kind: 'text' as const };
+    expect(formatCell(CLOSED_BY_SYSTEM, column, context)).toBe('النظام');
+    expect(
+      formatCell(CLOSED_BY_SYSTEM, column, { ...context, systemPlaceholder: undefined }),
+    ).toBe('—');
+    // A real name passes straight through.
+    expect(formatCell('محمد', column, context)).toBe('محمد');
+  });
+});
 
 describe('agent placeholder', () => {
   it('gives each dataset the label its NULL actually means', () => {

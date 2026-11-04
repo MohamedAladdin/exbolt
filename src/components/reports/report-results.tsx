@@ -77,6 +77,7 @@ export function ReportResults({
     grain: result.grain,
     timeZone: result.timeZone,
     agentPlaceholder: t(`agentPlaceholder.${agentPlaceholderKey(result.dataset)}`),
+    systemPlaceholder: t('systemActor'),
   };
 
   const columns = result.columns;

@@ -15,7 +15,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import type { MetricUnit, ReportConfig, ReportDataset } from './catalog';
-import { UNASSIGNED_AGENT, metricUnit } from './catalog';
+import { CLOSED_BY_SYSTEM, UNASSIGNED_AGENT, metricUnit } from './catalog';
 
 export type ColumnKind = 'time' | 'text' | 'number';
 
@@ -173,6 +173,8 @@ export function formatCell(
     timeZone: string;
     /** Translated label for the nameless-member row (`UNASSIGNED_AGENT`). */
     agentPlaceholder?: string;
+    /** Translated label for "the system closed it" (`CLOSED_BY_SYSTEM`). */
+    systemPlaceholder?: string;
   },
 ): string {
   if (column.kind === 'time') {
@@ -183,6 +185,9 @@ export function formatCell(
   }
   if (value === UNASSIGNED_AGENT) {
     return context.agentPlaceholder ?? '—';
+  }
+  if (value === CLOSED_BY_SYSTEM) {
+    return context.systemPlaceholder ?? '—';
   }
   return value == null || value === '' ? '—' : String(value);
 }

@@ -38,7 +38,8 @@ export type DimensionKey =
   | 'number'
   | 'pipeline'
   | 'stage'
-  | 'broadcast';
+  | 'broadcast'
+  | 'closed_by';
 
 export type FilterKey =
   | 'channel'
@@ -106,6 +107,11 @@ export interface ReportConfig {
  */
 export const UNASSIGNED_AGENT = '__none';
 
+/** `conversations.closed_by IS NULL` on a closed thread = the system did it
+ *  (the auto-status sweep, an automation, the API). Travels as a sentinel so
+ *  the label stays a UI decision. */
+export const CLOSED_BY_SYSTEM = '__system';
+
 /** i18n key (under `Reports.agentPlaceholder`) for the nameless member row. */
 export function agentPlaceholderKey(dataset: ReportDataset): string {
   switch (dataset) {
@@ -167,7 +173,7 @@ export const DATASETS: Record<ReportDataset, DatasetDef> = {
       { key: 'first_response_avg', unit: 'minutes', advanced: true },
       { key: 'days_to_close_avg', unit: 'days', advanced: true },
     ],
-    dimensions: ['period', 'agent', 'channel', 'status', 'tag', 'number'],
+    dimensions: ['period', 'agent', 'channel', 'status', 'tag', 'number', 'closed_by'],
     filters: ['channel', 'status', 'agent', 'tag', 'number'],
   },
   contacts: {

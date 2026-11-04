@@ -82,6 +82,44 @@ export function actionKey(action: string): string {
 }
 
 /** Column name → catalogue key under `fields`. */
+/**
+ * Values that have a better name than their raw form.
+ *
+ * `open` / `pending` / `closed` are database words: printing them inside an
+ * Arabic row ("الحالة open ← pending") reads like a bug even though the event
+ * is perfectly recorded. The map is deliberately per FIELD, not global —
+ * `status` on a deal means won/lost, and translating those with the inbox
+ * vocabulary would be worse than leaving them raw.
+ */
+export function valueLabelKey(column: string, value: unknown): string | null {
+  if (column !== "status") return null;
+  const raw = typeof value === "string" ? value.trim().toLowerCase() : "";
+  return raw === "open" || raw === "pending" || raw === "closed"
+    ? `values.${raw}`
+    : null;
+}
+
+/**
+ * Why a thread changed status (metadata.reason on the event). Shared with the
+ * thread timeline so the audit log and the inbox never name the same reason
+ * two different ways.
+ */
+export const STATUS_REASON_KEYS: Record<string, string> = {
+  manual: "reasonManual",
+  auto_window: "reasonAutoWindow",
+  auto_idle: "reasonAutoIdle",
+  inbound: "reasonInbound",
+  outbound: "reasonOutbound",
+  automation: "reasonAutomation",
+  api: "reasonApi",
+  sweep: "reasonSweep",
+};
+
+export function statusReasonKey(reason: unknown): string | null {
+  if (typeof reason !== "string") return null;
+  return STATUS_REASON_KEYS[reason] ?? null;
+}
+
 export function fieldKey(column: string): string {
   return `fields.${column}`;
 }

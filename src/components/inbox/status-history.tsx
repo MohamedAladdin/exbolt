@@ -5,6 +5,7 @@ import { History, Loader2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import { STATUS_REASON_KEYS } from "@/lib/audit/activity";
 import type { ConversationStatus } from "@/types";
 import {
   Popover,
@@ -35,17 +36,6 @@ type StatusEvent = {
   source: "app" | "system";
   reason: string;
   created_at: string;
-};
-
-const REASON_KEYS: Record<string, string> = {
-  manual: "reasonManual",
-  auto_window: "reasonAutoWindow",
-  auto_idle: "reasonAutoIdle",
-  inbound: "reasonInbound",
-  outbound: "reasonOutbound",
-  automation: "reasonAutomation",
-  api: "reasonApi",
-  sweep: "reasonSweep",
 };
 
 const TONE: Record<ConversationStatus, string> = {
@@ -162,7 +152,7 @@ export function StatusHistory({
                   <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
                     <span className="text-foreground/80">{actor}</span>
                     {" · "}
-                    {t(REASON_KEYS[event.reason] ?? "reasonManual")}
+                    {t(STATUS_REASON_KEYS[event.reason] ?? "reasonManual")}
                     {" · "}
                     <span className="tabular-nums">{when(event.created_at)}</span>
                   </p>

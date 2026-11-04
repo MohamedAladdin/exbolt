@@ -20,6 +20,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import {
+  Bot,
   FileText,
   History,
   Inbox,
@@ -53,7 +54,9 @@ import {
   groupByDay,
   isDestructive,
   previewValue,
+  statusReasonKey,
   valueKind,
+  valueLabelKey,
   visibleChanges,
   type ActivityActor,
   type ActivityCategory,
@@ -84,6 +87,8 @@ function initials(name: string | null, email: string | null): string {
 export function ActivityLog() {
   const t = useTranslations('Settings.activity');
   const tRoles = useTranslations('Settings.roles');
+  // Same reason vocabulary as the thread timeline (Inbox.messageThread.reason*).
+  const tReason = useTranslations('Inbox.messageThread');
   const locale = useLocale();
 
   const [category, setCategory] = useState<'all' | ActivityCategory>('all');
@@ -230,11 +235,14 @@ export function ActivityLog() {
     return column.replace(/_/g, ' ');
   }
 
-  function valueLabel(value: unknown): string {
+  function valueLabel(column: string, value: unknown): string {
     const kind = valueKind(value);
     if (kind === 'empty') return '—';
     if (kind === 'boolean') return value ? t('yes') : t('no');
     if (kind === 'role' && tRoles.has(String(value))) return tRoles(String(value));
+    // A database word is not a label: `open` → مفتوحة.
+    const named = valueLabelKey(column, value);
+    if (named && t.has(named)) return t(named);
     return previewValue(value);
   }
 
@@ -394,13 +402,20 @@ export function ActivityLog() {
                               aria-hidden
                               className="bg-primary-soft text-primary ring-primary-soft-2 flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold ring-1"
                             >
-                              {initials(event.actor_name, event.actor_email)}
+                              {event.actor_name || event.actor_email ? (
+                                initials(event.actor_name, event.actor_email)
+                              ) : (
+                                <Bot className="size-3" aria-hidden />
+                              )}
                             </span>
                             <span dir="auto">
+                              {/* A system row is already labelled by the
+                                  «تلقائي» chip; printing the word twice reads
+                                  like two actors. */}
                               {event.actor_name ||
                                 event.actor_email ||
                                 (event.source === 'system'
-                                  ? t('system')
+                                  ? null
                                   : t('unknownActor'))}
                             </span>
                           </span>
@@ -425,6 +440,24 @@ export function ActivityLog() {
                                   <span className="text-muted-foreground font-medium">
                                     {fieldLabel(column)}
                                   </span>
+                                  {(() => {
+                                    const rawReason = (
+                                      event.metadata as Record<string, unknown>
+                                    )?.reason;
+                                    // «تلقائي» + «تغيير يدوي» is a contradiction:
+                                    // a system write that carried no reason (a
+                                    // legacy row, or a path older than migration
+                                    // 091) simply shows none.
+                                    if (event.source === 'system' && rawReason === 'manual') {
+                                      return null;
+                                    }
+                                    const reasonKey = statusReasonKey(rawReason);
+                                    return reasonKey && tReason.has(reasonKey) ? (
+                                      <span className="text-muted-foreground/80">
+                                        · {tReason(reasonKey)}
+                                      </span>
+                                    ) : null;
+                                  })()}
                                   {kind === 'secret' ? (
                                     <span className="text-muted-foreground inline-flex items-center gap-1">
                                       <Lock className="size-3" />
@@ -433,7 +466,7 @@ export function ActivityLog() {
                                   ) : (
                                     <>
                                       <span className="text-muted-foreground line-through decoration-muted-foreground/40">
-                                        {valueLabel(change.from)}
+                                        {valueLabel(column, change.from)}
                                       </span>
                                       <span
                                         aria-hidden
@@ -445,7 +478,7 @@ export function ActivityLog() {
                                         dir="auto"
                                         className="text-foreground font-medium"
                                       >
-                                        {valueLabel(change.to)}
+                                        {valueLabel(column, change.to)}
                                       </span>
                                     </>
                                   )}

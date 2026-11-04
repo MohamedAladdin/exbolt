@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -168,10 +168,19 @@ describe('presets', () => {
 // dataset's branch, which is where the two lists actually have to match.
 // ------------------------------------------------------------
 describe('catalogue ↔ run_report', () => {
-  const sql = readFileSync(
-    join(process.cwd(), 'supabase', 'migrations', '082_reports.sql'),
-    'utf8',
-  );
+  // `_run_report` is replaced by later migrations (092 adds `closed_by`), so
+  // the guard must inspect the definition that actually runs: the last
+  // migration that carries one.
+  const sql = (() => {
+    const dir = join(process.cwd(), 'supabase', 'migrations');
+    const defs = readdirSync(dir)
+      .filter((name) => name.endsWith('.sql'))
+      .sort()
+      .map((name) => [name, readFileSync(join(dir, name), 'utf8')] as const)
+      .filter(([, body]) => body.includes('FUNCTION public._run_report'));
+    expect(defs.length).toBeGreaterThan(0);
+    return defs[defs.length - 1][1];
+  })();
 
   const markers: Record<string, string> = {
     messages: "WHEN 'messages' THEN CASE v_metric",

@@ -25,6 +25,8 @@ export interface EmailLabels {
   footer: string;
   truncated: string;
   agentPlaceholder: (key: string) => string;
+  /** Label for `CLOSED_BY_SYSTEM` — the sweep retired the thread. */
+  systemPlaceholder: string;
 }
 
 export function emailLabels(locale: string): EmailLabels {
@@ -51,6 +53,7 @@ export function emailLabels(locale: string): EmailLabels {
       locale === 'ar'
         ? 'يتم عرض جزء من الصفوف — ضيّق الفترة أو أضف فلترًا في النظام.'
         : 'Showing part of the rows — narrow the period or add a filter in the app.',
+    systemPlaceholder: locale === 'ar' ? 'النظام' : 'System',
     agentPlaceholder: (key: string) =>
       reports.agentPlaceholder?.[key] ?? (locale === 'ar' ? 'بدون موظف مسجّل' : 'No recorded member'),
   };
