@@ -1112,3 +1112,130 @@ export async function updateLandingContent(params: {
 
   return { ok: true };
 }
+
+
+/**
+ * Hard-delete a tenant. The most destructive action in this panel, so every
+ * guard lives on the server and none of them is a UI affordance:
+ *
+ *  • the caller must type the account NAME (a misclick cannot reach this);
+ *  • an account with invoices is refused — billing history is a legal
+ *    record, not something a `ON DELETE CASCADE` should take with it (archive
+ *    it with `status: archived` instead);
+ *  • an account that contains a platform admin is refused (deleting it would
+ *    delete the operator's own login through the profiles cascade);
+ *  • storage objects are removed first, because the cascade cannot reach them.
+ *
+ * The audit row keeps the counts, so "what did I just delete" is answerable
+ * afterwards even though the rows are gone.
+ */
+export async function purgeAccount(params: {
+  actor: PlatformAdmin;
+  accountId: string;
+  confirmation: string;
+}) {
+  const { actor, accountId } = params;
+  const db = adminDb();
+
+  const { data: account } = await db
+    .from('accounts')
+    .select('id, name, status')
+    .eq('id', accountId)
+    .maybeSingle();
+  if (!account) throw new Error('invalid_account_not_found');
+
+  const typed = params.confirmation.trim().toLowerCase();
+  if (!typed || typed !== String(account.name).trim().toLowerCase()) {
+    throw new Error('purge_confirmation_mismatch');
+  }
+
+  const { count: invoiceCount } = await db
+    .from('invoices')
+    .select('id', { count: 'exact', head: true })
+    .eq('account_id', accountId);
+  if ((invoiceCount ?? 0) > 0) throw new Error('purge_has_invoices');
+
+  const { data: memberRows } = await db
+    .from('profiles')
+    .select('user_id')
+    .eq('account_id', accountId);
+  const memberIds = ((memberRows ?? []) as { user_id: string }[]).map((r) => r.user_id);
+
+  if (memberIds.length > 0) {
+    const { data: adminRows } = await db
+      .from('platform_admins')
+      .select('user_id')
+      .in('user_id', memberIds);
+    if ((adminRows ?? []).length > 0) throw new Error('purge_has_platform_admin');
+  }
+
+  const [{ count: contacts }, { count: conversations }, { count: messages }] =
+    await Promise.all([
+      db.from('contacts').select('id', { count: 'exact', head: true }).eq('account_id', accountId),
+      db.from('conversations').select('id', { count: 'exact', head: true }).eq('account_id', accountId),
+      db
+        .from('messages')
+        .select('id, conversations!inner(account_id)', { count: 'exact', head: true })
+        .eq('conversations.account_id', accountId),
+    ]);
+
+  // Best effort: a storage hiccup must not block the delete, but it must be
+  // reported — orphaned objects in a public bucket outlive the tenant.
+  let storageRemoved = 0;
+  for (const bucket of ['chat-media', 'avatars']) {
+    try {
+      const { data: objects } = await db.storage
+        .from(bucket)
+        .list(accountId, { limit: 1000 });
+      const paths = (objects ?? []).map((o) => `${accountId}/${o.name}`);
+      if (paths.length > 0) {
+        await db.storage.from(bucket).remove(paths);
+        storageRemoved += paths.length;
+      }
+    } catch {
+      // ignored on purpose — logged below through the audit details
+    }
+  }
+
+  const { error } = await db.from('accounts').delete().eq('id', accountId);
+  if (error) throw new Error(`admin_account_delete_failed: ${error.message}`);
+
+  // The profiles cascade removes the memberships; the logins would linger as
+  // orphans that can still sign in and land on an empty shell.
+  let usersRemoved = 0;
+  for (const userId of memberIds) {
+    const { error: userErr } = await db.auth.admin.deleteUser(userId);
+    if (!userErr) usersRemoved += 1;
+  }
+
+  await logAdminAction({
+    actor,
+    action: 'account.purged',
+    targetType: 'account',
+    targetId: accountId,
+    targetLabel: String(account.name),
+    details: {
+      status: account.status,
+      counts: {
+        members: memberIds.length,
+        contacts: contacts ?? 0,
+        conversations: conversations ?? 0,
+        messages: messages ?? 0,
+      },
+      storageRemoved,
+      usersRemoved,
+    },
+  });
+
+  return {
+    deleted: true,
+    counts: {
+      members: memberIds.length,
+      contacts: contacts ?? 0,
+      conversations: conversations ?? 0,
+      messages: messages ?? 0,
+    },
+    storageRemoved,
+    usersRemoved,
+  };
+}

@@ -38,6 +38,8 @@ import { GrantPanel } from '@/components/admin/grant-panel';
 import { MembersPanel } from '@/components/admin/members-panel';
 import { InvoicePanel } from '@/components/admin/invoice-panel';
 import { EmailPanel } from '@/components/admin/email-panel';
+import { PurgeAccountPanel } from '@/components/admin/purge-account';
+import { adminDb } from '@/lib/admin/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,6 +80,13 @@ export default async function AdminAccountPage({
     (channel) => channel.accountId === id
   );
   const notes = (subscription?.notes as string | null) ?? null;
+
+  // The delete panel must show what will ACTUALLY disappear, so this is the
+  // all-time message count — `account.messages30d` would understate it.
+  const { count: totalMessages } = await adminDb()
+    .from('messages')
+    .select('id, conversations!inner(account_id)', { count: 'exact', head: true })
+    .eq('conversations.account_id', id);
 
   return (
     <div className="flex flex-col gap-4">
@@ -158,7 +167,18 @@ export default async function AdminAccountPage({
       />
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <EmailPanel
+        <PurgeAccountPanel
+        accountId={account.id}
+        accountName={account.name}
+        counts={{
+          members: account.members,
+          contacts: account.contacts,
+          conversations: account.conversations,
+          messages: totalMessages ?? 0,
+        }}
+      />
+
+      <EmailPanel
           accountId={account.id}
           defaultTo={account.ownerEmail ?? ''}
           defaultName={account.ownerName ?? account.name}

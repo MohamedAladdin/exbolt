@@ -22,6 +22,7 @@ import {
   createGrant,
   isAccountStatus,
   revokeGrant,
+  purgeAccount,
   sendCustomEmailToAccount,
   setAccountStatus,
   setDocumentNotes,
@@ -145,6 +146,17 @@ export async function PATCH(
           subject,
           body: text,
           toName: typeof body.toName === 'string' ? body.toName : undefined,
+        });
+        return NextResponse.json(result);
+      }
+
+      case 'purge': {
+        // Deleting a tenant is irreversible: the body must carry the account
+        // name typed by the operator, and the guards live in `purgeAccount`.
+        const result = await purgeAccount({
+          actor,
+          accountId: id,
+          confirmation: String(body.confirmation ?? ''),
         });
         return NextResponse.json(result);
       }

@@ -125,6 +125,38 @@ const D: Record<string, Entry> = {
   'status.active': { ar: 'نشط', en: 'Active' },
   'status.suspended': { ar: 'موقوف', en: 'Suspended' },
   'status.archived': { ar: 'مؤرشف', en: 'Archived' },
+
+  // ---------- delete account ----------
+  'purge.title': { ar: 'حذف الحساب', en: 'Delete account' },
+  'purge.subtitle': {
+    ar: 'حذف نهائي لكل بيانات الحساب — مفيش رجوع فيه.',
+    en: 'Permanently removes every row this tenant owns. There is no undo.',
+  },
+  'purge.intro': {
+    ar: 'هيتحذف: جهات الاتصال والمحادثات والرسائل والقنوات والإعدادات والاشتراك وكل الأعضاء. لو محتاج تحتفظ بالبيانات، غيّر الحالة لـ«مؤرشف» بدل الحذف.',
+    en: 'This removes contacts, conversations, messages, channels, settings, the subscription and every member. If you need the data, set the status to Archived instead.',
+  },
+  'purge.counts': { ar: 'هيتحذف فعليًا', en: 'Will be deleted' },
+  'purge.confirmLabel': {
+    ar: 'اكتب اسم الحساب للتأكيد',
+    en: 'Type the account name to confirm',
+  },
+  'purge.confirmHint': { ar: 'بالظبط زي ما هو: {name}', en: 'Exactly as written: {name}' },
+  'purge.action': { ar: 'احذف نهائيًا', en: 'Delete permanently' },
+  'purge.busy': { ar: 'بيحذف…', en: 'Deleting…' },
+  'purge.done': { ar: 'الحساب اتحذف', en: 'Account deleted' },
+  'err.purge_confirmation_mismatch': {
+    ar: 'الاسم اللي كتبته مش مطابق لاسم الحساب.',
+    en: 'The typed name does not match the account name.',
+  },
+  'err.purge_has_invoices': {
+    ar: 'الحساب عليه فواتير — استخدم «مؤرشف» بدل الحذف.',
+    en: 'This account has invoices — archive it instead of deleting it.',
+  },
+  'err.purge_has_platform_admin': {
+    ar: 'الحساب فيه سوبر أدمن — مش هيتم حذفه.',
+    en: 'This account contains a platform admin and will not be deleted.',
+  },
   'status.banned': { ar: 'محظور', en: 'Blocked' },
   'sub.trial': { ar: 'تجربة', en: 'Trial' },
   'sub.active': { ar: 'مدفوع', en: 'Active' },
