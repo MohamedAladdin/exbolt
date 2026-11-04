@@ -148,7 +148,9 @@ beforeEach(() => {
   h.state.rpcCalls = []
   h.state.latestInbound = [{ message_id: 'wamid.inbound-1' }]
   h.loadAiConfig.mockResolvedValue(aiConfig())
-  h.buildConversationContext.mockResolvedValue([{ role: 'user', content: 'hi' }])
+  h.buildConversationContext.mockResolvedValue([
+    { role: 'user', content: 'عايز أحجز موعد بكرة الصبح' },
+  ])
   h.retrieveKnowledge.mockResolvedValue([])
   h.generateReply.mockResolvedValue({ text: 'Hello!', handoff: false })
   h.engineSendText.mockResolvedValue({ whatsapp_message_id: 'm1' })
@@ -492,5 +494,31 @@ describe('dispatchInboundToAiReply — customer memory', () => {
     await dispatchInboundToAiReply(ARGS)
     const systemPrompt = h.generateReply.mock.calls[0][0].systemPrompt as string
     expect(systemPrompt).not.toContain('already told you in earlier conversations')
+  })
+})
+
+describe('dispatchInboundToAiReply — trivial inbound', () => {
+  it.each([['شكرا'], ['..'], ['🙏'], ['تمام'], ['.'], ['thanks']])(
+    'stays quiet on %s without handing off',
+    async (text) => {
+      h.buildConversationContext.mockResolvedValue([{ role: 'user', content: text }])
+      await dispatchInboundToAiReply(ARGS)
+      expect(h.generateReply).not.toHaveBeenCalled()
+      expect(h.engineSendText).not.toHaveBeenCalled()
+      // The thread must stay enabled: a mute here is what made the assistant
+      // look broken after a customer said thanks.
+      expect(h.state.updatePayload?.ai_autoreply_disabled).toBeUndefined()
+      expect(h.notifyUnassignedHandoff).not.toHaveBeenCalled()
+    },
+  )
+
+  it('still answers a real question that follows a thank-you', async () => {
+    h.buildConversationContext.mockResolvedValue([
+      { role: 'user', content: 'شكرا' },
+      { role: 'assistant', content: 'العفو 🌸' },
+      { role: 'user', content: 'طيب مواعيد فرع المهندسين إيه؟' },
+    ])
+    await dispatchInboundToAiReply(ARGS)
+    expect(h.generateReply).toHaveBeenCalledTimes(1)
   })
 })

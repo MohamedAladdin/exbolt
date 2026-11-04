@@ -27,6 +27,33 @@ const tAi = getT('AiAgent')
 /** At most one "we're closed" reply per thread in this window. */
 const AWAY_REPLY_COOLDOWN_MS = 6 * 60 * 60 * 1000
 
+/**
+ * Acknowledgements and punctuation that need no answer.
+ *
+ * The model used to answer these with the handoff sentinel, and a handoff
+ * permanently disables auto-reply on the thread — so «شكرًا» or «..» quietly
+ * switched the assistant off for that customer and rang the team's bell. These
+ * messages get silence, and the thread stays enabled.
+ */
+const TRIVIAL_INBOUND =
+  /^(?:[.،,?؟!\s\-]+|شكرا(?:ً|ا)?|شكرًا|متشكر(?:ة|ه)?|تسلم(?:ي|وا)?|تمام|اوك|أوك|اوكيه|ok(?:ay)?|thanks|thank you|thx|جزاك(?:م|ي)? الله(?: خيرا| خيرًا)?|ربنا يخليك(?:م|وا)?|يعطيك العافية|السلام عليكم|السلام عليكم ورحمة الله|وعليكم السلام|صباح الخير|صباح النور|مساء الخير|مساء النور)[\s.،,!؟🙏👍🌹❤️🤍💙😊😍]*$/iu
+
+/**
+ * Does this inbound need a reply at all?
+ *
+ * Conservative on purpose: only clearly content-free messages (punctuation,
+ * emoji, a bare acknowledgement) count. Anything with substance goes to the
+ * model, which may still hand off — that is what handoff is for.
+ */
+export function isTrivialInbound(text: string | null | undefined): boolean {
+  const value = (text ?? '').replace(/\s+/g, ' ').trim()
+  if (!value) return true
+  if (TRIVIAL_INBOUND.test(value)) return true
+  // Strip emoji/punctuation: fewer than 4 real characters is not a request.
+  const stripped = value.replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}\p{P}\p{S}\s]/gu, '')
+  return stripped.length < 4
+}
+
 interface DispatchArgs {
   /** Tenancy key — drives config, contact, and whatsapp_config lookups. */
   accountId: string
@@ -138,6 +165,15 @@ export async function dispatchInboundToAiReply(
 
     const messages = await buildConversationContext(db, conversationId)
     if (messages.length === 0) return
+
+    // «شكرًا» / «..» get silence — not a handoff, which would mute the thread
+    // for this customer for good.
+    if (isTrivialInbound(latestUserMessage(messages))) {
+      console.log(
+        `[ai auto-reply] trivial inbound on ${conversationId} — no reply, thread stays enabled.`,
+      )
+      return
+    }
 
     // Account-wide throttle on the shared BYO key. The per-conversation
     // cap bounds one thread; this bounds a burst across many threads (a
