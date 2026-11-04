@@ -143,6 +143,15 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
     setAddingNote(false);
   }, [contact, newNote, accountId]);
 
+  // The assistant's memory is a proposal, not gospel: anyone with the admin
+  // role can drop a wrong fact (RLS enforces the same rule server-side).
+  const handleDeleteFact = useCallback(async (id: string) => {
+    const supabase = createClient();
+    const { error } = await supabase.from("contact_facts").delete().eq("id", id);
+    if (error) return;
+    setFacts((prev) => prev.filter((fact) => fact.id !== id));
+  }, []);
+
   if (!contact) {
     return (
       <div className="flex h-full w-70 items-center justify-center border-s border-border bg-card">
@@ -153,15 +162,6 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
 
   const displayName = contact.name || contactHandle(contact);
   const initials = displayName.charAt(0).toUpperCase();
-
-  // The assistant's memory is a proposal, not gospel: anyone with the admin
-  // role can drop a wrong fact (RLS enforces the same rule server-side).
-  const handleDeleteFact = useCallback(async (id: string) => {
-    const supabase = createClient();
-    const { error } = await supabase.from("contact_facts").delete().eq("id", id);
-    if (error) return;
-    setFacts((prev) => prev.filter((fact) => fact.id !== id));
-  }, []);
 
   return (
     <div className="flex h-full w-70 flex-col border-s border-border bg-card">
