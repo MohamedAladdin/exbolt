@@ -179,6 +179,9 @@ export interface Conversation {
   user_id: string;
   contact_id: string;
   status: ConversationStatus;
+  /** True when the auto-status sweep (migration 090) set `status`; a human
+   *  action, an inbound message or a reopen clears it. */
+  status_auto?: boolean;
   assigned_agent_id?: string;
   last_message_text?: string;
   last_message_at?: string;

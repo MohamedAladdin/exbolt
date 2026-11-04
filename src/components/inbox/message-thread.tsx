@@ -59,11 +59,8 @@ import { MessageEditDialog } from "./message-edit-dialog";
 import { MessageForwardDialog } from "./message-forward-dialog";
 import { MediaLightbox } from "./media-lightbox";
 import { collectMediaGallery } from "@/lib/media/gallery";
-import {
-  MessageComposer,
-  CHAT_MEDIA_BUCKET,
-  type SendMediaPayload,
-} from "./message-composer";
+import { MessageComposer, CHAT_MEDIA_BUCKET, type SendMediaPayload } from "./message-composer";
+import { StatusControl } from "./status-control";
 import { deleteAccountMedia } from "@/lib/storage/upload-media";
 import { TemplatePicker } from "./template-picker";
 import { AiThreadBanner } from "./ai-thread-banner";
@@ -169,12 +166,6 @@ function groupMessagesByDate(messages: Message[]) {
 
   return groups;
 }
-
-const STATUS_OPTIONS: { label: string; value: ConversationStatus; color: string }[] = [
-  { label: "Open", value: "open", color: "text-primary" },
-  { label: "Pending", value: "pending", color: "text-amber-400" },
-  { label: "Closed", value: "closed", color: "text-muted-foreground" },
-];
 
 /**
  * Chat canvas classes — the wallpaper lives in one CSS class
@@ -872,7 +863,9 @@ export function MessageThread({
       const supabase = createClient();
       await supabase
         .from("conversations")
-        .update({ status })
+        // A human decision clears the auto flag (migration 090) so the sweep
+        // and the KPIs can tell a manual resolution from a retired thread.
+        .update({ status, status_auto: false })
         .eq("id", conversation.id);
 
       onStatusChange(conversation.id, status);
@@ -1117,9 +1110,6 @@ export function MessageThread({
 
   const displayName = contact.name || contactHandle(contact);
   const messageGroups = groupMessagesByDate(messages);
-  const currentStatus = STATUS_OPTIONS.find(
-    (s) => s.value === conversation.status
-  );
   const assignedAgentId = conversation.assigned_agent_id ?? null;
   const currentAssignee = profiles.find((p) => p.user_id === assignedAgentId);
   const assignLabel = assignedAgentId
@@ -1285,30 +1275,12 @@ export function MessageThread({
             </button>
           )}
 
-          {/* Status dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger className={cn(
-                  "inline-flex items-center justify-center h-7 gap-1 px-2 text-xs rounded-md hover:bg-muted",
-                  currentStatus?.color ?? "text-muted-foreground"
-                )}>
-                {currentStatus ? t(`status${currentStatus.label}`) : t("status")}
-                <ChevronDown className="h-3 w-3" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="border-border bg-popover"
-            >
-              {STATUS_OPTIONS.map((opt) => (
-                <DropdownMenuItem
-                  key={opt.value}
-                  onClick={() => handleStatusChange(opt.value)}
-                  className={cn("text-sm", opt.color)}
-                >
-                  {t(`status${opt.label}`)}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {/* Status control — the quick action (غلق / فتح) plus a chevron for
+              the other transitions. See status-control.tsx. */}
+          <StatusControl
+            status={conversation.status}
+            onChange={handleStatusChange}
+          />
 
           {/* Assign dropdown */}
           <DropdownMenu>
