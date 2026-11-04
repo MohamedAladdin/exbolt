@@ -36,7 +36,7 @@ export async function GET() {
       // `api_key` is selected only to derive `has_key` — it is stripped
       // out below and never returned to the client.
       .select(
-        'provider, model, base_url, system_prompt, is_active, auto_reply_enabled, auto_reply_max_per_conversation, context_message_limit, handoff_agent_id, handoff_agent_ids, ai_schedule_enabled, ai_schedule_start, ai_schedule_end, ai_schedule_days, ai_schedule_timezone, outside_hours_mode, outside_hours_message, api_key, embeddings_api_key',
+        'provider, model, base_url, system_prompt, is_active, auto_reply_enabled, auto_reply_max_per_conversation, context_message_limit, handoff_agent_id, handoff_agent_ids, ai_schedule_enabled, ai_schedule_start, ai_schedule_end, ai_schedule_days, ai_schedule_timezone, outside_hours_mode, outside_hours_message, handoff_message, api_key, embeddings_api_key',
       )
       .eq('account_id', accountId)
       .maybeSingle()
@@ -229,6 +229,17 @@ export async function POST(request: Request) {
       return bad(t('ai.outsideHoursMessageRequired'))
     }
 
+    // Optional holding line sent at handoff. Empty string clears it back to
+    // silent; absent leaves it unchanged.
+    const handoffMessageProvided = Object.prototype.hasOwnProperty.call(
+      body ?? {},
+      'handoff_message',
+    )
+    const handoffMessage =
+      typeof body.handoff_message === 'string'
+        ? body.handoff_message.trim().slice(0, 500)
+        : ''
+
     const rawKey = typeof body.api_key === 'string' ? body.api_key.trim() : ''
 
     // Embeddings key (optional, for semantic KB search): a non-empty
@@ -306,6 +317,7 @@ export async function POST(request: Request) {
           scheduleTimezone: 'Africa/Cairo',
           outsideHoursMode: 'always',
           outsideHoursMessage: null,
+          handoffMessage: null,
           embeddingsApiKey: null,
         })
       } catch (err) {
@@ -348,6 +360,7 @@ export async function POST(request: Request) {
       auto_reply_max_per_conversation: maxPer,
     }
     if (contextProvided) shared.context_message_limit = contextLimit
+    if (handoffMessageProvided) shared.handoff_message = handoffMessage || null
     // Only touch the handoff target when the form actually sent the field,
     // so a partial save (e.g. flipping a toggle) doesn't wipe it.
     if (handoffListProvided) {

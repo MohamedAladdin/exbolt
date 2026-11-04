@@ -139,6 +139,7 @@ function aiConfig(overrides: Partial<AiConfig> = {}): AiConfig {
     outsideHoursMode: 'always',
     outsideHoursMessage: null,
     embeddingsApiKey: null,
+    handoffMessage: null,
     ...overrides,
   }
 }
@@ -288,6 +289,48 @@ describe('dispatchInboundToAiReply — eligibility gates', () => {
     expect(h.generateReply).not.toHaveBeenCalled()
     expect(h.engineSendText).not.toHaveBeenCalled()
     expect(h.sendTypingIndicator).not.toHaveBeenCalled()
+  })
+})
+
+
+describe('dispatchInboundToAiReply — handoff holding message', () => {
+  it('sends the configured line, then mutes the thread', async () => {
+    h.loadAiConfig.mockResolvedValue(
+      aiConfig({ handoffMessage: 'آسف على ده، بحوّلك حالًا لواحد من الفريق.' }),
+    )
+    h.generateReply.mockResolvedValue({ text: '', handoff: true })
+    await dispatchInboundToAiReply(ARGS)
+    expect(h.engineSendText).toHaveBeenCalledTimes(1)
+    expect(h.engineSendText.mock.calls[0][0].text).toBe(
+      'آسف على ده، بحوّلك حالًا لواحد من الفريق.',
+    )
+    // The mock records {payload, isNull} wrappers, not the raw row.
+    expect(
+      h.state.updates.some(
+        (u: { payload?: { ai_autoreply_disabled?: boolean } }) =>
+          u.payload?.ai_autoreply_disabled === true,
+      ),
+    ).toBe(true)
+  })
+
+  it('stays silent when no line is configured', async () => {
+    h.generateReply.mockResolvedValue({ text: '', handoff: true })
+    await dispatchInboundToAiReply(ARGS)
+    expect(h.engineSendText).not.toHaveBeenCalled()
+  })
+
+  it('mutes the thread even when the holding line fails to send', async () => {
+    h.loadAiConfig.mockResolvedValue(aiConfig({ handoffMessage: 'لحظة واحدة.' }))
+    h.generateReply.mockResolvedValue({ text: '', handoff: true })
+    h.engineSendText.mockRejectedValue(new Error('131047'))
+    await dispatchInboundToAiReply(ARGS)
+    // The mock records {payload, isNull} wrappers, not the raw row.
+    expect(
+      h.state.updates.some(
+        (u: { payload?: { ai_autoreply_disabled?: boolean } }) =>
+          u.payload?.ai_autoreply_disabled === true,
+      ),
+    ).toBe(true)
   })
 })
 

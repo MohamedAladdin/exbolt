@@ -21,6 +21,7 @@ function config(overrides: Partial<AiConfig> = {}): AiConfig {
     scheduleTimezone: 'Africa/Cairo',
     outsideHoursMode: 'always',
     outsideHoursMessage: null,
+  handoffMessage: null,
     embeddingsApiKey: null,
     ...overrides,
   }

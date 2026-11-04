@@ -293,6 +293,24 @@ export async function dispatchInboundToAiReply(
         targets: owner ? targets.slice(1) : [],
         fallbackToTeam: !owner,
       })
+      // From the customer's side, a handoff that sends nothing is the same as
+      // being ignored — worst on the exact message that usually triggers it
+      // (a complaint). If the account configured a holding line, send it now:
+      // the thread is already muted, so this cannot double-reply.
+      if (config.handoffMessage) {
+        try {
+          await engineSendText({
+            accountId,
+            userId: configOwnerUserId,
+            conversationId,
+            contactId,
+            text: config.handoffMessage,
+            aiGenerated: true,
+          })
+        } catch (err) {
+          console.error('[ai auto-reply] handoff message failed:', err)
+        }
+      }
       return
     }
 

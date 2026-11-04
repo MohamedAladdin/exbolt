@@ -44,6 +44,8 @@ export interface AiConfig {
   outsideHoursMode: OutsideHoursMode
   /** Canned reply for `message` mode; null falls back to a default. */
   outsideHoursMessage: string | null
+  /** Sent to the customer when the assistant hands off. null = stay silent. */
+  handoffMessage: string | null
   /** Optional OpenAI-compatible key for embeddings. When set, the
    *  knowledge base is embedded and semantic retrieval turns on; when
    *  null, retrieval falls back to lexical full-text search. */

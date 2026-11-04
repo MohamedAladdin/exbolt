@@ -82,6 +82,8 @@ export function AiConfig() {
     'always' | 'silent' | 'message'
   >('always');
   const [outsideHoursMessage, setOutsideHoursMessage] = useState('');
+  // Sent to the customer the moment the bot hands the thread to a human.
+  const [handoffMessage, setHandoffMessage] = useState('');
   // The assistant's own window — independent of the team's inbox hours.
   const [scheduleEnabled, setScheduleEnabled] = useState(false);
   const [scheduleStart, setScheduleStart] = useState('09:00');
@@ -230,6 +232,7 @@ export function AiConfig() {
     outside_hours_mode: outsideHoursMode,
     outside_hours_message:
       outsideHoursMode === 'message' ? outsideHoursMessage.trim() || null : null,
+    handoff_message: handoffMessage.trim() || null,
   });
 
   const handleTest = async () => {
@@ -624,6 +627,21 @@ export function AiConfig() {
                   ? t('handoffQueue')
                   : t('handoffMultiHint')}
               </p>
+              <div className="grid gap-2 pt-2">
+                <Label htmlFor="ai-handoff-msg">{t('handoffMessage')}</Label>
+                <Textarea
+                  id="ai-handoff-msg"
+                  value={handoffMessage}
+                  onChange={(e) => setHandoffMessage(e.target.value)}
+                  placeholder={t('handoffMessagePlaceholder')}
+                  rows={2}
+                  maxLength={500}
+                  disabled={disabled}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t('handoffMessageHint', { count: handoffMessage.length })}
+                </p>
+              </div>
             </div>
 
             <div className="space-y-4 border-t border-border pt-4">

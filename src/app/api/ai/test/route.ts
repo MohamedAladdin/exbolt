@@ -108,6 +108,7 @@ export async function POST(request: Request) {
         scheduleTimezone: 'Africa/Cairo',
         outsideHoursMode: 'always',
         outsideHoursMessage: null,
+    handoffMessage: null,
         embeddingsApiKey: null,
       })
     } catch (err) {

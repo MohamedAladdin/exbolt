@@ -20,6 +20,7 @@ interface AiConfigRow {
   ai_schedule_timezone: string | null
   outside_hours_mode: 'always' | 'silent' | 'message' | null
   outside_hours_message: string | null
+  handoff_message?: string | null
   embeddings_api_key: string | null
 }
 
@@ -98,6 +99,7 @@ export async function loadAiConfig(
     scheduleTimezone: row.ai_schedule_timezone || 'Africa/Cairo',
     outsideHoursMode: row.outside_hours_mode ?? 'always',
     outsideHoursMessage: row.outside_hours_message,
+    handoffMessage: row.handoff_message ?? null,
     embeddingsApiKey,
   }
 }
