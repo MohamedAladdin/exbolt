@@ -112,6 +112,7 @@ export function ConversationList({
   const [filter, setFilter] = useState<InboxFilter>(initialFilter);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [loadingAll, setLoadingAll] = useState(false);
   // Server-side results: the rows of the current page(s), the exact size of
   // the filtered set, and the account-level chip counts.
   const [rows, setRows] = useState<Conversation[]>([]);
@@ -185,10 +186,10 @@ export function ConversationList({
   );
 
   const fetchPage = useCallback(
-    async (offset: number) => {
+    async (offset: number, limit: number = CONVERSATION_PAGE_SIZE) => {
       const supabase = createClient();
       const { data, error } = await supabase.rpc("inbox_page", {
-        p_limit: CONVERSATION_PAGE_SIZE,
+        p_limit: limit,
         p_offset: offset,
         p_search: searchQuery || null,
         p_filter: filter,
@@ -262,26 +263,31 @@ export function ConversationList({
     };
   }, [fetchPage, filtersKey]);
 
-  // Soft refresh (tab focus / realtime reconnect): re-read page 1 and merge
-  // it into what is already on screen. A full reset here would throw the
-  // operator back to the top of a list they had scrolled.
+  // Soft refresh (tab focus / realtime reconnect): re-read EVERY row that is
+  // on screen, in 200-row chunks, and swap the list. Re-reading only page 1
+  // left threads further down stale whenever the realtime event was missed.
   const resyncRef = useRef(resyncToken);
   useEffect(() => {
     if (resyncToken === resyncRef.current) return;
     resyncRef.current = resyncToken;
     void (async () => {
-      const page = await fetchPage(0);
-      if (!page) return;
-      setTotal(page.total);
-      setCounts(page.counts ?? null);
-      setRows((prev) => {
-        const byId = new Map(page.rows.map((c) => [c.id, c]));
-        const merged = prev.map((c) => byId.get(c.id) ?? c);
-        const known = new Set(merged.map((c) => c.id));
-        const added = page.rows.filter((c) => !known.has(c.id));
-        return [...added, ...merged];
-      });
+      const want = Math.max(rows.length, CONVERSATION_PAGE_SIZE);
+      const collected: Conversation[] = [];
+      let offset = 0;
+      while (offset < want) {
+        const page = await fetchPage(offset, 200);
+        if (!page) return;
+        collected.push(...page.rows);
+        setTotal(page.total);
+        setCounts(page.counts ?? null);
+        if (page.rows.length === 0 || collected.length >= page.total) break;
+        offset += page.rows.length;
+      }
+      setRows(collected);
     })();
+    // `rows.length` is deliberately read at fire time (ref-like): re-running
+    // this effect whenever a page loads would refetch in a loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchPage, resyncToken]);
 
   const loadMore = useCallback(async () => {
@@ -297,6 +303,31 @@ export function ConversationList({
     }
     setLoadingMore(false);
   }, [fetchPage, loading, loadingMore, rows.length, total]);
+
+  // "Load all": walk the rest of the filtered set in 200-row chunks. The RPC
+  // caps a page at 200, so a 1.4k-thread inbox is ~7 requests instead of 56.
+  const loadAll = useCallback(async () => {
+    if (loadingAll || loading || rows.length >= total) return;
+    setLoadingAll(true);
+    let acc = [...rows];
+    const seen = new Set(acc.map((c) => c.id));
+    let offset = acc.length;
+    while (offset < total) {
+      const page = await fetchPage(offset, 200);
+      if (!page) break;
+      for (const conv of page.rows) {
+        if (!seen.has(conv.id)) {
+          seen.add(conv.id);
+          acc.push(conv);
+        }
+      }
+      setRows([...acc]);
+      setTotal(page.total);
+      if (page.rows.length === 0) break;
+      offset = acc.length;
+    }
+    setLoadingAll(false);
+  }, [fetchPage, loading, loadingAll, rows, total]);
 
   const hasMore = rows.length < total;
 
@@ -414,6 +445,16 @@ export function ConversationList({
     [onSelect]
   );
 
+  const hasActiveFilters =
+    searchQuery !== "" ||
+    filter !== "all" ||
+    channelFilter !== "all" ||
+    numberFilter !== "all" ||
+    selectedTagIds.length > 0 ||
+    selectedCompany !== null ||
+    assignee !== null ||
+    participant !== null;
+
   const activeFilter = FILTER_OPTIONS.find((o) => o.value === filter);
 
   return (
@@ -432,6 +473,15 @@ export function ConversationList({
             className="border-border bg-muted ps-9 text-sm text-foreground placeholder-muted-foreground focus:border-primary/50"
           />
         </div>
+
+        {/* Search runs against the whole table, so the honest answer to "how
+            many matched" is the server's total — show it instead of letting
+            the operator guess from a scrolling list. */}
+        {hasActiveFilters && !loading && (
+          <div className="text-muted-foreground px-1 text-[11px] tabular-nums">
+            {t("resultsCount", { count: total })}
+          </div>
+        )}
 
         {showNumberFilter && (
           <div
@@ -793,13 +843,24 @@ export function ConversationList({
                     {t("loadingMore")}
                   </span>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => void loadMore()}
-                    className="text-muted-foreground hover:text-foreground text-[11px] underline-offset-2 hover:underline"
-                  >
-                    {t("loadMore")}
-                  </button>
+                  <span className="flex items-center gap-2 text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => void loadMore()}
+                      className="text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+                    >
+                      {t("loadMore")}
+                    </button>
+                    <span className="text-muted-foreground/40">·</span>
+                    <button
+                      type="button"
+                      onClick={() => void loadAll()}
+                      disabled={loadingAll}
+                      className="text-muted-foreground hover:text-foreground underline-offset-2 hover:underline disabled:opacity-50"
+                    >
+                      {loadingAll ? t("loadingAll") : t("loadAll")}
+                    </button>
+                  </span>
                 )}
               </div>
             )}

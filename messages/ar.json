@@ -373,7 +373,10 @@
       "clearAssignee": "إظهار كل المحادثات",
       "participatedIn": "شارك فيها: {name}",
       "participating": "محادثات شارك فيها",
-      "loadMore": "حمّل 25 كمان"
+      "loadMore": "حمّل 25 كمان",
+      "resultsCount": "{count} نتيجة",
+      "loadAll": "حمّل الكل",
+      "loadingAll": "بيحمّل الكل…"
     },
     "messageThread": {
       "backToConversations": "العودة إلى المحادثات",

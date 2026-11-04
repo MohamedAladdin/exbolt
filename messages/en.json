@@ -373,7 +373,10 @@
       "clearAssignee": "Show all conversations",
       "participatedIn": "Took part: {name}",
       "participating": "Conversations they took part in",
-      "loadMore": "Load 25 more"
+      "loadMore": "Load 25 more",
+      "resultsCount": "{count} results",
+      "loadAll": "Load all",
+      "loadingAll": "Loading all…"
     },
     "messageThread": {
       "backToConversations": "Back to conversations",
