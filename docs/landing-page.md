@@ -8,6 +8,7 @@ tenant panel and the admin panel share one origin and one TLS certificate.
 | `/` | Arabic landing (RTL) |
 | `/ar` | Same Arabic landing |
 | `/en` | English landing |
+| `/meta-cost` | «إزاي ميتا بتحسب فلوس الرسايل» — explainer + calculator (static, Arabic) |
 | `/login` | Tenant sign-in (then `/dashboard`) |
 | `/admin` | Platform admin console (sign-in required) |
 
@@ -28,6 +29,24 @@ python3 build.py        # → exbolt/public/landing/{ar,en}.html + assets/
 - `BASE` in `build.py` is the canonical origin. It currently points at
   `https://bolt.excal.uk` (the live host). Change it if the canonical host
   changes.
+
+## /meta-cost (pricing explainer + calculator)
+
+A separate static page, not part of `build.py`: it teaches Meta's per-message
+pricing (5 categories, free allowances, volume tiers) and carries a live
+calculator over all 47 markets. Source of truth: `~/rado-yard/meta-cost/`
+(see its README — `markets.json` + `meta-cost.js.tpl` → `meta-cost.js`).
+Rates come from Meta's official rate card, so the page is only as fresh as that
+file: refresh it when Meta publishes a new card.
+
+- Served file: `public/landing/meta-cost.html` + `public/landing/assets/meta-cost.{css,js}`
+- Route: `beforeFiles` rewrite in `next.config.ts`; `src/middleware.ts` treats
+  `/meta-cost` as public (no Supabase session work)
+- Cache: `public, max-age=60, stale-while-revalidate=600`
+- Both landings link to it from their footer (`links_company` in `build.py`)
+
+Rebuilding the app image is required after a rewrite change; a container
+restart alone will not pick it up.
 
 ## Editable content (admin)
 
