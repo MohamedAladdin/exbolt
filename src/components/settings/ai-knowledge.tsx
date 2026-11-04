@@ -380,6 +380,9 @@ export function AiKnowledgeCard({
                     rows={8}
                     disabled={saving}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    {t('contentHint', { count: content.length })}
+                  </p>
                 </div>
                 <div className="flex justify-end gap-2">
                   <Button variant="ghost" onClick={cancelEdit} disabled={saving}>

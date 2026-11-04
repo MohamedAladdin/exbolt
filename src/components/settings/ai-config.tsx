@@ -507,6 +507,9 @@ export function AiConfig() {
                 rows={5}
                 disabled={disabled}
               />
+              <p className="text-xs text-muted-foreground">
+                {t('promptHint', { count: systemPrompt.length })}
+              </p>
             </div>
 
             <div className="flex items-center justify-between gap-4 rounded-md border border-border p-3">

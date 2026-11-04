@@ -2447,7 +2447,8 @@
       "handoffSelected": "Selected",
       "handoffMultiHint": "The first one becomes the thread owner; everyone else is notified.",
       "contextLimit": "Messages sent with each reply",
-      "contextLimitDesc": "How many recent text messages of the thread go to the model on every reply (4–50). Lower is cheaper and faster, with less context."
+      "contextLimitDesc": "How many recent text messages of the thread go to the model on every reply (4–50). Lower is cheaper and faster, with less context.",
+      "promptHint": "This prompt is sent with every reply, so keep it tight — current length: {count} characters."
     },
     "aiKnowledge": {
       "loadFailed": "Failed to load knowledge base",
@@ -2485,7 +2486,8 @@
       "dismiss": "Dismiss",
       "reviewing": "Working…",
       "suggestionApproved": "Added to the knowledge base",
-      "suggestionDismissed": "Dismissed"
+      "suggestionDismissed": "Dismissed",
+      "contentHint": "The content is split into passages and used on demand — current length: {count} characters."
     },
     "quickReplies": {
       "nameRequired": "Give the quick reply a name.",
