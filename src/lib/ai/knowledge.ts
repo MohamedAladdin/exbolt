@@ -16,6 +16,57 @@ export interface IngestResult {
 
 const CHUNK_DELETE_BATCH = 100
 
+/**
+ * Words too common to say anything about relevance. Arabic questions are short,
+ * so a token that appears in almost every chunk only adds noise.
+ */
+const STOPWORDS = new Set([
+  'فيه','في','من','عن','على','هل','ايه','إيه','كام','عايز','عاوز','ممكن','حضرتك',
+  'انا','أنا','هو','هي','يا','لو','ولا','او','أو','و','اللي','التي','الذي','بتاع',
+  'عندكم','عندك','محتاج','محتاجة','ممكن','يعني','بس','كمان','دلوقتي','the','and','for',
+  'you','your','are','is','do','does','have','what','how','much','where','can','a','of','in','to',
+])
+
+/** Question terms worth matching against an excerpt (Arabic words ≥3 chars). */
+export function queryTerms(query: string): string[] {
+  return [
+    ...new Set(
+      (query || '')
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+        .split(/\s+/)
+        .map((t) => t.trim())
+        .filter((t) => t.length >= 3 && !STOPWORDS.has(t)),
+    ),
+  ]
+}
+
+/**
+ * Re-order retrieved excerpts so the ones that actually mention the question's
+ * own words come first.
+ *
+ * Lexical retrieval ranks by ts_rank over the whole chunk, which can put a
+ * generic "الفروع" section above the one line that names المنصورة. Since the
+ * model reads these in order and hands off when unsure, the passage that
+ * contains the asked-about city has to lead. Pure and stable: equal scores keep
+ * their incoming order.
+ */
+export function rerankByQueryTerms(chunks: string[], query: string): string[] {
+  const terms = queryTerms(query)
+  if (terms.length === 0 || chunks.length < 2) return chunks
+  return [...chunks]
+    .map((content, index) => {
+      const haystack = content.toLowerCase()
+      const score = terms.reduce(
+        (total, term) => (haystack.includes(term) ? total + 1 : total),
+        0,
+      )
+      return { content, index, score }
+    })
+    .sort((a, b) => (b.score - a.score) || (a.index - b.index))
+    .map((row) => row.content)
+}
+
 interface MatchRow {
   id: string
   content: string
@@ -92,7 +143,7 @@ export async function retrieveKnowledge(
   accountId: string,
   config: Pick<AiConfig, 'embeddingsApiKey'>,
   queryText: string,
-  k = 5,
+  k = 8,
 ): Promise<string[]> {
   const query = queryText.trim()
   if (!query || k <= 0) return []
@@ -151,5 +202,5 @@ export async function retrieveKnowledge(
     }
   }
 
-  return Array.from(picked.values()).slice(0, k)
+  return rerankByQueryTerms(Array.from(picked.values()), query).slice(0, k)
 }

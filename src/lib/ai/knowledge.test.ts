@@ -7,7 +7,7 @@ vi.mock('./embeddings', () => ({
   toVectorLiteral: (v: number[]) => `[${v.join(',')}]`,
 }))
 
-import { retrieveKnowledge, ingestDocument } from './knowledge'
+import { retrieveKnowledge, ingestDocument, queryTerms, rerankByQueryTerms } from './knowledge'
 
 interface FakeState {
   semantic: { id: string; content: string }[]
@@ -200,5 +200,30 @@ describe('ingestDocument', () => {
     await ingestDocument(db, 'acct', { embeddingsApiKey: null }, 'doc-1', 'hello world')
     expect(state.events.filter((e) => e === 'delete')).toHaveLength(3)
     expect(state.deletedIds).toHaveLength(250)
+  })
+})
+
+describe('queryTerms / rerankByQueryTerms', () => {
+  it('keeps content words and drops stopwords and short tokens', () => {
+    expect(queryTerms('فيه فرع في المنصورة؟')).toEqual(['فرع', 'المنصورة'])
+    expect(queryTerms('')).toEqual([])
+  })
+
+  const GENERIC = 'الفروع: القاهرة، الجيزة، الإسكندرية، والعديد من المحافظات.'
+  const SPECIFIC = 'المنصورة: حي الجامعة، خلف استاد الجامعة، الدور التاني · 450 ج.'
+  const OTHER = 'دمنهور: ميدان الساعة أمام مجلس الدولة، الدور التالت.'
+
+  it('moves the excerpt that names the asked-about city to the front', () => {
+    const out = rerankByQueryTerms([GENERIC, OTHER, SPECIFIC], 'فيه فرع في المنصورة؟')
+    expect(out[0]).toBe(SPECIFIC)
+  })
+
+  it('is stable when nothing matches, and leaves short lists alone', () => {
+    expect(rerankByQueryTerms([GENERIC, OTHER], 'فيه فرع في الزقازيق؟')).toEqual([
+      GENERIC,
+      OTHER,
+    ])
+    expect(rerankByQueryTerms([OTHER], 'المنصورة')).toEqual([OTHER])
+    expect(rerankByQueryTerms([GENERIC, SPECIFIC], '')).toEqual([GENERIC, SPECIFIC])
   })
 })
