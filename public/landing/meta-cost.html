@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>حاسبة أسعار رسائل واتساب بيزنس من ميتا — شرح مبسّط | ExBolt</title>
+<meta name="description" content="شرح مبسّط لطريقة ميتا في احتساب أسعار الرسائل والطلبات على واتساب بيزنس: الفئات الخمس، أسعار كل سوق، الرسائل المجانية، وخصم الحجم — مع آلة حساب تفاعلية بالدولار والجنيه.">
+<meta name="theme-color" content="#0a0f1a">
+<link rel="canonical" href="https://bolt.excal.uk/meta-cost">
+<link rel="icon" href="/landing/assets/favicon.svg" type="image/svg+xml">
+<meta property="og:type" content="article">
+<meta property="og:locale" content="ar_EG">
+<meta property="og:title" content="إزاي ميتا بتحسب فلوس رسايل واتساب؟ — حاسبة تفاعلية">
+<meta property="og:description" content="الفئات الخمس · أسعار السوق المصري والخليجي · الرسائل المجانية · خصم الحجم — مع حاسبة تحسب فاتورتك بالدولار والجنيه.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="/landing/assets/meta-cost.css">
+</head>
+<body>
+<a class="skip" href="#calc">روح للحاسبة</a>
+
+<header class="bar">
+  <div class="wrap bar-in">
+    <a class="brand" href="/" aria-label="ExBolt — الرئيسية">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4.5 13.5H11l-1 8.5L19.5 10H13l0-8Z"/></svg>
+      <span>ExBolt</span>
+    </a>
+    <nav class="bar-nav" aria-label="أقسام الصفحة">
+      <a href="#how">الحسبة</a>
+      <a href="#cats">الفئات</a>
+      <a href="#free">المجاني</a>
+      <a href="#calc">الحاسبة</a>
+    </nav>
+    <span class="stamp">أسعار ميتا · 1 أكتوبر 2026</span>
+  </div>
+</header>
+
+<main>
+
+<!-- ============================================================ HERO -->
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <p class="eyebrow">دليل مبسّط لأصحاب البيزنس</p>
+      <h1>إزاي ميتا بتحسب فلوس<br><em>الرسايل والطلبات؟</em></h1>
+      <p class="lede">
+        ميتا ما بتحسبش بالشهر ولا بعدد المحادثات. بتحسب <strong>كل رسالة</strong> البيزنس بيبعتها وتوصل للعميل،
+        والتمن بيتحدد من حاجتين بس: <strong>نوع الرسالة</strong>، و<strong>بلد رقم العميل</strong>. والعدّاد بيقف
+        لحظة التسليم — لا إرسال، لا فلوس.
+      </p>
+      <ul class="chips">
+        <li><span class="dot dot-green"></span> رسايل العميل ليك مجانية 100٪</li>
+        <li><span class="dot dot-blue"></span> أول 1000 رسالة خدمة مجانية كل شهر</li>
+      </ul>
+      <div class="hero-cta">
+        <a class="btn" href="#calc">احسب فاتورتك دلوقتي</a>
+        <a class="btn-ghost" href="#how">ابدأ من الشرح</a>
+      </div>
+    </div>
+
+    <!-- illustration: phone + price tag + coins -->
+    <figure class="hero-art" aria-hidden="true">
+      <svg viewBox="0 0 420 460" role="img">
+        <defs>
+          <linearGradient id="screen" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#f2f6ff"/><stop offset="1" stop-color="#e6eefc"/>
+          </linearGradient>
+          <linearGradient id="tag" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#12b76a"/><stop offset="1" stop-color="#0a8f52"/>
+          </linearGradient>
+        </defs>
+        <circle cx="210" cy="230" r="176" fill="#eef3ff"/>
+        <circle cx="210" cy="230" r="176" fill="none" stroke="#dbe6ff" stroke-width="2" stroke-dasharray="2 10"/>
+
+        <!-- phone -->
+        <g transform="translate(118 66)">
+          <rect x="0" y="0" width="196" height="336" rx="30" fill="#0a0f1a"/>
+          <rect x="7" y="7" width="182" height="322" rx="24" fill="url(#screen)"/>
+          <rect x="76" y="16" width="46" height="7" rx="3.5" fill="#0a0f1a" opacity=".18"/>
+          <!-- chat bubbles -->
+          <g>
+            <rect x="22" y="52" width="116" height="30" rx="14" fill="#ffffff" stroke="#dbe4f6"/>
+            <rect x="32" y="62" width="60" height="4" rx="2" fill="#9fb0cc"/>
+            <rect x="32" y="70" width="38" height="4" rx="2" fill="#c3cee2"/>
+          </g>
+          <g>
+            <rect x="58" y="96" width="116" height="58" rx="16" fill="#d9f7e6" stroke="#b6ebcf"/>
+            <rect x="70" y="108" width="72" height="4" rx="2" fill="#5fbf8e"/>
+            <rect x="70" y="118" width="52" height="4" rx="2" fill="#8ed3b0"/>
+            <rect x="70" y="134" width="46" height="12" rx="6" fill="#12b76a" opacity=".22"/>
+          </g>
+          <g>
+            <rect x="22" y="168" width="132" height="42" rx="14" fill="#ffffff" stroke="#dbe4f6"/>
+            <rect x="32" y="180" width="88" height="4" rx="2" fill="#9fb0cc"/>
+            <rect x="32" y="190" width="56" height="4" rx="2" fill="#c3cee2"/>
+          </g>
+          <g>
+            <rect x="70" y="224" width="104" height="34" rx="14" fill="#0a4dff"/>
+            <rect x="82" y="236" width="64" height="4" rx="2" fill="#ffffff" opacity=".85"/>
+            <rect x="82" y="245" width="40" height="4" rx="2" fill="#ffffff" opacity=".5"/>
+          </g>
+          <!-- composer -->
+          <rect x="22" y="284" width="152" height="26" rx="13" fill="#ffffff" stroke="#dbe4f6"/>
+          <circle cx="158" cy="297" r="8" fill="#12b76a"/>
+        </g>
+
+        <!-- price tag -->
+        <g transform="translate(288 148) rotate(-8)">
+          <rect x="0" y="0" width="104" height="58" rx="16" fill="url(#tag)"/>
+          <g fill="#ffffff">
+            <rect x="14" y="16" width="30" height="4" rx="2" opacity=".75"/>
+            <rect x="14" y="26" width="18" height="4" rx="2" opacity=".5"/>
+          </g>
+          <text x="52" y="44" font-family="IBM Plex Sans Arabic, sans-serif" font-size="20" font-weight="700" fill="#fff">$</text>
+          <circle cx="92" cy="12" r="12" fill="#0a0f1a"/>
+          <path d="M87 12h10M92 7v10" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+        </g>
+
+        <!-- coins -->
+        <g>
+          <ellipse cx="86" cy="330" rx="26" ry="9" fill="#ffb020"/>
+          <rect x="60" y="316" width="52" height="14" fill="#ffb020"/>
+          <ellipse cx="86" cy="316" rx="26" ry="9" fill="#ffca55"/>
+          <ellipse cx="86" cy="322" rx="18" ry="6" fill="#fff3d6" opacity=".7"/>
+        </g>
+        <g>
+          <ellipse cx="86" cy="372" rx="26" ry="9" fill="#0a4dff"/>
+          <rect x="60" y="358" width="52" height="14" fill="#0a4dff"/>
+          <ellipse cx="86" cy="358" rx="26" ry="9" fill="#3f74ff"/>
+          <ellipse cx="86" cy="364" rx="18" ry="6" fill="#dbe6ff" opacity=".65"/>
+        </g>
+
+        <!-- delivered check -->
+        <g transform="translate(304 356)">
+          <circle cx="26" cy="26" r="26" fill="#12b76a"/>
+          <path d="m15 27 7 7 15-16" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        </g>
+      </svg>
+    </figure>
+  </div>
+</section>
+
+<!-- ============================================================ 01 HOW -->
+<section class="sec" id="how">
+  <div class="wrap">
+    <header class="sec-head">
+      <span class="num">01</span>
+      <h2>الحسبة كلها في 3 خطوات</h2>
+      <p>كل رسالة بيزنس بتعدّي على نفس الأسئلة التلاتة. لو عرفت تجاوب عليهم، عرفت الفاتورة.</p>
+    </header>
+
+    <div class="steps">
+      <article class="step">
+        <div class="step-art">
+          <svg viewBox="0 0 160 120" aria-hidden="true">
+            <rect x="14" y="24" width="86" height="34" rx="12" fill="#eef3ff" stroke="#dbe4f6"/>
+            <rect x="24" y="34" width="46" height="4" rx="2" fill="#9fb0cc"/>
+            <rect x="24" y="44" width="30" height="4" rx="2" fill="#c3cee2"/>
+            <g transform="translate(96 30)">
+              <rect x="0" y="0" width="52" height="22" rx="8" fill="#0a4dff"/>
+              <text x="8" y="16" font-family="IBM Plex Sans Arabic, sans-serif" font-size="11" fill="#fff">تسويق</text>
+            </g>
+            <g transform="translate(40 74)">
+              <rect x="0" y="0" width="52" height="22" rx="8" fill="#fff4e0"/>
+              <text x="8" y="16" font-family="IBM Plex Sans Arabic, sans-serif" font-size="11" fill="#8a5b00">خدمة</text>
+              <rect x="66" y="0" width="44" height="22" rx="8" fill="#e7f8ef"/>
+              <text x="72" y="16" font-family="IBM Plex Sans Arabic, sans-serif" font-size="11" fill="#0a8f52">OTP</text>
+            </g>
+            <path d="M14 104h132" stroke="#dbe4f6" stroke-width="2" stroke-dasharray="4 6"/>
+          </svg>
+        </div>
+        <h3>1. نوع الرسالة</h3>
+        <p>الفئة اللي ميتا حاططها للرسالة: تسويق، تأكيد طلب (Utility)، كود تحقق (Authentication)، أو رد خدمة. كل فئة ليها سعرها.</p>
+      </article>
+
+      <article class="step">
+        <div class="step-art">
+          <svg viewBox="0 0 160 120" aria-hidden="true">
+            <circle cx="62" cy="60" r="38" fill="#eef3ff" stroke="#dbe4f6" stroke-width="2"/>
+            <path d="M24 60h76M62 22c12 12 18 24 18 38s-6 26-18 38c-12-12-18-24-18-38s6-26 18-38Z" fill="none" stroke="#9fb0cc" stroke-width="2"/>
+            <path d="M28 46h68M28 74h68" stroke="#9fb0cc" stroke-width="2"/>
+            <g transform="translate(104 44)">
+              <path d="M0 0h24v30a12 12 0 0 0-24 0Z" fill="#12b76a"/>
+              <circle cx="12" cy="12" r="4" fill="#fff"/>
+              <text x="4" y="52" font-family="IBM Plex Sans Arabic, sans-serif" font-size="9" fill="#57627a">+20</text>
+            </g>
+          </svg>
+        </div>
+        <h3>2. بلد العميل</h3>
+        <p>السعر بيتبع كود الدولة في رقم العميل — مش بلد الشركة ولا مكان السيرفر. عميل في مصر غير عميل في السعودية.</p>
+      </article>
+
+      <article class="step">
+        <div class="step-art">
+          <svg viewBox="0 0 160 120" aria-hidden="true">
+            <rect x="30" y="18" width="100" height="70" rx="14" fill="#fff" stroke="#dbe4f6" stroke-width="2"/>
+            <rect x="44" y="34" width="46" height="5" rx="2.5" fill="#0a0f1a" opacity=".18"/>
+            <rect x="44" y="48" width="72" height="5" rx="2.5" fill="#0a0f1a" opacity=".12"/>
+            <rect x="44" y="62" width="34" height="5" rx="2.5" fill="#0a0f1a" opacity=".12"/>
+            <circle cx="118" cy="82" r="18" fill="#12b76a"/>
+            <path d="m110 82 6 6 12-13" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          </svg>
+        </div>
+        <h3>3. لحظة التسليم</h3>
+        <p>لو الرسالة ما وصلتش، ما اتحسبتش. وكل رسالة من العميل ليك مجانية — العدّاد شغّال في اتجاه واحد بس.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ 02 CATEGORIES -->
+<section class="sec sec-tint" id="cats">
+  <div class="wrap">
+    <header class="sec-head">
+      <span class="num">02</span>
+      <h2>الفئات الخمس وسعرها في مصر</h2>
+      <p>الأسعار دي من كارت ميتا الرسمي بالدولار (ساري من 1 أكتوبر 2026). اختار سوق تاني من الحاسبة تحت.</p>
+    </header>
+
+    <div class="cats">
+      <article class="cat cat--mkt">
+        <div class="cat-art">
+          <svg viewBox="0 0 120 120" aria-hidden="true">
+            <circle cx="60" cy="60" r="46" fill="#eef3ff"/>
+            <path d="m34 58 44-18v40L34 66Z" fill="#0a4dff"/>
+            <path d="M44 68v14a6 6 0 0 0 6 6h4V72" fill="none" stroke="#0a4dff" stroke-width="5" stroke-linejoin="round"/>
+            <path d="M82 50a10 10 0 0 1 0 18" fill="none" stroke="#0a4dff" stroke-width="4" stroke-linecap="round"/>
+            <circle cx="90" cy="38" r="6" fill="#ffb020"/>
+            <circle cx="30" cy="84" r="4" fill="#12b76a"/>
+          </svg>
+        </div>
+        <div class="cat-body">
+          <h3>تسويق <span class="en">Marketing</span></h3>
+          <p>عروض، إعلانات، سلة متروكة، إعلان منتج جديد. تُبعت في أي وقت من غير ما العميل يبدأ كلام.</p>
+          <div class="price"><span class="price-v"><bdi dir="ltr">$0.0644</bdi></span><span class="price-u">/ رسالة · مصر</span></div>
+          <p class="cat-note">أغلى فئة — وهي اللي بتعمل 90٪ من الفاتورة عادةً.</p>
+        </div>
+      </article>
+
+      <article class="cat cat--util">
+        <div class="cat-art">
+          <svg viewBox="0 0 120 120" aria-hidden="true">
+            <circle cx="60" cy="60" r="46" fill="#e7f8ef"/>
+            <path d="M40 26h28l14 14v54a6 6 0 0 1-6 6H40a6 6 0 0 1-6-6V32a6 6 0 0 1 6-6Z" fill="#fff" stroke="#12b76a" stroke-width="3"/>
+            <path d="M68 26v14h14" fill="none" stroke="#12b76a" stroke-width="3"/>
+            <path d="M46 56h24M46 68h24M46 80h14" stroke="#12b76a" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="78" cy="86" r="14" fill="#12b76a"/>
+            <path d="m72 86 4 4 8-9" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          </svg>
+        </div>
+        <div class="cat-body">
+          <h3>تأكيد طلب <span class="en">Utility</span></h3>
+          <p>«طلبك اتحوّل»، «الشحنة وصلت الفرع»، تحديث حالة، فاتورة، تذكير بموعد. مرتبطة بمعاملة العميل عملها فعلًا.</p>
+          <div class="price"><span class="price-v"><bdi dir="ltr">$0.0036</bdi></span><span class="price-u">/ رسالة · مصر</span></div>
+          <p class="cat-note">رخيصة 18 مرة من التسويق — وليها خصم حجم.</p>
+        </div>
+      </article>
+
+      <article class="cat cat--auth">
+        <div class="cat-art">
+          <svg viewBox="0 0 120 120" aria-hidden="true">
+            <circle cx="60" cy="60" r="46" fill="#fff4e0"/>
+            <path d="M60 26 38 34v22c0 18 9 28 22 34 13-6 22-16 22-34V34L60 26Z" fill="#fff" stroke="#d99000" stroke-width="3"/>
+            <path d="M52 60h16v-7a8 8 0 0 0-16 0Z" fill="none" stroke="#d99000" stroke-width="3"/>
+            <rect x="49" y="60" width="22" height="16" rx="4" fill="#ffb020"/>
+            <circle cx="60" cy="68" r="2.4" fill="#7a4d00"/>
+          </svg>
+        </div>
+        <div class="cat-body">
+          <h3>كود تحقق <span class="en">Authentication</span></h3>
+          <p>OTP، تأكيد تسجيل الدخول، تأكيد رقم، استرجاع كلمة سر. رسالة واحدة قصيرة، بس بيتحسب عليها كل مرة.</p>
+          <div class="price"><span class="price-v"><bdi dir="ltr">$0.0036</bdi></span><span class="price-u">/ رسالة · مصر</span></div>
+          <p class="cat-note">لو الكود بيتبعت لرقم أجنبي، فيه سعر «دولي» أعلى — $0.065 لمصر.</p>
+        </div>
+      </article>
+
+      <article class="cat cat--svc">
+        <div class="cat-art">
+          <svg viewBox="0 0 120 120" aria-hidden="true">
+            <circle cx="60" cy="60" r="46" fill="#eef3ff"/>
+            <path d="M32 62a28 28 0 0 1 56 0" fill="none" stroke="#0a4dff" stroke-width="5" stroke-linecap="round"/>
+            <rect x="26" y="58" width="14" height="22" rx="7" fill="#0a4dff"/>
+            <rect x="80" y="58" width="14" height="22" rx="7" fill="#0a4dff"/>
+            <path d="M60 90h16a8 8 0 0 0 8-8" fill="none" stroke="#0a4dff" stroke-width="4" stroke-linecap="round"/>
+            <circle cx="92" cy="82" r="5" fill="#12b76a"/>
+          </svg>
+        </div>
+        <div class="cat-body">
+          <h3>خدمة <span class="en">Service</span></h3>
+          <p>رد الموظف أو البوت على استفسار العميل جوه نافذة الـ24 ساعة. الرسالة العادية اللي بتشوفها في الصندوق.</p>
+          <div class="price"><span class="price-v"><bdi dir="ltr">$0.0036</bdi></span><span class="price-u">/ رسالة · مصر</span></div>
+          <p class="cat-note">أول 1000 رسالة خدمة كل شهر مجانية لكل رقم.</p>
+        </div>
+      </article>
+
+      <article class="cat cat--agent">
+        <div class="cat-art">
+          <svg viewBox="0 0 120 120" aria-hidden="true">
+            <circle cx="60" cy="60" r="46" fill="#f0ecff"/>
+            <rect x="34" y="40" width="52" height="42" rx="14" fill="#fff" stroke="#6b4dff" stroke-width="3"/>
+            <circle cx="49" cy="60" r="4.5" fill="#6b4dff"/>
+            <circle cx="71" cy="60" r="4.5" fill="#6b4dff"/>
+            <path d="M60 40v-8" stroke="#6b4dff" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="60" cy="28" r="5" fill="#6b4dff"/>
+            <path d="M48 72h24" stroke="#6b4dff" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="cat-body">
+          <h3>وكيل ميتا الذكي <span class="en">Meta Business Agent</span></h3>
+          <p>لما الردود تكون شغّالة بمحرك ميتا نفسه (من يوليو 2026). الحساب بالتوكن مش بالرسالة.</p>
+          <div class="price"><span class="price-v"><bdi dir="ltr">$2.00</bdi></span><span class="price-u">/ مليون توكن ≈ 4–5 سنت للرسالة</span></div>
+          <p class="cat-note">رسالة واحدة = تكلفة واحدة. مفيش ازدواج بين الفئة وسعر الوكيل.</p>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ 03 FREE -->
+<section class="sec" id="free">
+  <div class="wrap">
+    <header class="sec-head">
+      <span class="num">03</span>
+      <h2>اللي ميتا ما بتحسبهوش</h2>
+      <p>تلات حالات بتوفّر فلوس حقيقية — كثير من الناس بيدفعوها وهم مش واخدين بالهم.</p>
+    </header>
+
+    <div class="free-grid">
+      <article class="free-card">
+        <div class="free-art">
+          <svg viewBox="0 0 200 120" aria-hidden="true">
+            <g fill="#dbe4f6">
+              <rect x="18" y="30" width="12" height="12" rx="3"/><rect x="34" y="30" width="12" height="12" rx="3"/>
+              <rect x="50" y="30" width="12" height="12" rx="3"/><rect x="66" y="30" width="12" height="12" rx="3"/>
+              <rect x="82" y="30" width="12" height="12" rx="3"/><rect x="18" y="46" width="12" height="12" rx="3"/>
+              <rect x="34" y="46" width="12" height="12" rx="3"/><rect x="50" y="46" width="12" height="12" rx="3"/>
+              <rect x="66" y="46" width="12" height="12" rx="3"/><rect x="18" y="62" width="12" height="12" rx="3"/>
+              <rect x="34" y="62" width="12" height="12" rx="3"/><rect x="50" y="62" width="12" height="12" rx="3"/>
+            </g>
+            <g fill="#12b76a">
+              <rect x="82" y="46" width="12" height="12" rx="3"/>
+              <rect x="66" y="62" width="12" height="12" rx="3"/><rect x="82" y="62" width="12" height="12" rx="3"/>
+            </g>
+            <rect x="82" y="62" width="12" height="12" rx="3" fill="none" stroke="#0a0f1a" stroke-width="2.4"/>
+            <path d="M104 44h78M104 58h54" stroke="#0a0f1a" stroke-width="3" stroke-linecap="round" opacity=".15"/>
+            <text x="104" y="86" font-family="IBM Plex Sans Arabic, sans-serif" font-size="26" font-weight="700" fill="#0a0f1a">1000</text>
+            <text x="104" y="102" font-family="IBM Plex Sans Arabic, sans-serif" font-size="11" fill="#5b6474">رسالة خدمة مجانية / شهر</text>
+          </svg>
+        </div>
+        <h3>1000 رسالة خدمة مجانية</h3>
+        <p>لكل رقم واتساب بيزنس، كل شهر، من غير ترحيل. من الرسالة 1001 بيبدأ العدّ ($0.0036 للرسالة في مصر). ولو مفيش وسيلة دفع مربوطة، ميتا بتسلّم لحد الـ1000 بس وبعدها بتوقف.</p>
+      </article>
+
+      <article class="free-card">
+        <div class="free-art">
+          <svg viewBox="0 0 200 120" aria-hidden="true">
+            <rect x="16" y="44" width="168" height="26" rx="13" fill="#eef3ff" stroke="#dbe4f6"/>
+            <path d="M24 57h152" stroke="#0a4dff" stroke-width="2" stroke-dasharray="5 5"/>
+            <circle cx="176" cy="57" r="7" fill="#0a4dff"/>
+            <circle cx="24" cy="57" r="7" fill="#12b76a"/>
+            <path d="M118 34v46" stroke="#0a0f1a" stroke-width="2" stroke-dasharray="3 4" opacity=".35"/>
+            <g font-family="IBM Plex Sans Arabic, sans-serif" font-size="10" fill="#5b6474">
+              <text x="98" y="30">إعلان</text>
+              <text x="140" y="30">رد (مجاني)</text>
+              <text x="24" y="94">اليوم 0</text>
+              <text x="150" y="94">اليوم 7</text>
+            </g>
+            <path d="M118 100h58" stroke="#12b76a" stroke-width="3" stroke-linecap="round"/>
+            <path d="M118 100v-8M176 100v-8" stroke="#12b76a" stroke-width="3" stroke-linecap="round"/>
+            <text x="120" y="116" font-family="IBM Plex Sans Arabic, sans-serif" font-size="10" fill="#0a8f52">نافذة 7 أيام ببلاش</text>
+          </svg>
+        </div>
+        <h3>نافذة الإعلان (FEP)</h3>
+        <p>عميل جاي من إعلان Click-to-WhatsApp؟ أول رد منك مجاني ويفتح نافذة لحد <strong>7 أيام</strong> كل الرسايل فيها (تسويق، تأكيد، خدمة) ببلاش. رسايل الوكيل الذكي بس هي اللي بتفضل محسوبة.</p>
+      </article>
+
+      <article class="free-card">
+        <div class="free-art">
+          <svg viewBox="0 0 200 120" aria-hidden="true">
+            <g transform="translate(20 20)">
+              <rect x="0" y="0" width="70" height="34" rx="12" fill="#fff" stroke="#dbe4f6"/>
+              <rect x="10" y="12" width="34" height="4" rx="2" fill="#9fb0cc"/>
+              <rect x="10" y="21" width="22" height="4" rx="2" fill="#c3cee2"/>
+            </g>
+            <g transform="translate(110 44)">
+              <rect x="0" y="0" width="70" height="34" rx="12" fill="#d9f7e6" stroke="#b6ebcf"/>
+              <rect x="10" y="12" width="34" height="4" rx="2" fill="#5fbf8e"/>
+              <rect x="10" y="21" width="22" height="4" rx="2" fill="#8ed3b0"/>
+            </g>
+            <text x="20" y="86" font-family="IBM Plex Sans Arabic, sans-serif" font-size="11" fill="#5b6474">العميل يبعت</text>
+            <text x="112" y="106" font-family="IBM Plex Sans Arabic, sans-serif" font-size="11" fill="#0a8f52">$0.00</text>
+            <path d="M92 37c8 0 8 26 16 26" stroke="#9fb0cc" stroke-width="2" fill="none" stroke-dasharray="4 4"/>
+          </svg>
+        </div>
+        <h3>رسايل العميل ليك</h3>
+        <p>أي رسالة جاية من العميل للبيزنس مجانية تمامًا — سواء نص، صورة، فويس، أو رد على ستوري. ميتا بتحاسب في اتجاه واحد: منك ليه.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ 04 TIERS -->
+<section class="sec sec-tint" id="tiers">
+  <div class="wrap tiers-grid">
+    <div class="tiers-copy">
+      <header class="sec-head sec-head--left">
+        <span class="num">04</span>
+        <h2>خصم الحجم: لما تزوّد، السعر ينزل</h2>
+        <p>خصم الحجم بيمشي على فئتين بس: <strong>تأكيد الطلب</strong> و<strong>كود التحقق</strong>. التسويق والخدمة سعرهم ثابت.</p>
+      </header>
+      <ul class="rules">
+        <li><strong>شهري ومتجدد:</strong> العدّاد بيرجع صفر أول كل شهر — مش تراكمي.</li>
+        <li><strong>لكل سوق + فئة:</strong> مصر–تأكيد طلب ليهم سلّم، والسعودية–OTP ليهم سلّم تاني.</li>
+        <li><strong>على مستوى البورتفوليو:</strong> كل الحسابات اللي تحت البزنس مانجر بتتجمّع مع بعض.</li>
+        <li><strong>المجاني ما بيتحسبش:</strong> الرسايل اللي جوه نافذة FEP مش بتزوّد رصيدك في السلّم.</li>
+      </ul>
+    </div>
+
+    <figure class="tiers-art">
+      <svg viewBox="0 0 460 340" role="img" aria-label="سلّم أسعار تنازلي لتأكيد الطلب في مصر">
+        <g stroke="#dbe4f6" stroke-width="2">
+          <path d="M40 300h390"/>
+        </g>
+        <g>
+          <rect x="40" y="252" width="64" height="48" rx="8" fill="#0a4dff"/>
+          <rect x="106" y="216" width="64" height="84" rx="8" fill="#2f6bff"/>
+          <rect x="172" y="186" width="64" height="114" rx="8" fill="#5b8bff"/>
+          <rect x="238" y="162" width="64" height="138" rx="8" fill="#86acff"/>
+          <rect x="304" y="142" width="64" height="158" rx="8" fill="#aec6ff"/>
+          <rect x="370" y="126" width="60" height="174" rx="8" fill="#d3e0ff"/>
+        </g>
+        <g font-family="IBM Plex Sans Arabic, sans-serif" font-size="12" fill="#0a0f1a" text-anchor="middle" font-weight="600">
+          <text x="72" y="282">0.0036</text>
+          <text x="138" y="252">0.0034</text>
+          <text x="204" y="226">0.0032</text>
+          <text x="270" y="204">0.0031</text>
+          <text x="336" y="186">0.0029</text>
+          <text x="400" y="172">0.0027</text>
+        </g>
+        <g font-family="IBM Plex Sans Arabic, sans-serif" font-size="11" fill="#5b6474" text-anchor="middle">
+          <text x="72" y="320">100 ألف</text>
+          <text x="138" y="320">1 مليون</text>
+          <text x="204" y="320">4٫5 مليون</text>
+          <text x="270" y="320">40 مليون</text>
+          <text x="336" y="320">80 مليون</text>
+          <text x="400" y="320">+</text>
+        </g>
+        <g font-family="IBM Plex Sans Arabic, sans-serif" font-size="11" fill="#0a8f52" font-weight="700" text-anchor="middle">
+          <text x="72" y="242">سعر القائمة</text>
+          <text x="204" y="216">−10٪</text>
+          <text x="400" y="162">−25٪</text>
+        </g>
+      </svg>
+    </figure>
+  </div>
+</section>
+
+<!-- ============================================================ 05 CALCULATOR -->
+<section class="sec calc-sec" id="calc">
+  <div class="wrap">
+    <header class="sec-head sec-head--center">
+      <span class="num">05</span>
+      <h2>آلة الحساب</h2>
+      <p>اكتب أرقام شهر واحد، وشوف الفاتورة بتتكوّن إزاي — بالدولار والجنيه، مع الخصومات والمجاني.</p>
+    </header>
+
+    <div class="calc">
+      <form class="calc-form" id="calc-form" novalidate>
+        <fieldset class="field-group">
+          <legend>السوق وعدد الأرقام</legend>
+          <div class="row row-2">
+            <label class="field">
+              <span class="lbl">بلد العميل (كود الرقم)</span>
+              <select id="market" aria-describedby="market-hint"></select>
+              <span class="hint" id="market-hint">التسعير بيتبع رقم العميل مش مقر الشركة.</span>
+            </label>
+            <label class="field">
+              <span class="lbl">عدد أرقام واتساب بيزنس</span>
+              <input type="number" id="numbers" min="1" max="2000" step="1" value="1" inputmode="numeric">
+              <span class="hint">كل رقم ليه 1000 رسالة خدمة مجانية / شهر.</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="field-group">
+          <legend>الرسايل اللي بتتبعت في الشهر</legend>
+          <div class="row row-2">
+            <label class="field">
+              <span class="lbl">رسايل تسويق</span>
+              <input type="number" id="mkt" min="0" step="10" value="2000" inputmode="numeric">
+              <span class="hint">عروض وحملات — أغلى فئة.</span>
+            </label>
+            <label class="field">
+              <span class="lbl">منها من إعلانات Click-to-WhatsApp</span>
+              <input type="number" id="mktFep" min="0" step="10" value="500" inputmode="numeric">
+              <span class="hint">جوه نافذة 7 أيام = مجانية.</span>
+            </label>
+            <label class="field">
+              <span class="lbl">رسايل تأكيد طلب (Utility)</span>
+              <input type="number" id="util" min="0" step="10" value="800" inputmode="numeric">
+              <span class="hint">ليها خصم حجم تدريجي.</span>
+            </label>
+            <label class="field">
+              <span class="lbl">رسايل كود تحقق (Authentication)</span>
+              <input type="number" id="auth" min="0" step="10" value="200" inputmode="numeric">
+              <span class="hint">OTP وتسجيل دخول.</span>
+            </label>
+            <label class="field">
+              <span class="lbl">رسايل خدمة (ردود على العملاء)</span>
+              <input type="number" id="svc" min="0" step="10" value="1500" inputmode="numeric">
+              <span class="hint">أول 1000 لكل رقم مجانية.</span>
+            </label>
+            <label class="field">
+              <span class="lbl">رسايل وكيل ميتا الذكي <span class="opt">اختياري</span></span>
+              <input type="number" id="agent" min="0" step="10" value="0" inputmode="numeric">
+              <span class="hint">محسوبة بالتوكن ≈ 4٫5 سنت للرسالة.</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="field-group">
+          <legend>سعر الصرف</legend>
+          <div class="row row-2">
+            <label class="field">
+              <span class="lbl">دولار = كام جنيه؟</span>
+              <input type="number" id="fx" min="1" step="0.01" value="55.37" inputmode="decimal">
+              <span class="hint" id="fx-hint">تقريبي — عدّله لو عندك سعر البنك.</span>
+            </label>
+            <div class="presets">
+              <span class="lbl">نماذج سريعة</span>
+              <div class="preset-row">
+                <button type="button" class="chip-btn" data-preset="shop">متجر صغير</button>
+                <button type="button" class="chip-btn" data-preset="service">خدمة عملاء</button>
+                <button type="button" class="chip-btn" data-preset="campaign">حملة تسويق</button>
+              </div>
+            </div>
+          </div>
+        </fieldset>
+
+        <p class="calc-foot">
+          الحساب تقديري على أسعار ميتا الرسمية بالدولار. مزوّد الخدمة (BSP) ممكن يضيف عمولته أو تمن الاشتراك فوق الرقم ده.
+        </p>
+      </form>
+
+      <aside class="calc-out" aria-live="polite">
+        <div class="total">
+          <span class="total-lbl">الفاتورة الشهرية التقديرية</span>
+          <strong class="total-usd" id="out-usd">$0.00</strong>
+          <span class="total-egp" id="out-egp">≈ 0 ج.م</span>
+          <span class="total-meta" id="out-meta">—</span>
+        </div>
+
+        <div class="bars" id="bars"></div>
+
+        <ul class="breakdown" id="breakdown"></ul>
+
+        <div class="savings" id="savings"></div>
+
+        <div class="note-box">
+          <strong>قاعدة واحدة تحكم كل حاجة:</strong> الرسالة بتتحسب مرة واحدة، بالفئة اللي ميتا مصنّفاها، بسعر سوق العميل، ولو اتسلّمت.
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ 06 EXAMPLE -->
+<section class="sec" id="example">
+  <div class="wrap">
+    <header class="sec-head">
+      <span class="num">06</span>
+      <h2>مثال محسوب: متجر صغير في مصر</h2>
+      <p>رقم واحد، شهر واحد. شوف الفلوس رايحة فين بالظبط.</p>
+    </header>
+
+    <div class="ex">
+      <div class="ex-scroll">
+      <table class="ex-table">
+        <caption class="sr">تفصيل فاتورة شهر واحد لمتجر صغير في مصر</caption>
+        <thead>
+          <tr><th scope="col">البند</th><th scope="col">العدد المحسوب</th><th scope="col">السعر</th><th scope="col">التكلفة</th></tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">تسويق <span class="row-note">من 2000 رسالة، 500 جوه نافذة إعلان</span></th><td>1,500</td><td><bdi dir="ltr">$0.0644</bdi></td><td><bdi dir="ltr">$96.60</bdi></td></tr>
+          <tr><th scope="row">تأكيد طلب</th><td>800</td><td><bdi dir="ltr">$0.0036</bdi></td><td><bdi dir="ltr">$2.88</bdi></td></tr>
+          <tr><th scope="row">كود تحقق</th><td>200</td><td><bdi dir="ltr">$0.0036</bdi></td><td><bdi dir="ltr">$0.72</bdi></td></tr>
+          <tr><th scope="row">خدمة <span class="row-note">من 1,500 رسالة، أول 1,000 مجانية لكل رقم</span></th><td>500</td><td><bdi dir="ltr">$0.0036</bdi></td><td><bdi dir="ltr">$1.80</bdi></td></tr>
+          <tr class="ex-total"><th scope="row">الإجمالي</th><td>—</td><td>—</td><td><bdi dir="ltr">$102.00</bdi></td></tr>
+        </tbody>
+      </table>
+      </div>
+
+      <div class="ex-side">
+        <div class="ex-big"><span>التسويق لوحده</span><strong>94٫7٪</strong><span>من الفاتورة</span></div>
+        <p>يعني لو قلّلت حملة التسويق النص، الفاتورة تنزل النص تقريبًا. أما الـ800 رسالة تأكيد طلب فتكلفتها أقل من 3 دولار في الشهر — وهي اللي العميل مستنيها فعلًا.</p>
+        <p class="ex-fx">≈ 5,647 ج.م بسعر 55٫37 للدولار.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ SOURCES -->
+<section class="sec sec-src">
+  <div class="wrap src-grid">
+    <div>
+      <h2>المصادر والتنويهات</h2>
+      <ul class="src-list">
+        <li>الأسعار والشرائح من كارت ميتا الرسمي: <a href="https://developers.facebook.com/documentation/business-messaging/whatsapp/pricing" target="_blank" rel="noopener noreferrer">Pricing on the WhatsApp Business Platform</a> — ساري من 1 أكتوبر 2026.</li>
+        <li>التسعير بالرسالة بدأ 1 يوليو 2025، وحلّ محل التسعير بالمحادثة (Conversation-based) القديم.</li>
+        <li>الأسعار بالدولار قبل أي عمولة من مزوّد الخدمة أو ضرائب.</li>
+        <li>سعر الصرف في الحاسبة تقديري وبتعدّله بنفسك — مش سعر بنك.</li>
+      </ul>
+    </div>
+    <div class="src-cta">
+      <h3>عايز تشوف الفاتورة دي بتتدار إزاي؟</h3>
+      <p>ExBolt بيربط واتساب بالصندوق الوارد والمسارات والتقارير، وبيوريك تكلفة كل حملة وكل رسالة قبل ما تبعتها.</p>
+      <a class="btn" href="/">اتفرج على ExBolt</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap foot-in">
+    <span>© <span id="year">2026</span> EXCAL LABS · ExBolt</span>
+    <span class="foot-note">صفحة تعليمية — الأرقام من كارت أسعار ميتا المنشور.</span>
+    <a href="/en">English</a>
+  </div>
+</footer>
+
+<script src="/landing/assets/meta-cost.js" defer></script>
+</body>
+</html>

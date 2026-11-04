@@ -10,6 +10,7 @@ export async function middleware(request: NextRequest) {
     pathname === "/" ||
     pathname === "/ar" ||
     pathname === "/en" ||
+    pathname === "/meta-cost" ||
     pathname.startsWith("/landing/") ||
     pathname.startsWith("/api/public/")
   ) {

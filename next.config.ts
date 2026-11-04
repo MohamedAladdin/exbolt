@@ -131,6 +131,10 @@ const nextConfig: NextConfig = {
       { source: "/", destination: "/api/landing/ar" },
       { source: "/ar", destination: "/api/landing/ar" },
       { source: "/en", destination: "/api/landing/en" },
+      // /meta-cost — the "how Meta charges for WhatsApp messages" explainer +
+      // calculator. Static HTML, no DB read: it is a teaching page whose rates
+      // ship in the page's own JS (Meta rate card, effective 2026-10-01).
+      { source: "/meta-cost", destination: "/landing/meta-cost.html" },
     ];
 
     if (process.env.SUPABASE_PROXY !== "true") {
@@ -227,6 +231,10 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/en",
+        headers: [{ key: "Cache-Control", value: "public, max-age=60, stale-while-revalidate=600" }],
+      },
+      {
+        source: "/meta-cost",
         headers: [{ key: "Cache-Control", value: "public, max-age=60, stale-while-revalidate=600" }],
       },
       {
