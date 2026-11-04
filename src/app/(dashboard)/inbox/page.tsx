@@ -760,7 +760,7 @@ function InboxPageInner() {
             conversations={conversations}
             onConversationsLoaded={handleConversationsLoaded}
             resyncToken={resyncToken}
-            initialFilter={parseInboxFilter(searchParams.get("filter"))}
+            initialFilter={searchParams.get("filter")}
             numbers={numbers}
             assignee={assigneeId ? { id: assigneeId, name: assigneeName } : null}
             onClearAssignee={() => router.replace("/inbox", { scroll: false })}

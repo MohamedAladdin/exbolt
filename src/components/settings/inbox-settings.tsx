@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { CalendarClock, Loader2, Timer } from "lucide-react";
+import { CalendarClock, ListFilter, Loader2, Timer } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { parseReplyTarget } from "@/lib/settings/reply-target";
+import { DEFAULT_INBOX_FILTER, INBOX_FILTERS, type InboxFilter } from "@/lib/inbox/inbox-filters";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +24,19 @@ import { SettingsPanelHead } from "./settings-panel-head";
 export function InboxSettings() {
   const { accountId, canEditSettings, profileLoading } = useAuth();
   const t = useTranslations("Settings.inbox");
+  const tList = useTranslations("Inbox.conversationList");
+  const FILTER_LABELS: Record<InboxFilter, string> = {
+    all: "filterAll",
+    unread: "filterUnread",
+    waiting: "filterWaiting",
+    unassigned: "filterUnassigned",
+    expiring: "filterExpiring",
+    open: "filterOpen",
+    pending: "filterPending",
+    closed: "filterClosed",
+    followup: "filterFollowup",
+  };
+  const tFilter = (value: InboxFilter) => tList(FILTER_LABELS[value]);
   const [saved, setSaved] = useState<number | null>(null);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
@@ -36,13 +50,18 @@ export function InboxSettings() {
   const [savedHours, setSavedHours] = useState<string>("");
   const [savingHours, setSavingHours] = useState(false);
 
+  // Which filter the Inbox opens on (migration 098).
+  const [defaultFilter, setDefaultFilter] = useState<string>(DEFAULT_INBOX_FILTER);
+  const [savedDefaultFilter, setSavedDefaultFilter] = useState<string>("");
+  const [savingFilter, setSavingFilter] = useState(false);
+
   useEffect(() => {
     if (!accountId) return;
     let cancelled = false;
     createClient()
       .from("accounts")
       .select(
-        "reply_target_minutes, business_hours_enabled, business_hours_start, business_hours_end, business_days",
+        "reply_target_minutes, business_hours_enabled, business_hours_start, business_hours_end, business_days, default_inbox_filter",
       )
       .eq("id", accountId)
       .maybeSingle()
@@ -58,6 +77,9 @@ export function InboxSettings() {
         const start = String(data.business_hours_start ?? "09:00").slice(0, 5);
         const end = String(data.business_hours_end ?? "17:00").slice(0, 5);
         const days = (data.business_days ?? [0, 1, 2, 3, 4]).map(Number);
+        const chosen = String(data.default_inbox_filter ?? DEFAULT_INBOX_FILTER);
+        setDefaultFilter(chosen);
+        setSavedDefaultFilter(chosen);
         setHoursEnabled(Boolean(data.business_hours_enabled));
         setHoursStart(start);
         setHoursEnd(end);
@@ -121,6 +143,25 @@ export function InboxSettings() {
     toast.success(t("hoursSaved"));
   }
 
+  async function handleSaveDefaultFilter(next: string) {
+    if (!accountId) return;
+    const previous = savedDefaultFilter;
+    setDefaultFilter(next);
+    setSavingFilter(true);
+    const { error } = await createClient()
+      .from("accounts")
+      .update({ default_inbox_filter: next })
+      .eq("id", accountId);
+    setSavingFilter(false);
+    if (error) {
+      setDefaultFilter(previous);
+      toast.error(t("saveFailed"));
+      return;
+    }
+    setSavedDefaultFilter(next);
+    toast.success(t("defaultFilterSaved"));
+  }
+
   function toggleDay(day: number) {
     setWorkDays((prev) =>
       prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day],
@@ -181,6 +222,46 @@ export function InboxSettings() {
               )}
             </Button>
           )}
+        </CardContent>
+      </Card>
+
+      {/* ---------- default filter ---------- */}
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-foreground">
+            <ListFilter className="size-4 text-primary" />
+            {t("defaultFilterTitle")}
+          </CardTitle>
+          <CardDescription className="text-muted-foreground">
+            {t("defaultFilterDesc")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid gap-2 sm:max-w-xs">
+            <Label htmlFor="default-filter" className="text-muted-foreground">
+              {t("defaultFilterLabel")}
+            </Label>
+            <select
+              id="default-filter"
+              value={defaultFilter}
+              disabled={!canEditSettings || savingFilter}
+              onChange={(e) => void handleSaveDefaultFilter(e.target.value)}
+              className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground focus:border-foreground/30 focus:outline-none disabled:opacity-60"
+            >
+              {INBOX_FILTERS.map((value) => (
+                <option key={value} value={value}>
+                  {tFilter(value)}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              {savingFilter
+                ? t("saving")
+                : canEditSettings
+                  ? t("defaultFilterHint")
+                  : t("adminOnlyHint")}
+            </p>
+          </div>
         </CardContent>
       </Card>
 

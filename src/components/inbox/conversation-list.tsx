@@ -2,11 +2,16 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 import {
   CONVERSATION_PAGE_SIZE,
   normalizeConversations,
 } from "@/lib/inbox/conversations";
-import { DEFAULT_INBOX_FILTER, type InboxFilter } from "@/lib/inbox/inbox-filters";
+import {
+  DEFAULT_INBOX_FILTER,
+  parseInboxFilter,
+  type InboxFilter,
+} from "@/lib/inbox/inbox-filters";
 import { cn } from "@/lib/utils";
 import type { Conversation, ConversationStatus, Tag } from "@/types";
 import { Search, ChevronDown, X, Phone, UserRound, Clock, Info } from "lucide-react";
@@ -36,7 +41,9 @@ interface ConversationListProps {
    * or the tab was throttled. Optional so existing callers keep working.
    */
   resyncToken?: number;
-  initialFilter?: InboxFilter;
+  /** Raw `?filter=` from the URL. Absent → the account's own default
+   *  (`accounts.default_inbox_filter`), falling back to «مفتوحة». */
+  initialFilter?: string | null;
   /**
    * The account's WhatsApp numbers (multi-number). Empty/absent means
    * "one number or none", and the number filter row stays hidden.
@@ -81,7 +88,7 @@ export function ConversationList({
   conversations,
   onConversationsLoaded,
   resyncToken = 0,
-  initialFilter = "all",
+  initialFilter = null,
   numbers = [],
   assignee = null,
   onClearAssignee,
@@ -109,7 +116,36 @@ export function ConversationList({
     return () => window.clearTimeout(id);
   }, [search]);
 
-  const [filter, setFilter] = useState<InboxFilter>(initialFilter);
+  // Deep links win, then the account's choice, then «مفتوحة». The account
+  // value arrives a beat later than the first paint, so the list starts on the
+  // fallback and swaps as soon as it is known.
+  const { accountId } = useAuth();
+  const [filter, setFilter] = useState<InboxFilter>(
+    parseInboxFilter(initialFilter ?? DEFAULT_INBOX_FILTER),
+  );
+
+  useEffect(() => {
+    // A ?filter= in the URL is the caller's explicit choice (deep links from a
+    // member card, from a notification) and must never be overridden.
+    if (initialFilter || !accountId) return;
+    let cancelled = false;
+    void (async () => {
+      const { data } = await createClient()
+        .from("accounts")
+        .select("default_inbox_filter")
+        .eq("id", accountId)
+        .maybeSingle();
+      if (cancelled) return;
+      const next = parseInboxFilter(
+        (data as { default_inbox_filter?: string } | null)?.default_inbox_filter ??
+          DEFAULT_INBOX_FILTER,
+      );
+      setFilter((current) => (current === next ? current : next));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [accountId, initialFilter]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadingAll, setLoadingAll] = useState(false);
