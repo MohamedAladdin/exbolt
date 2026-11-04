@@ -9,6 +9,19 @@ Versions follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Pre-1.0, `MINOR` bumps cover new modules; `PATCH` bumps cover bug fixes
 and polish.
 
+## [Unreleased]
+
+### Changed
+
+- **One mark everywhere.** The auth screens (login, signup, forgot-password),
+  the dashboard sidebar, the branding preview and the favicon now draw the
+  ExBolt blue bubble-and-bolt from the landing page, instead of EXCAL's gold
+  "E" plate — the product's own homepage and its login page no longer carry
+  two different logos. `src/components/brand/excal-mark.tsx` is gone; the new
+  `exbolt-mark.tsx` is the only brand mark the app imports, and
+  `brand-mark.test.ts` fails if a file imports the old one back or if the two
+  icon routes regress to the gold plate.
+
 ## [0.11.0] — 2026-10-28
 
 **Activity log, second pass:** sold as a plan feature, kept for six months,
