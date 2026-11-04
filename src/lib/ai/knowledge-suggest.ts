@@ -37,8 +37,11 @@ const MAX_PAIR_GAP_MINUTES = 30
  * next produces noise, and noise in the knowledge base is worse than an
  * empty one.
  */
+// NB: `\b` never matches around Arabic letters (they are not \w), so the
+// markers are bounded by whitespace/punctuation instead — the first version
+// silently matched only «؟», which threw away most real questions.
 const QUESTION_MARKERS =
-  /(\?|؟|\b(?:ايه|إيه|كام|فين|امتى|إمتى|متى|هل|ينفع|ممكن|عايز|عاوز|ازاي|إزاي|ليه|بتفتحوا|مواعيد|سعر|تكلفة|الأسعار)\b)/i
+  /(\?|؟|(?:^|[\s،,])(?:ايه|إيه|كام|فين|امتى|إمتى|متى|هل|ينفع|ممكن|عايز|عاوز|ازاي|إزاي|ليه|بتفتحوا|مواعيد|سعر|تكلفة|الأسعار|بكام)(?=$|[\s؟?،,]))/i
 
 /** Openers that are politeness, not an answer. */
 const GENERIC_ANSWER =
@@ -94,7 +97,9 @@ export function buildSuggestions(messages: MessageRow[]): KnowledgeSuggestion[] 
     for (let j = i + 1; j < messages.length; j += 1) {
       const next = messages[j]
       if (next.sender_type === 'customer') break // the customer moved on
-      if (next.ai_generated) break // the bot talked: not a human answer
+      // A bot message is not ground truth, but it is not a dead end either:
+      // since the assistant went live it answers first and a human corrects it.
+      if (next.ai_generated || next.sender_type === 'bot') continue
       if (next.sender_type !== 'agent') continue
       const answer = (next.content_text ?? '').trim()
       if (answer.length < MIN_ANSWER_LEN) break

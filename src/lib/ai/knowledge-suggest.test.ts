@@ -35,11 +35,22 @@ describe('buildSuggestions', () => {
     expect(out[0].answer).toContain('١٠ الصبح')
   })
 
-  it('ignores pairs where the bot answered — the bot never learns from itself', () => {
+  it('skips past a bot reply to the human correction (the bot is not ground truth)', () => {
     const out = buildSuggestions([
       customer('مواعيد العيادة يوم الجمعة إيه؟'),
       bot('الجمعة من ١٠ لـ ٢'),
       human('الجمعة من ١٠ الصبح لـ ٢ الضهر.'),
+    ])
+    // The human answer wins; whether it truly answers the question is the
+    // reviewer's call, not the heuristic's.
+    expect(out).toHaveLength(1)
+    expect(out[0].answer).toContain('١٠ الصبح')
+  })
+
+  it('keeps nothing when only the bot answered', () => {
+    const out = buildSuggestions([
+      customer('مواعيد العيادة يوم الجمعة إيه؟'),
+      bot('الجمعة من ١٠ لـ ٢'),
     ])
     expect(out).toEqual([])
   })

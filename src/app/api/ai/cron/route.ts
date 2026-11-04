@@ -137,6 +137,9 @@ async function runAccount(
     const candidates = await collectSuggestions(db, {
       conversationId: conversation.id as string,
     })
+    console.log(
+      `[ai/cron] conversation ${conversation.id}: ${candidates.length} candidate pair(s)`,
+    )
     if (candidates.length === 0) continue
 
     try {
