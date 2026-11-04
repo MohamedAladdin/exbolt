@@ -10,6 +10,9 @@ const h = vi.hoisted(() => ({
   engineSendText: vi.fn(),
   loadConversationMetaCredentials: vi.fn(),
   sendTypingIndicator: vi.fn(),
+  loadAiSchedule: vi.fn(),
+  isInsideWorkWindow: vi.fn(),
+  notifyUnassignedHandoff: vi.fn(),
   state: {
     conv: null as Record<string, unknown> | null,
     autoResponders: [] as { id: string }[],
@@ -31,6 +34,14 @@ vi.mock('@/lib/flows/meta-send', () => ({
 }))
 vi.mock('@/lib/whatsapp/meta-api', () => ({
   sendTypingIndicator: h.sendTypingIndicator,
+}))
+vi.mock('./hours', () => ({
+  loadAiSchedule: h.loadAiSchedule,
+  isInsideWorkWindow: h.isInsideWorkWindow,
+  describeWorkWindow: () => 'Sun-Thu 09:00-21:00 (Africa/Cairo)',
+}))
+vi.mock('./handoff-alert', () => ({
+  notifyUnassignedHandoff: h.notifyUnassignedHandoff,
 }))
 vi.mock('./admin-client', () => ({
   supabaseAdmin: () => ({
@@ -107,6 +118,13 @@ function aiConfig(overrides: Partial<AiConfig> = {}): AiConfig {
     autoReplyEnabled: true,
     autoReplyMaxPerConversation: 3,
     handoffAgentId: null,
+    scheduleEnabled: false,
+    scheduleStart: '09:00',
+    scheduleEnd: '21:00',
+    scheduleDays: [0, 1, 2, 3, 4],
+    scheduleTimezone: 'Africa/Cairo',
+    outsideHoursMode: 'always',
+    outsideHoursMessage: null,
     embeddingsApiKey: null,
     ...overrides,
   }
@@ -134,6 +152,15 @@ beforeEach(() => {
     accessToken: 'tok',
   })
   h.sendTypingIndicator.mockResolvedValue(undefined)
+  h.loadAiSchedule.mockResolvedValue({
+    enabled: false,
+    start: '09:00',
+    end: '17:00',
+    days: [0, 1, 2, 3, 4],
+    timezone: 'UTC',
+  })
+  h.isInsideWorkWindow.mockReturnValue(true)
+  h.notifyUnassignedHandoff.mockResolvedValue(2)
 })
 
 describe('dispatchInboundToAiReply — eligibility gates', () => {
@@ -347,5 +374,94 @@ describe('dispatchInboundToAiReply — handoff', () => {
     expect(pause?.isNull).toEqual([])
     expect(assign?.payload).toEqual({ assigned_agent_id: 'agent-7' })
     expect(assign?.isNull).toEqual(['assigned_agent_id'])
+  })
+})
+
+describe('dispatchInboundToAiReply — outside working hours', () => {
+  const closed = {
+    enabled: true,
+    start: '09:00',
+    end: '17:00',
+    days: [0, 1, 2, 3, 4],
+    timezone: 'Africa/Cairo',
+  }
+
+  beforeEach(() => {
+    h.loadAiSchedule.mockResolvedValue(closed)
+    h.isInsideWorkWindow.mockReturnValue(false)
+  })
+
+  it('stays silent in "silent" mode — no model call, no reply, no slot', async () => {
+    h.loadAiConfig.mockResolvedValue(aiConfig({ outsideHoursMode: 'silent' }))
+    await dispatchInboundToAiReply(ARGS)
+    expect(h.generateReply).not.toHaveBeenCalled()
+    expect(h.engineSendText).not.toHaveBeenCalled()
+    expect(h.state.rpcCalls).toHaveLength(0)
+  })
+
+  it('sends one away message in "message" mode and records the throttle', async () => {
+    h.loadAiConfig.mockResolvedValue(
+      aiConfig({ outsideHoursMode: 'message', outsideHoursMessage: 'closed now' }),
+    )
+    await dispatchInboundToAiReply(ARGS)
+    expect(h.generateReply).not.toHaveBeenCalled()
+    expect(h.engineSendText).toHaveBeenCalledTimes(1)
+    expect(h.engineSendText).toHaveBeenCalledWith(
+      expect.objectContaining({
+        conversationId: 'conv-1',
+        text: 'closed now',
+        aiGenerated: true,
+      }),
+    )
+    expect(h.state.updatePayload).toMatchObject({
+      outside_hours_notified_at: expect.any(String),
+    })
+  })
+
+  it('respects the 6h cooldown on the away message', async () => {
+    h.state.conv = {
+      assigned_agent_id: null,
+      ai_autoreply_disabled: false,
+      ai_reply_count: 0,
+      outside_hours_notified_at: new Date().toISOString(),
+    }
+    h.loadAiConfig.mockResolvedValue(
+      aiConfig({ outsideHoursMode: 'message', outsideHoursMessage: 'closed now' }),
+    )
+    await dispatchInboundToAiReply(ARGS)
+    expect(h.engineSendText).not.toHaveBeenCalled()
+  })
+
+  it('answers normally when the policy is "always"', async () => {
+    h.loadAiConfig.mockResolvedValue(aiConfig({ outsideHoursMode: 'always' }))
+    await dispatchInboundToAiReply(ARGS)
+    expect(h.generateReply).toHaveBeenCalledTimes(1)
+    expect(h.engineSendText).toHaveBeenCalledWith(
+      expect.objectContaining({ text: 'Hello!' }),
+    )
+  })
+})
+
+describe('dispatchInboundToAiReply — handoff alerts', () => {
+  it('alerts the team when the handoff lands in the shared queue', async () => {
+    h.generateReply.mockResolvedValue({ text: '', handoff: true })
+    await dispatchInboundToAiReply(ARGS)
+    expect(h.notifyUnassignedHandoff).toHaveBeenCalledTimes(1)
+    expect(h.notifyUnassignedHandoff).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        accountId: 'acct-1',
+        conversationId: 'conv-1',
+        contactId: 'contact-1',
+      }),
+    )
+  })
+
+  it('does not alert the team when a human target is configured', async () => {
+    h.generateReply.mockResolvedValue({ text: '', handoff: true })
+    h.loadAiConfig.mockResolvedValue(aiConfig({ handoffAgentId: 'user-9' }))
+    await dispatchInboundToAiReply(ARGS)
+    expect(h.notifyUnassignedHandoff).not.toHaveBeenCalled()
+    expect(h.state.updatePayload).toMatchObject({ assigned_agent_id: 'user-9' })
   })
 })

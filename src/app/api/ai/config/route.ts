@@ -12,6 +12,7 @@ import { AiError, type AiProvider } from '@/lib/ai/types'
 import { normalizeOpenAiCompatibleBaseUrl } from '@/lib/ai/providers/openai-compatible'
 import { canReuseStoredAiKey } from '@/lib/ai/stored-key'
 import { getT } from '@/lib/i18n/translate'
+import { parseTimeToMinutes } from '@/lib/ai/hours'
 
 const t = getT('Api')
 
@@ -35,7 +36,7 @@ export async function GET() {
       // `api_key` is selected only to derive `has_key` — it is stripped
       // out below and never returned to the client.
       .select(
-        'provider, model, base_url, system_prompt, is_active, auto_reply_enabled, auto_reply_max_per_conversation, handoff_agent_id, api_key, embeddings_api_key',
+        'provider, model, base_url, system_prompt, is_active, auto_reply_enabled, auto_reply_max_per_conversation, handoff_agent_id, ai_schedule_enabled, ai_schedule_start, ai_schedule_end, ai_schedule_days, ai_schedule_timezone, outside_hours_mode, outside_hours_message, api_key, embeddings_api_key',
       )
       .eq('account_id', accountId)
       .maybeSingle()
@@ -125,6 +126,79 @@ export async function POST(request: Request) {
       handoffAgentId = rawHandoff
     }
 
+    // The assistant's own working window — separate from the team's business
+    // hours (which only feed the response-time metric). Absent → unchanged.
+    const scheduleProvided = [
+      'schedule_enabled',
+      'schedule_start',
+      'schedule_end',
+      'schedule_days',
+      'schedule_timezone',
+    ].some((key) => key in body)
+
+    let scheduleEnabled: boolean | null = null
+    let scheduleStart: string | null = null
+    let scheduleEnd: string | null = null
+    let scheduleDays: number[] | null = null
+    let scheduleTimezone: string | null = null
+
+    if (scheduleProvided) {
+      scheduleEnabled = body.schedule_enabled === true
+
+      const start = typeof body.schedule_start === 'string' ? body.schedule_start.trim() : ''
+      const end = typeof body.schedule_end === 'string' ? body.schedule_end.trim() : ''
+      const startMin = parseTimeToMinutes(start)
+      const endMin = parseTimeToMinutes(end)
+      if (Number.isNaN(startMin) || Number.isNaN(endMin)) {
+        return bad(t('ai.scheduleTimeInvalid'))
+      }
+      if (startMin >= endMin) return bad(t('ai.scheduleRangeInvalid'))
+      scheduleStart = start
+      scheduleEnd = end
+
+      const days = Array.isArray(body.schedule_days)
+        ? (body.schedule_days as unknown[])
+            .map((d) => Number(d))
+            .filter((d) => Number.isInteger(d) && d >= 0 && d <= 6)
+        : []
+      if (scheduleEnabled && days.length === 0) {
+        return bad(t('ai.scheduleDaysRequired'))
+      }
+      scheduleDays = [...new Set(days)].sort((a, b) => a - b)
+
+      const tz = typeof body.schedule_timezone === 'string' ? body.schedule_timezone.trim() : ''
+      if (tz) {
+        try {
+          new Intl.DateTimeFormat('en-US', { timeZone: tz })
+        } catch {
+          return bad(t('ai.scheduleTimezoneInvalid'))
+        }
+      }
+      scheduleTimezone = tz || 'Africa/Cairo'
+    }
+
+    // Outside-hours behaviour: what the auto-reply does when the account's
+    // working window is closed. Absent → left unchanged; `message` requires
+    // the text it will send.
+    const outsideHoursProvided = 'outside_hours_mode' in body
+    let outsideHoursMode: 'always' | 'silent' | 'message' | null = null
+    if (outsideHoursProvided) {
+      const raw = typeof body.outside_hours_mode === 'string'
+        ? body.outside_hours_mode.trim()
+        : ''
+      if (raw !== 'always' && raw !== 'silent' && raw !== 'message') {
+        return bad(t('ai.outsideHoursModeInvalid'))
+      }
+      outsideHoursMode = raw
+    }
+    const rawOutsideMessage =
+      typeof body.outside_hours_message === 'string'
+        ? body.outside_hours_message.trim().slice(0, 1000)
+        : ''
+    if (outsideHoursMode === 'message' && !rawOutsideMessage) {
+      return bad(t('ai.outsideHoursMessageRequired'))
+    }
+
     const rawKey = typeof body.api_key === 'string' ? body.api_key.trim() : ''
 
     // Embeddings key (optional, for semantic KB search): a non-empty
@@ -194,6 +268,13 @@ export async function POST(request: Request) {
           autoReplyEnabled,
           autoReplyMaxPerConversation: maxPer,
           handoffAgentId: null,
+          scheduleEnabled: false,
+          scheduleStart: '09:00',
+          scheduleEnd: '21:00',
+          scheduleDays: [0, 1, 2, 3, 4],
+          scheduleTimezone: 'Africa/Cairo',
+          outsideHoursMode: 'always',
+          outsideHoursMessage: null,
           embeddingsApiKey: null,
         })
       } catch (err) {
@@ -238,6 +319,26 @@ export async function POST(request: Request) {
     // Only touch the handoff target when the form actually sent the field,
     // so a partial save (e.g. flipping a toggle) doesn't wipe it.
     if (handoffProvided) shared.handoff_agent_id = handoffAgentId
+    if (scheduleProvided) {
+      shared.ai_schedule_enabled = scheduleEnabled
+      shared.ai_schedule_start = scheduleStart
+      shared.ai_schedule_end = scheduleEnd
+      shared.ai_schedule_days = scheduleDays
+      shared.ai_schedule_timezone = scheduleTimezone
+    }
+    if (scheduleProvided) {
+      shared.ai_schedule_enabled = scheduleEnabled
+      shared.ai_schedule_start = scheduleStart
+      shared.ai_schedule_end = scheduleEnd
+      shared.ai_schedule_days = scheduleDays
+      shared.ai_schedule_timezone = scheduleTimezone
+    }
+    if (outsideHoursProvided) {
+      shared.outside_hours_mode = outsideHoursMode
+      // Keep the text across mode flips (silent → message re-uses it); only
+      // an explicit new value replaces it.
+      if (rawOutsideMessage) shared.outside_hours_message = rawOutsideMessage
+    }
     if (rawEmbeddingsKey) {
       shared.embeddings_api_key = encrypt(rawEmbeddingsKey)
     } else if (clearEmbeddingsKey) {

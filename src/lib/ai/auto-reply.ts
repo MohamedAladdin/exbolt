@@ -5,6 +5,12 @@ import { retrieveKnowledge } from './knowledge'
 import { generateReply } from './generate'
 import { buildSystemPrompt } from './defaults'
 import { buildHandoffSummary } from './handoff'
+import { notifyUnassignedHandoff } from './handoff-alert'
+import {
+  describeWorkWindow,
+  isInsideWorkWindow,
+  loadAiSchedule,
+} from './hours'
 import { logAiUsage } from './usage'
 import { latestUserMessage } from './query'
 import {
@@ -13,6 +19,12 @@ import {
 } from '@/lib/flows/meta-send'
 import { sendTypingIndicator } from '@/lib/whatsapp/meta-api'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
+import { getT } from '@/lib/i18n/translate'
+
+const tAi = getT('AiAgent')
+
+/** At most one "we're closed" reply per thread in this window. */
+const AWAY_REPLY_COOLDOWN_MS = 6 * 60 * 60 * 1000
 
 interface DispatchArgs {
   /** Tenancy key — drives config, contact, and whatsapp_config lookups. */
@@ -83,7 +95,9 @@ export async function dispatchInboundToAiReply(
 
     const { data: conv, error: convErr } = await db
       .from('conversations')
-      .select('assigned_agent_id, ai_autoreply_disabled, ai_reply_count')
+      .select(
+        'assigned_agent_id, ai_autoreply_disabled, ai_reply_count, outside_hours_notified_at',
+      )
       .eq('id', conversationId)
       .maybeSingle()
     if (convErr || !conv) return
@@ -92,6 +106,34 @@ export async function dispatchInboundToAiReply(
     // Cheap early-out; the authoritative cap check is the atomic claim
     // below (this read can race a concurrent inbound).
     if (conv.ai_reply_count >= config.autoReplyMaxPerConversation) return
+
+    // The assistant's OWN window (Agents → Setup → schedule), deliberately
+    // separate from the team's business hours that feed the response-time
+    // metric. Outside it the account chooses whether the bot stays silent or
+    // posts one canned reply; `always` — the default — falls through to a
+    // normal answer, so nothing changes for accounts that never open the
+    // screen.
+    const schedule = await loadAiSchedule(db, accountId)
+    if (schedule.enabled && !isInsideWorkWindow(schedule)) {
+      if (config.outsideHoursMode === 'silent') {
+        console.log(
+          `[ai auto-reply] outside the AI schedule (${describeWorkWindow(schedule)}) — silent mode, no reply.`,
+        )
+        return
+      }
+      if (config.outsideHoursMode === 'message') {
+        await sendOutsideHoursReply({
+          db,
+          accountId,
+          configOwnerUserId,
+          conversationId,
+          contactId,
+          text: config.outsideHoursMessage?.trim() || tAi('awayMessage'),
+          lastNotifiedAt: conv.outside_hours_notified_at,
+        })
+        return
+      }
+    }
 
     const messages = await buildConversationContext(db, conversationId)
     if (messages.length === 0) return
@@ -180,6 +222,15 @@ export async function dispatchInboundToAiReply(
           .update({ assigned_agent_id: config.handoffAgentId })
           .eq('id', conversationId)
           .is('assigned_agent_id', null)
+      } else {
+        // Nobody owns it and nobody was told: the note lives inside the
+        // thread, so ring the whole team's bell instead of going quiet.
+        await notifyUnassignedHandoff(db, {
+          accountId,
+          conversationId,
+          contactId,
+          summary,
+        })
       }
       return
     }
@@ -240,6 +291,54 @@ async function hasNewerInbound(
     .limit(1)
   if (error || !data || data.length === 0) return false
   return data[0].message_id !== inboundMessageId
+}
+
+/**
+ * Outside the working window: one canned reply per thread per cooldown.
+ *
+ * Runs before any LLM call, so a clinic closed at 2 a.m. spends nothing on
+ * the owner's key and the customer still gets an honest answer instead of
+ * silence. The cooldown lives on `conversations.outside_hours_notified_at`
+ * so a burst of messages doesn't earn a burst of identical replies.
+ *
+ * Never throws: a failed away-message must not fail the webhook.
+ */
+async function sendOutsideHoursReply(args: {
+  db: ReturnType<typeof supabaseAdmin>
+  accountId: string
+  configOwnerUserId: string
+  conversationId: string
+  contactId: string
+  text: string
+  lastNotifiedAt: string | null | undefined
+}): Promise<void> {
+  const last = args.lastNotifiedAt
+    ? new Date(args.lastNotifiedAt).getTime()
+    : Number.NaN
+  if (
+    Number.isFinite(last) &&
+    Date.now() - last < AWAY_REPLY_COOLDOWN_MS
+  ) {
+    return
+  }
+
+  try {
+    await engineSendText({
+      accountId: args.accountId,
+      userId: args.configOwnerUserId,
+      conversationId: args.conversationId,
+      contactId: args.contactId,
+      text: args.text,
+      aiGenerated: true,
+    })
+    await args.db
+      .from('conversations')
+      .update({ outside_hours_notified_at: new Date().toISOString() })
+      .eq('id', args.conversationId)
+      .eq('account_id', args.accountId)
+  } catch (err) {
+    console.warn('[ai auto-reply] outside-hours reply failed:', err)
+  }
 }
 
 /**

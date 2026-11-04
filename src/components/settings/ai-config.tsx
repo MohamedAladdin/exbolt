@@ -77,6 +77,15 @@ export function AiConfig() {
   const [maxPerConversation, setMaxPerConversation] = useState(3);
   // Empty string = leave unassigned (shared queue).
   const [handoffAgentId, setHandoffAgentId] = useState('');
+  const [outsideHoursMode, setOutsideHoursMode] = useState<
+    'always' | 'silent' | 'message'
+  >('always');
+  const [outsideHoursMessage, setOutsideHoursMessage] = useState('');
+  // The assistant's own window — independent of the team's inbox hours.
+  const [scheduleEnabled, setScheduleEnabled] = useState(false);
+  const [scheduleStart, setScheduleStart] = useState('09:00');
+  const [scheduleEnd, setScheduleEnd] = useState('21:00');
+  const [scheduleDays, setScheduleDays] = useState<number[]>([0, 1, 2, 3, 4]);
   const [members, setMembers] = useState<AccountMember[]>([]);
 
   // Guard keyed on the account (not a bare boolean) so an in-place
@@ -104,6 +113,20 @@ export function AiConfig() {
         setAutoReplyEnabled(data.auto_reply_enabled);
         setMaxPerConversation(data.auto_reply_max_per_conversation ?? 3);
         setHandoffAgentId(data.handoff_agent_id ?? '');
+        setOutsideHoursMode(
+          data.outside_hours_mode === 'silent' || data.outside_hours_mode === 'message'
+            ? data.outside_hours_mode
+            : 'always',
+        );
+        setOutsideHoursMessage(data.outside_hours_message ?? '');
+        setScheduleEnabled(Boolean(data.ai_schedule_enabled));
+        setScheduleStart(String(data.ai_schedule_start ?? '09:00').slice(0, 5));
+        setScheduleEnd(String(data.ai_schedule_end ?? '21:00').slice(0, 5));
+        setScheduleDays(
+          Array.isArray(data.ai_schedule_days) && data.ai_schedule_days.length > 0
+            ? (data.ai_schedule_days as number[])
+            : [0, 1, 2, 3, 4],
+        );
         setHasStoredKey(Boolean(data.has_key));
         setApiKey(data.has_key ? MASKED_KEY : '');
         setKeyEdited(false);
@@ -140,6 +163,11 @@ export function AiConfig() {
     if (isDefaultModel) setModel(next === 'openai_compatible' ? '' : AI_PROVIDER_DEFAULT_MODEL[next]);
   };
 
+  const toggleScheduleDay = (day: number) =>
+    setScheduleDays((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort((a, b) => a - b),
+    );
+
   const keyPayload = () => (keyEdited ? apiKey.trim() : undefined);
 
   // undefined = leave unchanged; '' typed = null (clear); text = set.
@@ -157,6 +185,14 @@ export function AiConfig() {
     auto_reply_enabled: autoReplyEnabled,
     auto_reply_max_per_conversation: maxPerConversation,
     handoff_agent_id: handoffAgentId || null,
+    schedule_enabled: scheduleEnabled,
+    schedule_start: scheduleStart,
+    schedule_end: scheduleEnd,
+    schedule_days: scheduleDays,
+    schedule_timezone: 'Africa/Cairo',
+    outside_hours_mode: outsideHoursMode,
+    outside_hours_message:
+      outsideHoursMode === 'message' ? outsideHoursMessage.trim() || null : null,
   });
 
   const handleTest = async () => {
@@ -517,6 +553,126 @@ export function AiConfig() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-4 border-t border-border pt-4">
+              <div>
+                <Label>{t('schedule')}</Label>
+                <p className="text-xs text-muted-foreground">{t('scheduleDesc')}</p>
+              </div>
+
+              <label className="flex cursor-pointer items-start gap-2">
+                <input
+                  type="checkbox"
+                  checked={scheduleEnabled}
+                  onChange={(e) => setScheduleEnabled(e.target.checked)}
+                  disabled={disabled || !autoReplyEnabled}
+                  className="mt-0.5 size-4 accent-primary"
+                />
+                <span className="text-sm text-foreground">
+                  {t('scheduleEnable')}
+                  <span className="block text-xs text-muted-foreground">
+                    {t('scheduleEnableHint')}
+                  </span>
+                </span>
+              </label>
+
+              <div className="grid gap-3 sm:max-w-sm sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="ai-hours-from" className="text-muted-foreground">
+                    {t('scheduleFrom')}
+                  </Label>
+                  <Input
+                    id="ai-hours-from"
+                    type="time"
+                    value={scheduleStart}
+                    onChange={(e) => setScheduleStart(e.target.value)}
+                    disabled={disabled || !autoReplyEnabled || !scheduleEnabled}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="ai-hours-to" className="text-muted-foreground">
+                    {t('scheduleTo')}
+                  </Label>
+                  <Input
+                    id="ai-hours-to"
+                    type="time"
+                    value={scheduleEnd}
+                    onChange={(e) => setScheduleEnd(e.target.value)}
+                    disabled={disabled || !autoReplyEnabled || !scheduleEnabled}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-2">
+                <Label className="text-muted-foreground">{t('scheduleDays')}</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {[0, 1, 2, 3, 4, 5, 6].map((day) => {
+                    const active = scheduleDays.includes(day);
+                    return (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => toggleScheduleDay(day)}
+                        disabled={disabled || !autoReplyEnabled || !scheduleEnabled}
+                        aria-pressed={active}
+                        className={
+                          'rounded-full border px-3 py-1 text-xs transition-colors disabled:opacity-50 ' +
+                          (active
+                            ? 'border-primary bg-primary/15 text-primary'
+                            : 'border-border text-muted-foreground hover:text-foreground')
+                        }
+                      >
+                        {t(`day${day}`)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="space-y-2 border-t border-dashed border-border pt-3">
+                <Label htmlFor="ai-outside-mode">{t('outsideHours')}</Label>
+                <p className="text-xs text-muted-foreground">
+                  {t('outsideHoursDesc')}
+                </p>
+                <Select
+                  value={outsideHoursMode}
+                  onValueChange={(v) =>
+                    setOutsideHoursMode(v as 'always' | 'silent' | 'message')
+                  }
+                  disabled={disabled || !autoReplyEnabled || !scheduleEnabled}
+                >
+                  <SelectTrigger id="ai-outside-mode">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="always">{t('outsideModeAlways')}</SelectItem>
+                    <SelectItem value="silent">{t('outsideModeSilent')}</SelectItem>
+                    <SelectItem value="message">
+                      {t('outsideModeMessage')}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {outsideHoursMode === 'message' && (
+                  <div className="space-y-1 pt-2">
+                    <Label htmlFor="ai-outside-message">
+                      {t('outsideMessageLabel')}
+                    </Label>
+                    <Textarea
+                      id="ai-outside-message"
+                      value={outsideHoursMessage}
+                      onChange={(e) => setOutsideHoursMessage(e.target.value)}
+                      placeholder={t('outsideMessagePlaceholder')}
+                      rows={3}
+                      disabled={disabled || !autoReplyEnabled || !scheduleEnabled}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {t('outsideMessageHint')}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>

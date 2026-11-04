@@ -2405,15 +2405,30 @@
       "baseUrl": "عنوان Base URL",
       "baseUrlHint": "عنوان Base URL للواجهة المتوافقة مع OpenAI، مثل https://api.groq.com/openai/v1. يُضاف /chat/completions تلقائيًا ما لم تضمّنه بنفسك.",
       "missingBaseUrl": "أدخل Base URL للواجهة المتوافقة مع OpenAI.",
-      "outsideHours": "خارج أوقات العمل",
-      "outsideHoursDesc": "الأوقات نفسها (أيام وساعات) بتتظبط في إعدادات صندوق الوارد ← ساعات العمل، وهي نفسها المستخدمة في حساب زمن الرد.",
+      "outsideHours": "لما تكون برّه النافذة",
+      "outsideHoursDesc": "ده سلوك المساعد في الأوقات اللي برّه نافذته فوق (ومش له علاقة بساعات عمل الفريق في الإنبوكس).",
       "outsideModeLabel": "لما تكون مقفول",
       "outsideModeAlways": "يرد عادي ٢٤ ساعة",
       "outsideModeSilent": "يسكت تمامًا (مفيش أي رد)",
       "outsideModeMessage": "يبعت رسالة مرة واحدة وبعدها يسكت",
       "outsideMessageLabel": "نص رسالة خارج الدوام",
       "outsideMessageHint": "بتتبعت مرة واحدة لكل محادثة كل ٦ ساعات كحد أقصى، ومن غير أي استدعاء للموديل.",
-      "outsideMessagePlaceholder": "مثال: أهلًا بك 👋 إحنا حاليًا خارج ساعات العمل، هنرد عليك أول ما نفتح."
+      "outsideMessagePlaceholder": "مثال: أهلًا بك 👋 إحنا حاليًا خارج ساعات العمل، هنرد عليك أول ما نفتح.",
+      "schedule": "ساعات عمل المساعد",
+      "scheduleDesc": "نافذة خاصة بالمساعد، مستقلة تمامًا عن ساعات عمل الفريق في الإنبوكس — اللي بتُستخدم في تقرير زمن الرد بس.",
+      "scheduleEnable": "المساعد يشتغل في أوقات محددة",
+      "scheduleEnableHint": "لو مقفول، المساعد بيرد ٢٤ ساعة على مدار الأسبوع.",
+      "scheduleFrom": "من",
+      "scheduleTo": "إلى",
+      "scheduleDays": "الأيام",
+      "scheduleInvalid": "وقت البداية لازم يكون قبل وقت النهاية، واختار يوم واحد على الأقل.",
+      "day0": "الأحد",
+      "day1": "الاثنين",
+      "day2": "الثلاثاء",
+      "day3": "الأربعاء",
+      "day4": "الخميس",
+      "day5": "الجمعة",
+      "day6": "السبت"
     },
     "aiKnowledge": {
       "loadFailed": "تعذّر تحميل قاعدة المعرفة",
@@ -3457,7 +3472,11 @@
         "savedKeywordOnly": "تم الحفظ بالبحث بالكلمات فقط — تعذّر فك تشفير مفتاح التضمينات (تحقق من ENCRYPTION_KEY ثم أعد إدخال المفتاح)."
       },
       "outsideHoursModeInvalid": "وضع خارج أوقات العمل غير صحيح",
-      "outsideHoursMessageRequired": "اكتب نص رسالة خارج الدوام الأول"
+      "outsideHoursMessageRequired": "اكتب نص رسالة خارج الدوام الأول",
+      "scheduleTimeInvalid": "وقت النافذة غير صحيح",
+      "scheduleRangeInvalid": "وقت البداية لازم يكون قبل وقت النهاية",
+      "scheduleDaysRequired": "اختار يوم واحد على الأقل للمساعد",
+      "scheduleTimezoneInvalid": "المنطقة الزمنية غير صحيحة"
     },
     "automations": {
       "copyName": "{name} (نسخة)",

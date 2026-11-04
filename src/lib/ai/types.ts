@@ -27,11 +27,28 @@ export interface AiConfig {
    *  agent's `auth.users.id`, or null to leave it unassigned (drop into
    *  the shared queue). */
   handoffAgentId: string | null
+  /** The assistant's own working window (Agents → Setup → schedule),
+   *  independent of the team's business hours used by the response-time
+   *  metric. `scheduleEnabled: false` means "always available". */
+  scheduleEnabled: boolean
+  scheduleStart: string
+  scheduleEnd: string
+  /** `extract(dow)` numbering: 0 = Sunday … 6 = Saturday. */
+  scheduleDays: number[]
+  scheduleTimezone: string
+  /** What the auto-reply does outside the schedule:
+   *  `always` answers 24/7, `silent` says nothing, `message` sends one
+   *  canned reply per thread and then stays quiet. */
+  outsideHoursMode: OutsideHoursMode
+  /** Canned reply for `message` mode; null falls back to a default. */
+  outsideHoursMessage: string | null
   /** Optional OpenAI-compatible key for embeddings. When set, the
    *  knowledge base is embedded and semantic retrieval turns on; when
    *  null, retrieval falls back to lexical full-text search. */
   embeddingsApiKey: string | null
 }
+
+export type OutsideHoursMode = 'always' | 'silent' | 'message'
 
 /** A single conversation turn in the shape both providers accept. */
 export interface ChatMessage {

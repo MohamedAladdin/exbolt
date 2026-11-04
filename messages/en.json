@@ -2405,15 +2405,30 @@
       "baseUrl": "Base URL",
       "baseUrlHint": "Base URL for the OpenAI-compatible API, for example https://api.groq.com/openai/v1. /chat/completions is added automatically unless you include that path yourself.",
       "missingBaseUrl": "Enter the Base URL for the OpenAI-compatible API.",
-      "outsideHours": "Outside working hours",
-      "outsideHoursDesc": "The window itself (days and times) lives in inbox settings → business hours — the same window the response-time metric uses.",
+      "outsideHours": "Outside the window",
+      "outsideHoursDesc": "What the assistant does outside its own window above (unrelated to the team’s inbox business hours).",
       "outsideModeLabel": "When you are closed",
       "outsideModeAlways": "Answer anyway (24/7)",
       "outsideModeSilent": "Stay silent (no reply)",
       "outsideModeMessage": "Send one message, then stay quiet",
       "outsideMessageLabel": "Away message",
       "outsideMessageHint": "Sent at most once per conversation every 6 hours, without calling the model.",
-      "outsideMessagePlaceholder": "e.g. Thanks for reaching out 👋 We are outside our working hours and will reply as soon as we open."
+      "outsideMessagePlaceholder": "e.g. Thanks for reaching out 👋 We are outside our working hours and will reply as soon as we open.",
+      "schedule": "Assistant working hours",
+      "scheduleDesc": "A window for the assistant alone — completely separate from the team’s inbox business hours, which only feed the response-time metric.",
+      "scheduleEnable": "Answer only during set hours",
+      "scheduleEnableHint": "When off, the assistant answers 24/7.",
+      "scheduleFrom": "From",
+      "scheduleTo": "To",
+      "scheduleDays": "Days",
+      "scheduleInvalid": "The start time must be before the end time, and at least one day must be selected.",
+      "day0": "Sunday",
+      "day1": "Monday",
+      "day2": "Tuesday",
+      "day3": "Wednesday",
+      "day4": "Thursday",
+      "day5": "Friday",
+      "day6": "Saturday"
     },
     "aiKnowledge": {
       "loadFailed": "Failed to load knowledge base",
@@ -3457,7 +3472,11 @@
         "savedKeywordOnly": "Saved with keyword search only — your embeddings key could not be decrypted (check ENCRYPTION_KEY, then re-enter the key)."
       },
       "outsideHoursModeInvalid": "Invalid outside-hours mode",
-      "outsideHoursMessageRequired": "Enter the away message first"
+      "outsideHoursMessageRequired": "Enter the away message first",
+      "scheduleTimeInvalid": "Invalid schedule time",
+      "scheduleRangeInvalid": "The start time must be before the end time",
+      "scheduleDaysRequired": "Select at least one day",
+      "scheduleTimezoneInvalid": "Invalid timezone"
     },
     "automations": {
       "copyName": "{name} (Copy)",

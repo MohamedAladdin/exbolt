@@ -12,11 +12,18 @@ interface AiConfigRow {
   auto_reply_enabled: boolean
   auto_reply_max_per_conversation: number
   handoff_agent_id: string | null
+  ai_schedule_enabled: boolean | null
+  ai_schedule_start: string | null
+  ai_schedule_end: string | null
+  ai_schedule_days: number[] | null
+  ai_schedule_timezone: string | null
+  outside_hours_mode: 'always' | 'silent' | 'message' | null
+  outside_hours_message: string | null
   embeddings_api_key: string | null
 }
 
 const CONFIG_COLUMNS =
-  'provider, model, base_url, api_key, system_prompt, is_active, auto_reply_enabled, auto_reply_max_per_conversation, handoff_agent_id, embeddings_api_key'
+  'provider, model, base_url, api_key, system_prompt, is_active, auto_reply_enabled, auto_reply_max_per_conversation, handoff_agent_id, ai_schedule_enabled, ai_schedule_start, ai_schedule_end, ai_schedule_days, ai_schedule_timezone, outside_hours_mode, outside_hours_message, embeddings_api_key'
 
 /**
  * Load and decrypt the account's AI config for *use* (draft or
@@ -80,6 +87,13 @@ export async function loadAiConfig(
     autoReplyEnabled: row.auto_reply_enabled,
     autoReplyMaxPerConversation: row.auto_reply_max_per_conversation,
     handoffAgentId: row.handoff_agent_id,
+    scheduleEnabled: row.ai_schedule_enabled === true,
+    scheduleStart: row.ai_schedule_start ?? '09:00',
+    scheduleEnd: row.ai_schedule_end ?? '21:00',
+    scheduleDays: row.ai_schedule_days ?? [0, 1, 2, 3, 4],
+    scheduleTimezone: row.ai_schedule_timezone || 'Africa/Cairo',
+    outsideHoursMode: row.outside_hours_mode ?? 'always',
+    outsideHoursMessage: row.outside_hours_message,
     embeddingsApiKey,
   }
 }

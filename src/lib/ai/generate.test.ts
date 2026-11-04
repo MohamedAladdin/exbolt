@@ -13,6 +13,13 @@ function config(overrides: Partial<AiConfig> = {}): AiConfig {
     autoReplyEnabled: false,
     autoReplyMaxPerConversation: 3,
     handoffAgentId: null,
+    scheduleEnabled: false,
+    scheduleStart: '09:00',
+    scheduleEnd: '21:00',
+    scheduleDays: [0, 1, 2, 3, 4],
+    scheduleTimezone: 'Africa/Cairo',
+    outsideHoursMode: 'always',
+    outsideHoursMessage: null,
     embeddingsApiKey: null,
     ...overrides,
   }
