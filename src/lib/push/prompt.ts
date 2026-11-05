@@ -6,19 +6,17 @@
  * dialog on page load (Chrome ignores or "quiet-blocks" an unprompted request, and
  * the block is what the user is then stuck with).
  *
- * So the rule is a small state machine over three facts: what the browser allows,
- * whether this device is already subscribed, and how many times the bar has been
- * dismissed (device-scoped, in localStorage).
+ * The owner of the product asked for the opposite of a one-time nudge: while this
+ * device is NOT receiving alerts, the bar stays. A device with notifications off is
+ * a device where a customer waits for a reply nobody hears about, so the reminder is
+ * persistent — «ليس الآن» hides it for the current session only (sessionStorage),
+ * not for two weeks and certainly not forever.
  *
  * Pure so the rules are testable without a browser.
  */
 
-export const PROMPT_DISMISSALS_KEY = "exbolt:push-prompt-dismissals";
-export const PROMPT_DISMISSED_AT_KEY = "exbolt:push-prompt-dismissed-at";
-
-/** Come back once after two weeks; after the second dismissal, never again. */
-export const PROMPT_REMIND_AFTER_MS = 14 * 24 * 60 * 60 * 1000;
-export const PROMPT_MAX_DISMISSALS = 2;
+/** Session-scoped: the bar returns on the next sign-in, by design. */
+export const PROMPT_SESSION_KEY = "exbolt:push-prompt-hidden";
 
 export type PromptPermission = "unsupported" | "denied" | "default" | "granted";
 
@@ -31,8 +29,7 @@ export interface PromptDecision {
   reason:
     | "unsupported"
     | "already_subscribed"
-    | "dismissed_recently"
-    | "dismissed_for_good"
+    | "hidden_this_session"
     | "permission_denied"
     | "permission_default"
     | "permission_granted_not_subscribed";
@@ -41,39 +38,29 @@ export interface PromptDecision {
 export function shouldShowPushPrompt(args: {
   permission: PromptPermission;
   subscribed: boolean;
-  dismissals: number;
-  dismissedAt: number | null;
-  now?: number;
+  /** True when the user pressed «ليس الآن» in THIS session. */
+  hiddenThisSession?: boolean;
 }): PromptDecision {
   const { permission, subscribed } = args;
-  const dismissals = Number.isFinite(args.dismissals) ? Math.max(0, args.dismissals) : 0;
-  const now = args.now ?? Date.now();
 
   if (permission === "unsupported") {
     return { show: false, variant: null, reason: "unsupported" };
-  }
-
-  // Denied is permanent in the browser: explain once, then never again.
-  if (permission === "denied") {
-    if (dismissals >= 1) {
-      return { show: false, variant: null, reason: "dismissed_for_good" };
-    }
-    return { show: true, variant: "denied", reason: "permission_denied" };
   }
 
   if (subscribed) {
     return { show: false, variant: null, reason: "already_subscribed" };
   }
 
-  if (dismissals >= PROMPT_MAX_DISMISSALS) {
-    return { show: false, variant: null, reason: "dismissed_for_good" };
+  // Hidden for this session only — every new sign-in asks again, which is what
+  // "keep reminding them while it is off" means in practice.
+  if (args.hiddenThisSession) {
+    return { show: false, variant: null, reason: "hidden_this_session" };
   }
 
-  // First ask is immediate; every later one waits out the reminder window.
-  if (dismissals > 0 && args.dismissedAt) {
-    if (now - args.dismissedAt < PROMPT_REMIND_AFTER_MS) {
-      return { show: false, variant: null, reason: "dismissed_recently" };
-    }
+  // Denied cannot be fixed from the page, so the bar explains the lock icon
+  // instead of offering a button that would fail.
+  if (permission === "denied") {
+    return { show: true, variant: "denied", reason: "permission_denied" };
   }
 
   return {
@@ -84,28 +71,31 @@ export function shouldShowPushPrompt(args: {
   };
 }
 
-/** Device-scoped dismissal bookkeeping. Never throws in private mode. */
-export function readPromptDismissals(): { dismissals: number; dismissedAt: number | null } {
-  if (typeof window === "undefined") return { dismissals: 0, dismissedAt: null };
+/** Session-scoped bookkeeping. Never throws in private mode. */
+export function isPromptHiddenThisSession(): boolean {
+  if (typeof window === "undefined") return false;
   try {
-    const dismissals = Number(window.localStorage.getItem(PROMPT_DISMISSALS_KEY) ?? "0");
-    const dismissedAt = Number(window.localStorage.getItem(PROMPT_DISMISSED_AT_KEY) ?? "0");
-    return {
-      dismissals: Number.isFinite(dismissals) ? dismissals : 0,
-      dismissedAt: dismissedAt > 0 ? dismissedAt : null,
-    };
+    return window.sessionStorage.getItem(PROMPT_SESSION_KEY) === "1";
   } catch {
-    return { dismissals: 0, dismissedAt: null };
+    return false;
   }
 }
 
-export function recordPromptDismissal(now = Date.now()): void {
+export function hidePromptForSession(): void {
   if (typeof window === "undefined") return;
-  const current = readPromptDismissals();
   try {
-    window.localStorage.setItem(PROMPT_DISMISSALS_KEY, String(current.dismissals + 1));
-    window.localStorage.setItem(PROMPT_DISMISSED_AT_KEY, String(now));
+    window.sessionStorage.setItem(PROMPT_SESSION_KEY, "1");
   } catch {
-    // Private mode: the bar may come back next load. Acceptable.
+    // Private mode: the bar may reappear on the next render. Acceptable.
+  }
+}
+
+/** Clears the session flag — called after a successful enable. */
+export function clearPromptSessionHide(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.removeItem(PROMPT_SESSION_KEY);
+  } catch {
+    // ignore
   }
 }

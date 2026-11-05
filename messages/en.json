@@ -3014,6 +3014,22 @@
         "removed": "Device removed",
         "removeFailed": "Could not remove the device",
         "hint": "Maximum 10 devices per account."
+      },
+      "team": {
+        "title": "Team status",
+        "summary": "{reachable} of {total} members receive alerts on their devices.",
+        "loading": "Loading…",
+        "devices": "{count} devices",
+        "on": "On",
+        "off": "Not enabled",
+        "muted": "Turned off",
+        "empty": "No members yet.",
+        "roles": {
+          "owner": "Owner",
+          "admin": "Admin",
+          "agent": "Agent",
+          "viewer": "Viewer"
+        }
       }
     }
   },

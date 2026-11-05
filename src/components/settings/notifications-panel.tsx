@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { BellRing, Loader2, MonitorSmartphone, Send, Volume2 } from "lucide-react";
+import { BellRing, Loader2, MonitorSmartphone, Send, Users, Volume2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
@@ -38,6 +38,8 @@ import {
   type TypeKey,
 } from "@/lib/push/preferences";
 import { playNotificationChime, writeSoundPref } from "@/lib/notifications/sound";
+import { useAuth } from "@/hooks/use-auth";
+import type { PushStatusSummary } from "@/lib/push/status";
 
 /**
  * Settings → الإشعارات.
@@ -60,6 +62,7 @@ export function NotificationsPanel() {
   const tDevice = useTranslations("Settings.notifications.device");
   const tChannels = useTranslations("Settings.notifications.channels");
   const tTypes = useTranslations("Settings.notifications.types");
+  const tTeam = useTranslations("Settings.notifications.team");
 
   const soundOn = useNotificationSoundPref();
   const [permission, setPermission] = useState<PushPermissionState>("unsupported");
@@ -67,6 +70,8 @@ export function NotificationsPanel() {
   const [prefs, setPrefs] = useState<NotificationPreferences>(DEFAULT_PREFERENCES);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
+  const { canManageMembers } = useAuth();
+  const [team, setTeam] = useState<PushStatusSummary | null>(null);
 
   const refreshDevice = useCallback(async () => {
     setPermission(currentPermission());
@@ -106,6 +111,23 @@ export function NotificationsPanel() {
     };
   }, []);
 
+  // Admin view: who on this team can actually receive an alert. Refetched after any
+  // change on this device, because this device is one of the rows.
+  const refreshTeam = useCallback(async () => {
+    if (!canManageMembers) return;
+    try {
+      const res = await fetch("/api/push/status", { credentials: "include" });
+      if (!res.ok) return;
+      setTeam((await res.json()) as PushStatusSummary);
+    } catch {
+      // Not fatal: the panel's own state is still truthful.
+    }
+  }, [canManageMembers]);
+
+  useEffect(() => {
+    void refreshTeam();
+  }, [refreshTeam]);
+
   const failureMessage = useCallback(
     (reason?: PushFailure) => {
       switch (reason) {
@@ -135,6 +157,7 @@ export function NotificationsPanel() {
         return;
       }
       await refreshDevice();
+      void refreshTeam();
       toast.success(next ? tDevice("enabledToast") : tDevice("disabledToast"));
     } finally {
       setBusy(null);
@@ -324,6 +347,61 @@ export function NotificationsPanel() {
 
       {/* 6 — devices */}
       <PushDevicesCard />
+
+      {/* 7 — the team (admin+): who can actually receive an alert */}
+      {canManageMembers && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <Users className="size-4 text-muted-foreground" />
+              {tTeam("title")}
+            </CardTitle>
+            <CardDescription>
+              {team
+                ? tTeam("summary", { reachable: team.reachable, total: team.total })
+                : tTeam("loading")}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {team?.members.map((member) => (
+              <div
+                key={member.user_id}
+                className="flex items-center justify-between gap-3 rounded-md border border-border p-3"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-foreground">{member.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {tTeam(
+                      `roles.${member.role}` as
+                        | "roles.owner"
+                        | "roles.admin"
+                        | "roles.agent"
+                        | "roles.viewer",
+                    )}
+                    {member.devices > 0 && ` · ${tTeam("devices", { count: member.devices })}`}
+                  </p>
+                </div>
+                <span
+                  className={
+                    member.reachable
+                      ? "shrink-0 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400"
+                      : "shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
+                  }
+                >
+                  {member.reachable
+                    ? tTeam("on")
+                    : member.devices > 0
+                      ? tTeam("muted")
+                      : tTeam("off")}
+                </span>
+              </div>
+            ))}
+            {team && team.members.length === 0 && (
+              <p className="text-xs text-muted-foreground">{tTeam("empty")}</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
