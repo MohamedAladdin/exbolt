@@ -2423,7 +2423,7 @@
       "businessContext": "Business context & instructions",
       "agentName": "Agent name",
       "agentNamePlaceholder": "e.g. Hemokior Assistant",
-      "agentNameHint": "The name the assistant signs its replies with when a message signature is on. Leave it empty and the signature uses the account name instead.",
+      "agentNameHint": "The name the assistant signs its replies with when a message signature is on. Leave it empty and the assistant's replies go out unsigned — it never borrows someone else's name.",
       "promptPlaceholder": "e.g. We are Acme, a coffee-equipment store. Be warm and concise. Never quote prices or delivery dates — hand off to a human for those.",
       "enableAssistant": "Enable AI assistant",
       "enableAssistantDesc": "Master switch. Turns on the “Draft with AI” button in the inbox.",

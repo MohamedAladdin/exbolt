@@ -68,13 +68,20 @@ export interface AccountSignature {
 export function renderSignature(
   template: string | null | undefined,
   ctx: SignatureContext,
+  options: { fallbackAgentName?: boolean } = {},
 ): string {
   const raw = (template ?? '').slice(0, MAX_SIGNATURE_TEMPLATE_LENGTH)
   const businessName = (ctx.businessName ?? '').trim()
   // A signature that ends with nothing is worse than no signature: over the
   // public API there is no teammate, so the account name is what "who is
   // this" means there.
-  const agentName = (ctx.agentName ?? '').trim() || businessName
+  //
+  // The assistant opts OUT of that fallback: its replies carry its own name or
+  // no signature at all, because the account name is very often a person's
+  // name — signing a bot's words with it is the bug this option exists for.
+  const agentName = options.fallbackAgentName === false
+    ? (ctx.agentName ?? '').trim()
+    : (ctx.agentName ?? '').trim() || businessName
 
   return raw
     .replace(/\{\{\s*agent_name\s*\}\}/gi, agentName)
@@ -245,10 +252,12 @@ export async function signOutgoingText(args: {
           ? await resolveAiAgentName(db, accountId)
           : null
 
-    const signature = renderSignature(settings.template, {
-      agentName,
-      businessName: settings.businessName,
-    })
+    const signature = renderSignature(
+      settings.template,
+      { agentName, businessName: settings.businessName },
+      // The assistant never borrows the account's name for `{{ agent_name }}`.
+      { fallbackAgentName: sender.kind !== 'ai' },
+    )
     if (!signature) return text
 
     return appendSignature(text, signature)

@@ -9,8 +9,10 @@
 -- their name on it.
 --
 -- The assistant's identity belongs on `ai_configs`, next to its persona:
---   * NULL (default) — no name configured; the signature renders the account
---     name instead of guessing a human, never the owner's name,
+--   * NULL (default) — the assistant's replies go out unsigned. It does NOT
+--     fall back to the account name: that name is very often a person's (the
+--     account this was reported on is called «3amer»), and a bot signing with
+--     it is the same complaint one step removed,
 --   * any text — what the bot signs with, e.g. «مساعد هيموكيور».
 --
 -- Nothing is backfilled: a tenant that never opens the field keeps the
@@ -29,4 +31,4 @@ ALTER TABLE public.ai_configs
   CHECK (agent_name IS NULL OR char_length(agent_name) <= 60);
 
 COMMENT ON COLUMN public.ai_configs.agent_name IS
-  'Display name the assistant signs its replies with ({{ agent_name }} in accounts.signature_template). NULL = use the account name.';
+  'Display name the assistant signs its replies with ({{ agent_name }} in accounts.signature_template). NULL = its replies carry no signature at all.';

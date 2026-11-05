@@ -103,12 +103,28 @@ describe('flows engineSendText — signature identity', () => {
     expect(sent).not.toContain('3amer')
   })
 
-  it('falls back to the business when the assistant has no name', async () => {
+  it('sends the reply unsigned when the assistant has no name', async () => {
+    // Not "fall back to the account name": that name is usually a person's,
+    // and the whole report was a bot signing with «3amer». No name for the
+    // bot means no signature on its words.
     h.agentName = null
+    const { sent, persisted } = await send(true)
+
+    expect(sent).toBe('الموعد بكرة الساعة ٦')
+    expect(persisted).toBe('الموعد بكرة الساعة ٦')
+    expect(sent).not.toContain('3amer')
+    expect(sent).not.toContain('عيادة هيموكيور')
+  })
+
+  it('still signs the assistant with the business when the template asks for it', async () => {
+    // A template that never mentions {{ agent_name }} is unaffected: the
+    // business name is the business's own, not a borrowed one.
+    h.agentName = null
+    h.account = { ...h.account, signature_template: '{{ business_name }}' }
     const { sent } = await send(true)
+    h.account = { ...h.account, signature_template: '{{ agent_name }}' }
 
     expect(sent).toBe('الموعد بكرة الساعة ٦\n\nعيادة هيموكيور')
-    expect(sent).not.toContain('3amer')
   })
 
   it('signs a flow prompt with the business — nobody typed it', async () => {
