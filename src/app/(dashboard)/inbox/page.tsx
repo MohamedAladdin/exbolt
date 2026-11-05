@@ -15,6 +15,7 @@ import {
   type InboxNumberOption,
 } from "@/components/inbox/conversation-list";
 import { parseInboxFilter } from "@/lib/inbox/inbox-filters";
+import { useConversationTitle } from "@/hooks/use-page-title";
 import { deepLinkTarget } from "@/lib/inbox/deep-link";
 import { MessageThread } from "@/components/inbox/message-thread";
 import { ContactSidebar } from "@/components/inbox/contact-sidebar";
@@ -146,6 +147,8 @@ function InboxPageInner() {
   const [activeConversation, setActiveConversation] =
     useState<Conversation | null>(null);
   const [activeContact, setActiveContact] = useState<Contact | null>(null);
+  // The open thread's name owns the browser tab, not the word «ExBolt».
+  useConversationTitle(activeContact?.name ?? null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [whatsappConnected, setWhatsappConnected] = useState<boolean | null>(
     null

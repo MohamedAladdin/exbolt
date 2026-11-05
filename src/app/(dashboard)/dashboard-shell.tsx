@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { usePageTitle } from '@/hooks/use-page-title';
 import { AuthProvider, useAuth } from '@/hooks/use-auth';
 import { ShieldAlert } from 'lucide-react';
 import { EntitlementsProvider } from '@/hooks/use-entitlements';
@@ -25,6 +26,9 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const t = useTranslations('DashboardShell');
   const blocked = useTranslations('AccountBlocked');
+
+  // The tab title follows the open page (see use-page-title.ts).
+  usePageTitle();
 
   // Sidebar drawer state — only used on mobile. On lg+ the sidebar is
   // always visible and this stays at `false` (ignored by the component).
