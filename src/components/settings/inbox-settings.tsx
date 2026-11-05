@@ -28,6 +28,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { SettingsPanelHead } from "./settings-panel-head";
+import { OwnershipCard } from "./ownership-card";
 
 export function InboxSettings() {
   const { accountId, canEditSettings, profileLoading, profile, account } = useAuth();
@@ -522,6 +523,8 @@ export function InboxSettings() {
           )}
         </CardContent>
       </Card>
+
+      <OwnershipCard />
     </section>
   );
 }

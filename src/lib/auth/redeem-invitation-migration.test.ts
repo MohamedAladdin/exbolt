@@ -39,6 +39,11 @@ const tablesWithoutDomainData = new Set([
   // content. Losing "I muted the report alerts" on joining a team costs one
   // switch, and refusing the join over it would be absurd.
   "notification_preferences",
+  // The push QUEUE is delivery state, not content (migration 107): a row is
+  // created by someone else's message and lives for minutes. It cascades with
+  // the old account, and it must never be the reason an invited user is told
+  // "your account has data, you cannot join".
+  "push_outbox",
 ]);
 
 function accountScopedTables(): Set<string> {

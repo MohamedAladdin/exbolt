@@ -2399,7 +2399,27 @@
       "signatureHint": "Added to text messages only — team replies, the AI agent and automations. Templates and media are left untouched.",
       "signatureEmptyWarning": "The signature is empty, so nothing would be added. Write a line or switch the signature off.",
       "signatureSaved": "Signature updated",
-      "signatureSaveFailed": "Couldn't save the signature"
+      "signatureSaveFailed": "Couldn't save the signature",
+      "ownership": {
+        "title": "Conversation ownership",
+        "description": "Who is responsible for a thread nobody owns — decided automatically instead of everyone assuming somebody else replied.",
+        "onReply": "Claim the thread on first reply",
+        "onReplyHint": "Whoever replies to an unassigned thread owns it. Turn it off and the thread stays in the queue until someone assigns it.",
+        "onOpen": "Claim the thread on first open",
+        "onOpenHint": "Opening the thread is enough to own it. Off by default: reading is not a commitment — but the first open is always recorded.",
+        "claimRoles": "Who may claim a thread",
+        "claimRolesHint": "Roles allowed to take ownership. Viewers can read but never claim.",
+        "alertRoles": "Who hears about an unassigned thread",
+        "alertRolesHint": "Alerts go to these roles only — never to every member of the account.",
+        "members": "Restrict to specific people (optional)",
+        "footnote": "The first open is always recorded, even with auto-claim off — that is how you know who saw the thread first.",
+        "adminOnly": "Only account admins can change these settings.",
+        "save": "Save",
+        "saving": "Saving...",
+        "saved": "Ownership settings updated",
+        "saveFailed": "Could not save — try again.",
+        "loadFailed": "Could not load ownership settings."
+      }
     },
     "aiConfig": {
       "title": "Agent setup",

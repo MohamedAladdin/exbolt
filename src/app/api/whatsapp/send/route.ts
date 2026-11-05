@@ -174,6 +174,20 @@ export async function POST(request: Request) {
         senderId: userId,
       })
 
+      // Owning the reply: whoever answers an unassigned thread takes it, when
+      // the account has auto-claim-on-reply on. Best-effort — the message is
+      // already out, and a failed claim must never turn a sent reply into an
+      // error. The SQL function decides (role gate, never steal).
+      try {
+        const { error: claimError } = await supabase.rpc('claim_conversation', {
+          p_conversation: conversationId,
+          p_reason: 'reply',
+        })
+        if (claimError) console.error('claim_conversation after reply failed:', claimError.message)
+      } catch (claimErr) {
+        console.error('claim_conversation after reply threw:', claimErr)
+      }
+
       return NextResponse.json({
         success: true,
         message_id: result.messageId,

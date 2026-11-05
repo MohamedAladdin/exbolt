@@ -323,6 +323,21 @@ function InboxPageInner() {
     return () => window.removeEventListener(OPEN_CONVERSATION_EVENT, handler);
   }, [openConversationById]);
 
+  // Ownership on open: this records `first_opened_by` always, and claims the
+  // thread only when the account has auto-claim-on-open. One call per thread,
+  // fire-and-forget — a claim failure must never block reading a conversation.
+  const openedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const id = activeConversation?.id;
+    if (!id || openedRef.current.has(id)) return;
+    openedRef.current.add(id);
+    void fetch("/api/conversations/claim", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversation_id: id, reason: "open" }),
+    }).catch(() => undefined);
+  }, [activeConversation?.id]);
+
   // Check WhatsApp connection status on mount
   useEffect(() => {
     const checkConnection = async () => {
