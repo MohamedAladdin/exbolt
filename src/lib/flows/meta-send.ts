@@ -18,6 +18,7 @@ import {
   isRecipientNotAllowedError,
 } from '@/lib/whatsapp/phone-utils'
 import { resolveContactSendTarget } from '@/lib/whatsapp/wa-identity'
+import { signOutgoingText } from '@/lib/whatsapp/signature'
 import { assertConversationInAccount } from '@/lib/whatsapp/conversation-scope'
 import { supabaseAdmin } from './admin-client'
 import { getT } from '@/lib/i18n/translate'
@@ -126,6 +127,18 @@ export async function engineSendText(
 ): Promise<{ whatsapp_message_id: string }> {
   const db = supabaseAdmin()
 
+  // Optional account signature (Settings → Inbox), resolved once before the
+  // phone-variant retry so every attempt and the persisted row carry the same
+  // body. Rules live in lib/whatsapp/signature.ts; a lookup failure returns
+  // the text untouched and never blocks the send.
+  const text = (await signOutgoingText({
+    db,
+    accountId: args.accountId,
+    messageType: 'text',
+    text: args.text,
+    senderId: args.userId,
+  })) ?? args.text
+
   const { data: contact, error: contactErr } = await db
     .from('contacts')
     .select('id, phone, wa_user_id')
@@ -161,7 +174,7 @@ export async function engineSendText(
       phoneNumberId,
       accessToken,
       to: phone,
-      text: args.text,
+      text,
     })
     return r.messageId
   }
@@ -192,7 +205,7 @@ export async function engineSendText(
     conversation_id: args.conversationId,
     sender_type: 'bot',
     content_type: 'text',
-    content_text: args.text,
+    content_text: text,
     message_id: waMessageId,
     status: 'sent',
     ai_generated: args.aiGenerated ?? false,
@@ -204,7 +217,7 @@ export async function engineSendText(
   await db
     .from('conversations')
     .update({
-      last_message_text: args.text,
+      last_message_text: text,
       last_message_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })

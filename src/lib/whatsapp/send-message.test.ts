@@ -214,7 +214,16 @@ interface CapturedWrites {
 function sendPathDb(
   templateRows: unknown[],
   captured: CapturedWrites,
-  contact: Record<string, unknown> = { id: 'ct-1', phone: '+15551234567' }
+  contact: Record<string, unknown> = { id: 'ct-1', phone: '+15551234567' },
+  /**
+   * Rows the signature lookup reads (migration 105). Absent → both reads
+   * answer null, which is the "feature is off" path every other test here
+   * exercises.
+   */
+  signature: {
+    account?: Record<string, unknown>;
+    profile?: Record<string, unknown>;
+  } = {}
 ): SupabaseClient {
   const conversation = {
     id: 'cv-1',
@@ -240,7 +249,15 @@ function sendPathDb(
           if (table === 'messages') captured.messageUpdate = row;
           return builder;
         },
-        maybeSingle: async () => ({ data: null, error: null }),
+        maybeSingle: async () => {
+          if (table === 'accounts' && signature.account) {
+            return { data: signature.account, error: null };
+          }
+          if (table === 'profiles' && signature.profile) {
+            return { data: signature.profile, error: null };
+          }
+          return { data: null, error: null };
+        },
         single: async () => {
           if (table === 'conversations') {
             return { data: conversation, error: null };
@@ -582,5 +599,79 @@ describe('sendMessageToConversation — edit a failed send in place', () => {
     });
     expect(captured.messageUpdate).toBeUndefined();
     expect(captured.message?.content_text).toBe('hello');
+  });
+});
+
+// ============================================================
+// Outgoing signature (migration 105) — the wiring, not the rules.
+//
+// lib/whatsapp/signature.test.ts owns the placeholder/limit behaviour.
+// What is proven here is the thing that silently rots: that the send core
+// actually applies it, and that the text Meta receives is the same string
+// the inbox is shown.
+// ============================================================
+
+describe('sendMessageToConversation — outgoing signature (105)', () => {
+  const signatureAccount = {
+    signature_enabled: true,
+    signature_template: '— {{ agent_name }}',
+    name: 'هيموكيور',
+  };
+  const profile = { full_name: 'منى', email: 'mona@clinic.test' };
+
+  it('signs a text message and persists exactly what it sent', async () => {
+    const captured: CapturedWrites = {};
+    const db = sendPathDb([], captured, undefined, {
+      account: signatureAccount,
+      profile,
+    });
+
+    await sendMessageToConversation(db, 'acct-1', {
+      conversationId: 'cv-1',
+      messageType: 'text',
+      contentText: 'الموعد بكرة الساعة ٦',
+      senderId: 'user-1',
+    });
+
+    const expected = 'الموعد بكرة الساعة ٦\n\n— منى';
+    expect(captured.message?.content_text).toBe(expected);
+    expect(captured.conversation?.last_message_text).toBe(expected);
+  });
+
+  it('leaves the body alone while the setting is off (the default)', async () => {
+    const captured: CapturedWrites = {};
+    const db = sendPathDb([], captured, undefined, {
+      account: { ...signatureAccount, signature_enabled: false },
+      profile,
+    });
+
+    await sendMessageToConversation(db, 'acct-1', {
+      conversationId: 'cv-1',
+      messageType: 'text',
+      contentText: 'الموعد بكرة الساعة ٦',
+      senderId: 'user-1',
+    });
+
+    expect(captured.message?.content_text).toBe('الموعد بكرة الساعة ٦');
+  });
+
+  it('does not sign a template — its body is Meta-approved', async () => {
+    const captured: CapturedWrites = {};
+    const db = sendPathDb([TEMPLATE_ROW], captured, undefined, {
+      account: signatureAccount,
+      profile,
+    });
+
+    await sendMessageToConversation(db, 'acct-1', {
+      conversationId: 'cv-1',
+      messageType: 'template',
+      templateName: 'order_update',
+      templateParams: ['A123', 'Friday'],
+      senderId: 'user-1',
+    });
+
+    expect(captured.message?.content_text).toBe(
+      'Your order A123 ships on Friday'
+    );
   });
 });

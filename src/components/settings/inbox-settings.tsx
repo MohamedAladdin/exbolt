@@ -2,16 +2,24 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { CalendarClock, ListFilter, Loader2, Timer } from "lucide-react";
+import { CalendarClock, ListFilter, Loader2, PenLine, Timer } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { parseReplyTarget } from "@/lib/settings/reply-target";
 import { DEFAULT_INBOX_FILTER, INBOX_FILTERS, type InboxFilter } from "@/lib/inbox/inbox-filters";
+import {
+  DEFAULT_SIGNATURE_TEMPLATE,
+  MAX_SIGNATURE_TEMPLATE_LENGTH,
+  appendSignature,
+  renderSignature,
+} from "@/lib/whatsapp/signature";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Card,
   CardContent,
@@ -22,7 +30,7 @@ import {
 import { SettingsPanelHead } from "./settings-panel-head";
 
 export function InboxSettings() {
-  const { accountId, canEditSettings, profileLoading } = useAuth();
+  const { accountId, canEditSettings, profileLoading, profile, account } = useAuth();
   const t = useTranslations("Settings.inbox");
   const tList = useTranslations("Inbox.conversationList");
   const FILTER_LABELS: Record<InboxFilter, string> = {
@@ -55,13 +63,22 @@ export function InboxSettings() {
   const [savedDefaultFilter, setSavedDefaultFilter] = useState<string>("");
   const [savingFilter, setSavingFilter] = useState(false);
 
+  // Outgoing signature (migration 105). Off by default and the template
+  // starts on the sender's own name — the two values the screen shows are
+  // exactly what is stored, so an admin who turns it on and saves gets the
+  // name without typing anything.
+  const [signatureEnabled, setSignatureEnabled] = useState(false);
+  const [signatureTemplate, setSignatureTemplate] = useState(DEFAULT_SIGNATURE_TEMPLATE);
+  const [savedSignature, setSavedSignature] = useState<string>("");
+  const [savingSignature, setSavingSignature] = useState(false);
+
   useEffect(() => {
     if (!accountId) return;
     let cancelled = false;
     createClient()
       .from("accounts")
       .select(
-        "reply_target_minutes, business_hours_enabled, business_hours_start, business_hours_end, business_days, default_inbox_filter",
+        "reply_target_minutes, business_hours_enabled, business_hours_start, business_hours_end, business_days, default_inbox_filter, signature_enabled, signature_template",
       )
       .eq("id", accountId)
       .maybeSingle()
@@ -85,6 +102,14 @@ export function InboxSettings() {
         setHoursEnd(end);
         setWorkDays(days);
         setSavedHours(JSON.stringify([Boolean(data.business_hours_enabled), start, end, [...days].sort()]));
+
+        // Signature (105). The stored template is shown as-is; the default
+        // only fills the box when the column is missing on an older row.
+        const signatureOn = data.signature_enabled === true;
+        const signatureBody = data.signature_template ?? DEFAULT_SIGNATURE_TEMPLATE;
+        setSignatureEnabled(signatureOn);
+        setSignatureTemplate(signatureBody);
+        setSavedSignature(JSON.stringify([signatureOn, signatureBody]));
       });
     return () => {
       cancelled = true;
@@ -161,6 +186,38 @@ export function InboxSettings() {
     setSavedDefaultFilter(next);
     toast.success(t("defaultFilterSaved"));
   }
+
+  const signatureKey = JSON.stringify([signatureEnabled, signatureTemplate]);
+  const signatureDirty = savedSignature !== "" && savedSignature !== signatureKey;
+  const signatureBody = signatureTemplate.trim();
+
+  async function handleSaveSignature() {
+    if (!accountId || signatureBody === "") return;
+    setSavingSignature(true);
+    const { error } = await createClient()
+      .from("accounts")
+      .update({ signature_enabled: signatureEnabled, signature_template: signatureBody })
+      .eq("id", accountId);
+    setSavingSignature(false);
+    if (error) {
+      toast.error(t("signatureSaveFailed"));
+      return;
+    }
+    setSignatureTemplate(signatureBody);
+    setSavedSignature(JSON.stringify([signatureEnabled, signatureBody]));
+    toast.success(t("signatureSaved"));
+  }
+
+  // Rendered with the signed-in teammate's own name so the preview answers
+  // "what will my customer see", not an abstract sample.
+  const previewSignature = renderSignature(signatureTemplate, {
+    agentName: profile?.full_name ?? null,
+    businessName: account?.name ?? null,
+  });
+  const previewBody = t("signaturePreviewBody");
+  const previewText = signatureEnabled
+    ? appendSignature(previewBody, previewSignature)
+    : previewBody;
 
   function toggleDay(day: number) {
     setWorkDays((prev) =>
@@ -360,6 +417,100 @@ export function InboxSettings() {
               disabled={savingHours || !hoursDirty || !hoursValid}
             >
               {savingHours ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  {t("saving")}
+                </>
+              ) : (
+                t("save")
+              )}
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+      {/* ---------- outgoing signature ---------- */}
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-foreground">
+            <PenLine className="size-4 text-primary" />
+            {t("signatureTitle")}
+          </CardTitle>
+          <CardDescription className="text-muted-foreground">
+            {t("signatureDesc")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-start justify-between gap-4 rounded-lg border border-border px-3 py-2.5">
+            <div className="space-y-0.5">
+              <Label htmlFor="signature-enabled" className="text-foreground">
+                {t("signatureEnable")}
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                {t("signatureEnableHint")}
+              </p>
+            </div>
+            <Switch
+              id="signature-enabled"
+              checked={signatureEnabled}
+              onCheckedChange={setSignatureEnabled}
+              disabled={!canEditSettings}
+            />
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="signature-template" className="text-muted-foreground">
+              {t("signatureTemplateLabel")}
+            </Label>
+            <Textarea
+              id="signature-template"
+              value={signatureTemplate}
+              onChange={(e) => setSignatureTemplate(e.target.value)}
+              placeholder="{{ agent_name }}"
+              rows={3}
+              maxLength={MAX_SIGNATURE_TEMPLATE_LENGTH}
+              dir="auto"
+              disabled={!canEditSettings || !signatureEnabled}
+              className="font-mono text-sm"
+            />
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1">
+                <code className="rounded bg-muted px-1 py-0.5 font-mono">
+                  {"{{ agent_name }}"}
+                </code>
+                {t("signatureAgentNameHint")}
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <code className="rounded bg-muted px-1 py-0.5 font-mono">
+                  {"{{ business_name }}"}
+                </code>
+                {t("signatureBusinessHint")}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label className="text-muted-foreground">{t("signaturePreview")}</Label>
+            <div className="rounded-lg border border-border bg-muted/40 px-3 py-2">
+              <p className="whitespace-pre-line text-sm text-foreground">
+                {previewText}
+              </p>
+            </div>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            {!canEditSettings
+              ? t("adminOnlyHint")
+              : signatureBody === ""
+                ? t("signatureEmptyWarning")
+                : t("signatureHint")}
+          </p>
+
+          {canEditSettings && (
+            <Button
+              onClick={handleSaveSignature}
+              disabled={savingSignature || !signatureDirty || signatureBody === ""}
+            >
+              {savingSignature ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
                   {t("saving")}

@@ -2385,7 +2385,20 @@
       "hoursHint": "Example: a 4:30pm message answered at 6:30pm counts 30 minutes, not 120.",
       "hoursInvalid": "The start must be before the end, and at least one working day must be selected.",
       "hoursSaveFailed": "Could not save working hours",
-      "hoursSaved": "Working hours updated"
+      "hoursSaved": "Working hours updated",
+      "signatureTitle": "Message signature",
+      "signatureDesc": "A line appended to every outgoing message, so the customer knows who they are talking to.",
+      "signatureEnable": "Add a signature to outgoing messages",
+      "signatureEnableHint": "Off by default — while it is off, messages go out exactly as typed.",
+      "signatureTemplateLabel": "Signature text",
+      "signatureAgentNameHint": "sender's name",
+      "signatureBusinessHint": "account name",
+      "signaturePreview": "What the customer sees",
+      "signaturePreviewBody": "Hi, tomorrow at 6 pm works for us.",
+      "signatureHint": "Added to text messages only — team replies, the AI agent and automations. Templates and media are left untouched.",
+      "signatureEmptyWarning": "The signature is empty, so nothing would be added. Write a line or switch the signature off.",
+      "signatureSaved": "Signature updated",
+      "signatureSaveFailed": "Couldn't save the signature"
     },
     "aiConfig": {
       "title": "Agent setup",

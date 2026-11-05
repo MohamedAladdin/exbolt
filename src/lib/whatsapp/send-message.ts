@@ -50,6 +50,7 @@ import {
   templateContentText,
   templateHeaderMediaUrl,
 } from '@/lib/whatsapp/template-body';
+import { signOutgoingText } from '@/lib/whatsapp/signature';
 import { toChannel, type MessagingChannel } from '@/lib/channels/types';
 import {
   sendChannelText,
@@ -216,7 +217,7 @@ export async function sendMessageToConversation(
   const {
     conversationId,
     messageType,
-    contentText,
+    contentText: rawContentText,
     mediaUrl,
     filename,
     templateName,
@@ -238,11 +239,25 @@ export async function sendMessageToConversation(
 
   validateSendMessageParams({
     messageType,
-    contentText,
+    contentText: rawContentText,
     mediaUrl,
     templateName,
     interactivePayload,
   });
+
+  // The account's optional signature, applied once and here — so the
+  // dashboard, the edit/forward routes and the public v1 API all get one
+  // behaviour, and the row we persist is the text the customer actually
+  // received. Off by default; a no-op for every non-text type and for any
+  // lookup failure (see lib/whatsapp/signature.ts).
+  const contentText = await signOutgoingText({
+    db,
+    accountId,
+    messageType,
+    text: rawContentText,
+    senderId,
+  });
+
 
   const isMediaKind = (MEDIA_KINDS as readonly string[]).includes(messageType);
 

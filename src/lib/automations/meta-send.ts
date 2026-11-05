@@ -11,6 +11,7 @@ import {
   isRecipientNotAllowedError,
 } from '@/lib/whatsapp/phone-utils'
 import { resolveContactSendTarget } from '@/lib/whatsapp/wa-identity'
+import { signOutgoingText } from '@/lib/whatsapp/signature'
 import { assertConversationInAccount } from '@/lib/whatsapp/conversation-scope'
 import {
   resolveTemplateRow,
@@ -178,6 +179,21 @@ async function sendViaMeta(input: SendInput): Promise<{ whatsapp_message_id: str
         ).row
       : null
 
+  // Optional account signature (Settings → Inbox): applied once, before the
+  // phone-variant retry, so every attempt sends the same body and the row we
+  // persist matches the text the customer received. Text sends only — a
+  // template's body is Meta-approved (see lib/whatsapp/signature.ts).
+  const signedText =
+    input.kind === 'text'
+      ? ((await signOutgoingText({
+          db,
+          accountId: input.accountId,
+          messageType: 'text',
+          text: input.text,
+          senderId: input.userId,
+        })) ?? input.text)
+      : null
+
   const attempt = async (phone: string): Promise<string> => {
     if (input.kind === 'template') {
       const r = await sendTemplateMessage({
@@ -195,7 +211,7 @@ async function sendViaMeta(input: SendInput): Promise<{ whatsapp_message_id: str
       phoneNumberId: config.phone_number_id,
       accessToken,
       to: phone,
-      text: input.text,
+      text: signedText ?? input.text,
     })
     return r.messageId
   }
@@ -234,7 +250,7 @@ async function sendViaMeta(input: SendInput): Promise<{ whatsapp_message_id: str
   // automation template send rendered as an empty bubble (issue #483).
   const content_text =
     input.kind === 'text'
-      ? input.text
+      ? (signedText ?? input.text)
       : templateContentText(templateRow, input.params ?? [])
   const template_name = input.kind === 'template' ? input.templateName : null
 
@@ -260,7 +276,7 @@ async function sendViaMeta(input: SendInput): Promise<{ whatsapp_message_id: str
       last_message_text:
         input.kind === 'template'
           ? (content_text ?? `[template:${input.templateName}]`)
-          : input.text,
+          : (signedText ?? input.text),
       last_message_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
