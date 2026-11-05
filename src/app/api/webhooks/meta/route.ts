@@ -23,6 +23,7 @@ import { resumeAwaitingReply, runAutomationsForTrigger } from '@/lib/automations
 import { dispatchInboundToFlows } from '@/lib/flows/engine'
 import { dispatchInboundToAiReply } from '@/lib/ai/auto-reply'
 import { dispatchWebhookEvent } from '@/lib/webhooks/deliver'
+import { drainPushForConversation } from '@/lib/push/dispatch'
 import {
   applyBroadcastRecipientStatus,
   flagBroadcastReply,
@@ -969,6 +970,14 @@ async function processMessage(
     content_type: contentType,
     text: contentText,
   })
+
+  // Out-of-app alerts. The trigger wrote the outbox row inside the message's
+  // transaction, so this only sends what already exists — it cannot create an
+  // alert for a message that failed to land. Awaited (we are inside `after()`),
+  // and it never throws: a phone that is offline must not fail the webhook.
+  await drainPushForConversation(conversation.id).catch((err) =>
+    console.error('[push] webhook drain failed:', err),
+  )
 }
 
 async function parseMessageContent(
