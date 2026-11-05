@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
+import { usePageHeading } from "@/hooks/use-page-title";
 import { LogOut, Menu, Settings as SettingsIcon, User } from "lucide-react";
 import {
   Avatar,
@@ -18,27 +18,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ModeToggle } from "@/components/layout/mode-toggle";
 
-const pageTitles: Record<string, string> = {
-  "/dashboard": "dashboard",
-  "/inbox": "inbox",
-  "/notifications": "notifications",
-  "/contacts": "contacts",
-  "/pipelines": "pipelines",
-  "/broadcasts": "broadcasts",
-  "/automations": "automations",
-  // Without this the shell header read «لوحة التحكم» on /reports — the
-  // fallback is the dashboard title, so a missing entry is a visible lie.
-  "/reports": "reports",
-  "/settings": "settings",
-};
-
-function getPageTitleKey(pathname: string): string {
-  if (pageTitles[pathname]) return pageTitles[pathname];
-  const match = Object.entries(pageTitles).find(([path]) =>
-    pathname.startsWith(path),
-  );
-  return match ? match[1] : "dashboard";
-}
 
 interface HeaderProps {
   /** Wired to the shell's drawer state. Used only on mobile — the
@@ -50,9 +29,11 @@ import { useTranslations } from "next-intl";
 
 export function Header({ onOpenSidebar }: HeaderProps) {
   const t = useTranslations("Header");
-  const pathname = usePathname();
   const { profile, signOut } = useAuth();
-  const titleKey = getPageTitleKey(pathname);
+  // One catalogue owns every page name (lib/page-titles.ts); before this the
+  // header kept its own partial map and fell back to «لوحة التحكم» on /flows,
+  // /agents and /team.
+  const heading = usePageHeading();
 
   const initial =
     profile?.full_name?.charAt(0)?.toUpperCase() ??
@@ -72,7 +53,7 @@ export function Header({ onOpenSidebar }: HeaderProps) {
           <Menu className="h-5 w-5" />
         </button>
         <h1 className="truncate text-base font-semibold text-foreground sm:text-lg">
-          {t(titleKey as string)}
+          {heading ?? t("dashboard")}
         </h1>
       </div>
 

@@ -3218,6 +3218,14 @@
   "Metadata": {
     "description": "ExBolt — shared-inbox CRM for WhatsApp: contacts, pipelines, broadcasts and no-code automations."
   },
+  "PageTitles": {
+    "newBroadcast": "New broadcast",
+    "newAutomation": "New automation",
+    "editAutomation": "Edit automation",
+    "automationLogs": "Run log",
+    "flowRuns": "Runs",
+    "teamMember": "Team member"
+  },
   "Currency": {
     "USD": "US Dollar",
     "EUR": "Euro",

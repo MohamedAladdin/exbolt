@@ -16,6 +16,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
+import { useTitleName } from "@/components/layout/document-title";
 import {
   ArrowRight,
   CheckCircle2,
@@ -134,6 +135,8 @@ export default function TeamMemberPage() {
   const loading = current === null;
   const error = current?.error ?? null;
   const data = current?.data ?? null;
+
+  useTitleName(data?.member.name ?? data?.member.email);
 
   const fmtDate = useMemo(
     () =>

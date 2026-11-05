@@ -1,76 +1,52 @@
 "use client";
 
 /**
- * The browser tab is a surface the product forgot.
+ * Label lookups shared by the two title surfaces.
  *
- * Every page used to be titled «ExBolt», so five open tabs were five copies of
- * the same word and the inbox — the screen people live in all day — could not
- * be told apart from the settings page. Reported 2026-11-05: «المطلوب تغيير
- * وتعيين الـtitles يكون زي الصفحة المفتوحة أو الدردشة المفتوحة».
- *
- * Two hooks, one source of truth:
- *   * `usePageTitle()` — the route → its name from the Sidebar catalogue;
- *   * `useConversationTitle(name)` — the open thread wins over the route, and
- *     closing it restores the page title.
- *
- * `— ExBolt` is appended by hand rather than relying on the metadata template,
- * because the title is rewritten after hydration and the template only applies
- * to server-rendered metadata.
+ * The tab title (`components/layout/document-title.tsx`) and the shell header
+ * (`components/layout/header.tsx`) both read the catalogue in
+ * `lib/page-titles.ts`; this hook is the only place that turns a catalogue
+ * entry into a translated string, so the header and the tab cannot name the
+ * same page differently — which is how `/flows` and `/agents` ended up titled
+ * «لوحة التحكم» in the header while every tab said «ExBolt».
  */
 
-import { useEffect } from "react";
+import { useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 
-const BRAND = "ExBolt";
+import { resolvePageTitle, type TitleLabel } from "@/lib/page-titles";
 
-/** Longest prefix wins, so `/inbox/…` resolves to `inbox` before `/`. */
-const ROUTES: [string, string][] = [
-  ["/inbox", "inbox"],
-  ["/notifications", "notifications"],
-  ["/contacts", "contacts"],
-  ["/pipelines", "pipelines"],
-  ["/broadcasts", "broadcasts"],
-  ["/automations", "automations"],
-  ["/flows", "flows"],
-  ["/agents", "aiAgents"],
-  ["/reports", "reports"],
-  ["/settings", "settings"],
-  ["/team", "settings"],
-  ["/dashboard", "dashboard"],
-];
+export function useTitleTranslator(): (label: TitleLabel) => string | null {
+  const tSidebar = useTranslations("Sidebar");
+  const tPages = useTranslations("PageTitles");
+  const tSettings = useTranslations("Settings");
 
-/** Pure route → Sidebar message key. Exported so it is testable without a DOM. */
-export function routeTitleKey(pathname: string): string | null {
-  const match = ROUTES.find(
-    ([prefix]) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  return useCallback(
+    (label: TitleLabel): string | null => {
+      const raw =
+        label.ns === "Sidebar"
+          ? tSidebar(label.key as never)
+          : label.ns === "Settings"
+            ? tSettings(label.key)
+            : tPages(label.key as never);
+      // next-intl echoes the key path for a missing message; a heading that
+      // reads «PageTitles.flowRuns» is worse than falling back to the parent.
+      return typeof raw === "string" && raw && raw !== label.key ? raw : null;
+    },
+    [tSidebar, tPages, tSettings],
   );
-  return match ? match[1] : null;
 }
 
-export function usePageTitle(): void {
+/**
+ * The visible page name for the shell header — the most specific static label
+ * of the current route (never an object's name, which belongs to the tab).
+ * `null` for a route the catalogue does not know; the header falls back then.
+ */
+export function usePageHeading(): string | null {
   const pathname = usePathname();
-  const t = useTranslations("Sidebar");
-
-  useEffect(() => {
-    const key = routeTitleKey(pathname);
-    if (!key) {
-      document.title = BRAND;
-      return;
-    }
-    const label = t(key as never);
-    document.title = label && label !== key ? `${label} — ${BRAND}` : BRAND;
-  }, [pathname, t]);
-}
-
-/** The open thread's contact name takes over the tab; null restores the page. */
-export function useConversationTitle(contactName: string | null | undefined): void {
-  const t = useTranslations("Sidebar");
-
-  useEffect(() => {
-    const base = t("inbox");
-    document.title = contactName?.trim()
-      ? `${contactName.trim()} — ${base} — ${BRAND}`
-      : `${base} — ${BRAND}`;
-  }, [contactName, t]);
+  const translate = useTitleTranslator();
+  const page = resolvePageTitle(pathname);
+  if (!page) return null;
+  return translate(page.labels[0]);
 }

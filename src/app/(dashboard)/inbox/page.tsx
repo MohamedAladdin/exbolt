@@ -15,7 +15,7 @@ import {
   type InboxNumberOption,
 } from "@/components/inbox/conversation-list";
 import { parseInboxFilter } from "@/lib/inbox/inbox-filters";
-import { useConversationTitle } from "@/hooks/use-page-title";
+import { useTitleName } from "@/components/layout/document-title";
 import { deepLinkTarget } from "@/lib/inbox/deep-link";
 import { MessageThread } from "@/components/inbox/message-thread";
 import { ContactSidebar } from "@/components/inbox/contact-sidebar";
@@ -148,7 +148,14 @@ function InboxPageInner() {
     useState<Conversation | null>(null);
   const [activeContact, setActiveContact] = useState<Contact | null>(null);
   // The open thread's name owns the browser tab, not the word «ExBolt».
-  useConversationTitle(activeContact?.name ?? null);
+  // Same fallback chain the list and the thread header use: a WhatsApp
+  // contact often has no saved name, and «بدون اسم» in a tab is useless.
+  useTitleName(
+    activeContact?.name?.trim() ||
+      activeContact?.phone ||
+      activeContact?.wa_username ||
+      null,
+  );
   const [messages, setMessages] = useState<Message[]>([]);
   const [whatsappConnected, setWhatsappConnected] = useState<boolean | null>(
     null

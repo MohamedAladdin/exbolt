@@ -11,6 +11,7 @@ import {
   type BuilderInitial,
   type ServerStepNode,
 } from "@/components/automations/automation-builder"
+import { useTitleName } from "@/components/layout/document-title"
 import type { AutomationTriggerType } from "@/types"
 
 export default function EditAutomationPage({
@@ -23,6 +24,8 @@ export default function EditAutomationPage({
   const t = useTranslations("Automations.edit")
   const [initial, setInitial] = useState<BuilderInitial | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  useTitleName(initial?.name)
 
   useEffect(() => {
     let cancelled = false

@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { useTranslations } from "next-intl";
 
+import { useTitleName } from "@/components/layout/document-title";
 import { FlowEditorShell } from "@/components/flows/flow-editor-shell";
 import type { FlowRow, FlowNodeRow } from "@/lib/flows/types";
 
@@ -31,6 +32,9 @@ export default function FlowEditorPage() {
   const [nodes, setNodes] = useState<FlowNodeRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+
+  // The flow's own name in the tab, while it loads and after a rename.
+  useTitleName(flow?.name);
 
   useEffect(() => {
     if (!params.id) return;

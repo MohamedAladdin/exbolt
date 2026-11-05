@@ -16,6 +16,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useTitleName } from "@/components/layout/document-title";
 import { format, formatDistanceToNow } from "date-fns";
 
 import { useTranslations } from "next-intl";
@@ -107,6 +108,8 @@ export default function FlowRunsPage() {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [notFound, setNotFound] = useState(false);
+
+  useTitleName(flow?.name);
 
   useEffect(() => {
     if (!params.id) return;

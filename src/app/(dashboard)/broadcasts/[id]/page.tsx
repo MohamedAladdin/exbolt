@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { fetchAllPages } from '@/lib/supabase/paged-query';
 import { Broadcast, BroadcastRecipient, RecipientStatus } from '@/types';
+import { useTitleName } from "@/components/layout/document-title";
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -155,6 +156,7 @@ export default function BroadcastDetailPage() {
   const broadcastId = params.id as string;
 
   const [broadcast, setBroadcast] = useState<Broadcast | null>(null);
+  useTitleName(broadcast?.name);
   const [recipients, setRecipients] = useState<BroadcastRecipient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

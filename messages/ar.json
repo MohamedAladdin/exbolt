@@ -3218,6 +3218,14 @@
   "Metadata": {
     "description": "ExBolt — نظام CRM لواتساب: صندوق وارد مشترك، جهات اتصال، مسارات بيع، حملات وأتمتة بلا كود."
   },
+  "PageTitles": {
+    "newBroadcast": "حملة جديدة",
+    "newAutomation": "أتمتة جديدة",
+    "editAutomation": "تعديل الأتمتة",
+    "automationLogs": "سجل التشغيل",
+    "flowRuns": "التشغيلات",
+    "teamMember": "عضو الفريق"
+  },
   "Currency": {
     "USD": "دولار أمريكي",
     "EUR": "يورو",

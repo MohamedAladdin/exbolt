@@ -3,11 +3,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { usePageTitle } from '@/hooks/use-page-title';
+import { DocumentTitleProvider } from '@/components/layout/document-title';
 import { AuthProvider, useAuth } from '@/hooks/use-auth';
 import { ShieldAlert } from 'lucide-react';
 import { EntitlementsProvider } from '@/hooks/use-entitlements';
-import { BrandTitle } from '@/components/layout/brand-title';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
 import { AccountAccessAlert } from '@/components/layout/account-access-alert';
@@ -26,9 +25,6 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const t = useTranslations('DashboardShell');
   const blocked = useTranslations('AccountBlocked');
-
-  // The tab title follows the open page (see use-page-title.ts).
-  usePageTitle();
 
   // Sidebar drawer state — only used on mobile. On lg+ the sidebar is
   // always visible and this stays at `false` (ignored by the component).
@@ -86,7 +82,10 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
 
   return (
     <EntitlementsProvider>
-      <BrandTitle />
+      {/* One writer for `document.title` — the route plus any open object's
+          name. Mounted here because the shell is the only component every
+          page renders under. */}
+      <DocumentTitleProvider>
       <div className="bg-background flex h-screen overflow-hidden">
         {/* Reports this tab's online/away presence once we know a user is
           signed in. Headless — renders nothing. */}
@@ -122,6 +121,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
           </main>
         </div>
       </div>
+      </DocumentTitleProvider>
     </EntitlementsProvider>
   );
 }

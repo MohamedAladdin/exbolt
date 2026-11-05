@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 import { useTranslations } from "next-intl"
 
+import { useTitleName } from "@/components/layout/document-title";
 import { createClient } from "@/lib/supabase/client"
 import type {
   Automation,
@@ -36,6 +37,8 @@ export default function AutomationLogsPage({
   const [logs, setLogs] = useState<AutomationLog[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [openLogId, setOpenLogId] = useState<string | null>(null)
+
+  useTitleName(automation?.name)
 
   useEffect(() => {
     async function load() {
