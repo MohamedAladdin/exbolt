@@ -125,14 +125,64 @@ function getAudioContext(): AudioContext | null {
 }
 
 /**
- * Call from a real user gesture (the dashboard binds it to the first
- * pointerdown/keydown). Safe to call any number of times.
+ * Call from a real user gesture (see `attachAudioUnlock`). Safe to call any
+ * number of times. Returns true once the context is running.
  */
-export function unlockNotificationAudio(): void {
+export function unlockNotificationAudio(): boolean {
   const ctx = getAudioContext();
-  if (!ctx) return;
+  if (!ctx) return false;
   if (ctx.state === "suspended") {
     void ctx.resume().catch(() => {});
+  }
+  return ctx.state === "running";
+}
+
+/**
+ * Keep listening for gestures until the audio context is actually running.
+ *
+ * A single `{ once: true }` listener is the obvious version and it is wrong:
+ * the first pointerdown does not have to be the one that grants user
+ * activation (a programmatic event, a click on a disabled control, an
+ * interrupted resume), and once it is consumed the tab is silent for the rest
+ * of its life with nothing to retry it. Returns a detach function.
+ */
+export function attachAudioUnlock(): () => void {
+  if (typeof window === "undefined") return () => {};
+
+  const detach = () => {
+    window.removeEventListener("pointerdown", onGesture, { capture: true });
+    window.removeEventListener("keydown", onGesture, { capture: true });
+  };
+
+  const onGesture = () => {
+    if (unlockNotificationAudio()) detach();
+  };
+
+  window.addEventListener("pointerdown", onGesture, { capture: true });
+  window.addEventListener("keydown", onGesture, { capture: true });
+  return detach;
+}
+
+function scheduleChime(ctx: AudioContext): void {
+  const start = ctx.currentTime + 0.01;
+  for (const note of CHIME_NOTES) {
+    const oscillator = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const at = start + note.offset;
+
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(note.frequency, at);
+
+    // Fast attack, exponential decay to (near) silence. Exponential ramps
+    // cannot touch zero, hence the 0.0001 floor.
+    gain.gain.setValueAtTime(0.0001, at);
+    gain.gain.exponentialRampToValueAtTime(CHIME_GAIN, at + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, at + CHIME_NOTE_DURATION);
+
+    oscillator.connect(gain);
+    gain.connect(ctx.destination);
+    oscillator.start(at);
+    oscillator.stop(at + CHIME_NOTE_DURATION + 0.02);
   }
 }
 
@@ -140,6 +190,10 @@ export function unlockNotificationAudio(): void {
  * Play the chime if the preference allows it. Returns whether anything was
  * scheduled — non-throwing by design, because an alert must never fail
  * because the audio device did.
+ *
+ * A context that is not running yet means no gesture has reached the tab: we
+ * ask it to start and stay silent rather than scheduling notes into a
+ * suspended context, which would fire them all at once on some later click.
  */
 export function playNotificationChime(): boolean {
   if (!shouldPlaySound({ enabled: readSoundPref(), lastPlayedAt })) return false;
@@ -147,34 +201,13 @@ export function playNotificationChime(): boolean {
   const ctx = getAudioContext();
   if (!ctx) return false;
 
-  // A context unlocked by a gesture earlier in this tab is already running;
-  // resume() is a no-op then, and covers the tab that was restored from a
-  // background discard.
-  if (ctx.state === "suspended") {
+  if (ctx.state !== "running") {
     void ctx.resume().catch(() => {});
+    return false;
   }
 
   try {
-    const start = ctx.currentTime + 0.01;
-    for (const note of CHIME_NOTES) {
-      const oscillator = ctx.createOscillator();
-      const gain = ctx.createGain();
-      const at = start + note.offset;
-
-      oscillator.type = "sine";
-      oscillator.frequency.setValueAtTime(note.frequency, at);
-
-      // Fast attack, exponential decay to (near) silence. Exponential ramps
-      // cannot touch zero, hence the 0.0001 floor.
-      gain.gain.setValueAtTime(0.0001, at);
-      gain.gain.exponentialRampToValueAtTime(CHIME_GAIN, at + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, at + CHIME_NOTE_DURATION);
-
-      oscillator.connect(gain);
-      gain.connect(ctx.destination);
-      oscillator.start(at);
-      oscillator.stop(at + CHIME_NOTE_DURATION + 0.02);
-    }
+    scheduleChime(ctx);
   } catch {
     return false;
   }

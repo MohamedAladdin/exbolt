@@ -21,7 +21,11 @@ import {
   writeBrowserNotifyPref,
   type BrowserNotifyPermission,
 } from '@/lib/notifications/browser-notify';
-import { playNotificationChime, writeSoundPref } from '@/lib/notifications/sound';
+import {
+  playNotificationChime,
+  unlockNotificationAudio,
+  writeSoundPref,
+} from '@/lib/notifications/sound';
 
 // `Notification.permission` has no change event of its own. Re-read it
 // whenever the tab regains focus (the user may have flipped the site
@@ -87,9 +91,11 @@ export function BrowserNotificationsCard({ className }: { className?: string }) 
   };
 
   const sendTest = () => {
-    // The click is also the user gesture that unlocks audio, so the test
-    // proves the sound as well as the banner.
-    playNotificationChime();
+    // The click is the gesture that unlocks audio. The context resumes
+    // asynchronously, so the chime is asked for a beat later — otherwise the
+    // very first test on a fresh tab would be silent.
+    unlockNotificationAudio();
+    window.setTimeout(() => playNotificationChime(), 150);
     try {
       new Notification(t('testTitle'), {
         body: t('testBody'),

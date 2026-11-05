@@ -21,8 +21,8 @@ import {
   type PopupType,
 } from "@/lib/notifications/popup";
 import {
+  attachAudioUnlock,
   playNotificationChime,
-  unlockNotificationAudio,
 } from "@/lib/notifications/sound";
 import type { Notification as AppNotification } from "@/types";
 
@@ -63,16 +63,9 @@ export function NotificationPopupListener() {
   // its own listener.
   const seen = useRef<Set<string>>(new Set());
 
-  // Audio can only start after a gesture — unlock once, on the first one.
-  useEffect(() => {
-    const unlock = () => unlockNotificationAudio();
-    window.addEventListener("pointerdown", unlock, { once: true, capture: true });
-    window.addEventListener("keydown", unlock, { once: true, capture: true });
-    return () => {
-      window.removeEventListener("pointerdown", unlock, { capture: true });
-      window.removeEventListener("keydown", unlock, { capture: true });
-    };
-  }, []);
+  // Audio can only start after a gesture — retried on every gesture until
+  // the context is actually running (see attachAudioUnlock).
+  useEffect(() => attachAudioUnlock(), []);
 
   useEffect(() => {
     if (!userId || !accountId) return;
