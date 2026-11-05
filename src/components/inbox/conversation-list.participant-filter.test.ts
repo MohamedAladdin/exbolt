@@ -17,10 +17,16 @@ const source = readFileSync(
 
 describe('Inbox participant filter', () => {
   it('puts a member selector inside the funnel popover', () => {
-    const popoverClose = source.indexOf('</PopoverContent>')
+    // Anchor on the FUNNEL popover's own content, not on the first
+    // `</PopoverContent>` in the file: the search-tuning popover sits above it
+    // and would otherwise stand in for the funnel and make this pass look
+    // meaningful while checking the wrong element.
+    const funnelStart = source.indexOf('className="w-72 gap-3 p-3"')
+    expect(funnelStart).toBeGreaterThan(-1)
+    const funnelEnd = source.indexOf('</PopoverContent>', funnelStart)
     const selector = source.indexOf('participantFilterLabel')
-    expect(selector).toBeGreaterThan(-1)
-    expect(selector).toBeLessThan(popoverClose)
+    expect(selector).toBeGreaterThan(funnelStart)
+    expect(selector).toBeLessThan(funnelEnd)
     expect(source).toContain('onSelectParticipant?.(')
   })
 

@@ -629,8 +629,77 @@ export function ConversationList({
               value={search}
               onChange={handleSearchChange}
               placeholder={t("searchPlaceholder")}
-              className="border-border bg-muted ps-9 text-sm text-foreground placeholder-muted-foreground focus:border-primary/50"
+              className="border-border bg-muted ps-9 pe-10 text-sm text-foreground placeholder-muted-foreground focus:border-primary/50"
             />
+
+            {/* Search tuning — scope + window. It sits INSIDE the field, not
+                next to it: two identical 36px squares side by side (this and
+                the filter button) read as "the same kind of control", and the
+                operator could not tell which one narrows the list and which
+                one changes how the search looks. Inside the input it belongs
+                to the query it modifies; the filter button keeps the outside.
+                Deliberately its own popover: the filter answers "which
+                threads", this answers "how hard should the search look". */}
+            <Popover open={searchTuneOpen} onOpenChange={setSearchTuneOpen}>
+              <PopoverTrigger
+                aria-label={t("searchTuneLabel")}
+                title={t("searchTuneLabel")}
+                className={cn(
+                  "absolute end-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md transition-colors",
+                  searchScope === "name" || searchDays !== 30
+                    ? "bg-primary/20 text-primary"
+                    : "text-muted-foreground hover:bg-background/70 hover:text-foreground",
+                )}
+              >
+                <Settings2 className="h-3.5 w-3.5" />
+                {(searchScope === "name" || searchDays !== 30) && (
+                  <span className="absolute end-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-primary" />
+                )}
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-64 gap-3 p-3">
+                <div className="grid gap-1.5">
+                  <p className="text-xs font-medium text-foreground">{t("searchScopeLabel")}</p>
+                  <div className="flex gap-1.5">
+                    {(["all", "name"] as const).map((scope) => (
+                      <button
+                        key={scope}
+                        type="button"
+                        onClick={() => setSearchScope(scope)}
+                        className={cn(
+                          "flex-1 rounded-md border px-2 py-1.5 text-xs transition-colors",
+                          searchScope === scope
+                            ? "border-primary/50 bg-primary/10 text-primary"
+                            : "border-border text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        {t(scope === "all" ? "searchScopeAll" : "searchScopeName")}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="grid gap-1.5">
+                  <p className="text-xs font-medium text-foreground">{t("searchDaysLabel")}</p>
+                  <div className="flex gap-1.5">
+                    {[7, 30, 90, 365].map((days) => (
+                      <button
+                        key={days}
+                        type="button"
+                        onClick={() => setSearchDays(days)}
+                        className={cn(
+                          "flex-1 rounded-md border px-1 py-1.5 text-xs transition-colors",
+                          searchDays === days
+                            ? "border-primary/50 bg-primary/10 text-primary"
+                            : "border-border text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        {days === 365 ? t("searchDaysYear") : `${days}`}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">{t("searchTuneHint")}</p>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
 
           <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
@@ -885,67 +954,6 @@ export function ConversationList({
                   {t("clearFilters")}
                 </button>
               )}
-            </PopoverContent>
-          </Popover>
-
-          {/* Search tuning — scope + window. Deliberately its own button: the
-              filter popover answers "which threads", this answers "how hard
-              should the search look". */}
-          <Popover open={searchTuneOpen} onOpenChange={setSearchTuneOpen}>
-            <PopoverTrigger
-              aria-label={t("searchTuneLabel")}
-              title={t("searchTuneLabel")}
-              className={cn(
-                "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors",
-                searchScope === "name" || searchDays !== 30
-                  ? "border-primary/40 bg-primary/10 text-primary"
-                  : "border-border text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Settings2 className="h-4 w-4" />
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-64 gap-3 p-3">
-              <div className="grid gap-1.5">
-                <p className="text-xs font-medium text-foreground">{t("searchScopeLabel")}</p>
-                <div className="flex gap-1.5">
-                  {(["all", "name"] as const).map((scope) => (
-                    <button
-                      key={scope}
-                      type="button"
-                      onClick={() => setSearchScope(scope)}
-                      className={cn(
-                        "flex-1 rounded-md border px-2 py-1.5 text-xs transition-colors",
-                        searchScope === scope
-                          ? "border-primary/50 bg-primary/10 text-primary"
-                          : "border-border text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      {t(scope === "all" ? "searchScopeAll" : "searchScopeName")}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="grid gap-1.5">
-                <p className="text-xs font-medium text-foreground">{t("searchDaysLabel")}</p>
-                <div className="flex gap-1.5">
-                  {[7, 30, 90, 365].map((days) => (
-                    <button
-                      key={days}
-                      type="button"
-                      onClick={() => setSearchDays(days)}
-                      className={cn(
-                        "flex-1 rounded-md border px-1 py-1.5 text-xs transition-colors",
-                        searchDays === days
-                          ? "border-primary/50 bg-primary/10 text-primary"
-                          : "border-border text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      {days === 365 ? t("searchDaysYear") : `${days}`}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[11px] text-muted-foreground">{t("searchTuneHint")}</p>
-              </div>
             </PopoverContent>
           </Popover>
         </div>
