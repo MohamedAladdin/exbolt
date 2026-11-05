@@ -72,14 +72,20 @@ export function NotificationPopupListener() {
 
     const supabase = createClient();
 
-    const open = (row: AppNotification) => {
-      // Opening the alert is reading it — the /notifications page does the
-      // same on click, so both surfaces agree on what "unread" means.
-      void supabase
-        .from("notifications")
-        .update({ read_at: new Date().toISOString() })
-        .eq("id", row.id)
-        .is("read_at", null);
+    const open = async (row: AppNotification) => {
+      // Mark read BEFORE navigating: a same-origin navigation aborts the
+      // in-flight PATCH, which left the alert unread and the badge stale —
+      // measured on the live box (read_at still null after the click).
+      // Opening an alert is reading it, the same rule /notifications uses.
+      try {
+        await supabase
+          .from("notifications")
+          .update({ read_at: new Date().toISOString() })
+          .eq("id", row.id)
+          .is("read_at", null);
+      } catch {
+        // Non-fatal: opening the alert still matters more than the badge.
+      }
       router.push(popupHref(row));
     };
 
@@ -110,7 +116,7 @@ export function NotificationPopupListener() {
           );
           desktop.onclick = () => {
             window.focus();
-            open(row);
+            void open(row);
             desktop.close();
           };
           return;
@@ -124,7 +130,7 @@ export function NotificationPopupListener() {
         description: body || undefined,
         icon: <Icon className="size-4 text-primary" aria-hidden />,
         duration: 12_000,
-        action: { label: t("open"), onClick: () => open(row) },
+        action: { label: t("open"), onClick: () => void open(row) },
       });
     };
 

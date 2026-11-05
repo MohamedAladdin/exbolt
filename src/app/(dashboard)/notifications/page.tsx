@@ -128,8 +128,12 @@ export default function NotificationsPage() {
   );
 
   const handleClick = useCallback(
-    (n: Notification) => {
-      if (!n.read_at) markRead(n.id);
+    async (n: Notification) => {
+      // Await the mark-read before navigating: a same-origin navigation
+      // aborts the in-flight PATCH, so `void markRead(...)` left the row
+      // unread and the sidebar badge stale on every click of a notification
+      // that deep-links into the inbox.
+      if (!n.read_at) await markRead(n.id);
       if (n.conversation_id) {
         router.push(`/inbox?c=${n.conversation_id}`);
       }
