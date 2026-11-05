@@ -127,7 +127,11 @@ export function NotificationPopupListener() {
       }
 
       toast(title, {
-        description: body || undefined,
+        // `dir="auto"`: the stored body is one Latin sentence with the
+        // customer's Arabic inside it ("AI agent handed off … “عايز أعرف
+        // سعر الكشف”"). Inherited RTL reorders the two runs and reads as
+        // jumbled; auto picks the direction of the first strong character.
+        description: body ? <span dir="auto">{body}</span> : undefined,
         icon: <Icon className="size-4 text-primary" aria-hidden />,
         duration: 12_000,
         action: { label: t("open"), onClick: () => void open(row) },

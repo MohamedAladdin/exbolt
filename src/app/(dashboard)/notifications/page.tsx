@@ -267,7 +267,10 @@ export default function NotificationsPage() {
                       )}
                     </div>
                     {n.body && (
-                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                      <p
+                        dir="auto"
+                        className="mt-0.5 truncate text-xs text-muted-foreground"
+                      >
                         {n.body}
                       </p>
                     )}

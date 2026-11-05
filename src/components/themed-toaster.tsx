@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { useLocale } from "next-intl";
 import { Toaster } from "sonner";
 
 import { useTheme } from "@/hooks/use-theme";
@@ -35,10 +36,15 @@ function useIsClient() {
 export function ThemedToaster() {
   const { mode } = useTheme();
   const isClient = useIsClient();
+  const locale = useLocale();
+  // In an RTL surface the sidebar is on the right, so a top-right toast lands
+  // on top of the navigation (measured: sidebar 1185–1440px, toast
+  // 1060–1416px on a 1440px viewport). Mirror it for those locales.
+  const rtl = locale === "ar" || locale === "he" || locale === "fa";
   return (
     <Toaster
       theme={isClient ? mode : DEFAULT_MODE}
-      position="top-right"
+      position={rtl ? "top-left" : "top-right"}
       toastOptions={{
         style: {
           background: "var(--popover)",
