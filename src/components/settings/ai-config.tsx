@@ -30,6 +30,7 @@ import { StatusDot } from './settings-chip';
 import { AiKnowledgeCard } from './ai-knowledge';
 import { AI_PROVIDER_DEFAULT_MODEL } from '@/lib/ai/defaults';
 import { handoffMessagePayload } from '@/lib/ai/handoff-message';
+import { AGENT_NAME_MAX_LENGTH, agentNamePayload } from '@/lib/ai/agent-name';
 import type { AiProvider } from '@/lib/ai/types';
 import type { AccountMember } from '@/types';
 import { fetchAccountMembers, memberLabel } from '@/lib/account/members';
@@ -75,6 +76,11 @@ export function AiConfig() {
   const [embeddingsKeyEdited, setEmbeddingsKeyEdited] = useState(false);
   const [hasStoredEmbeddingsKey, setHasStoredEmbeddingsKey] = useState(false);
   const [systemPrompt, setSystemPrompt] = useState('');
+  // The assistant's own display name (migration 106) — what `{{ agent_name }}`
+  // renders in an outgoing signature when the *bot* replies. Same
+  // untouched-vs-cleared contract as the transfer note below.
+  const [agentName, setAgentName] = useState('');
+  const [agentNameEdited, setAgentNameEdited] = useState(false);
   const [isActive, setIsActive] = useState(false);
   const [autoReplyEnabled, setAutoReplyEnabled] = useState(false);
   // The quick switch at the top of the card writes immediately, so it needs
@@ -125,6 +131,8 @@ export function AiConfig() {
         setModel(data.model);
         setBaseUrl(data.base_url ?? '');
         setSystemPrompt(data.system_prompt ?? '');
+        setAgentName(data.agent_name ?? '');
+        setAgentNameEdited(false);
         setIsActive(data.is_active);
         setAutoReplyEnabled(data.auto_reply_enabled);
         setMaxPerConversation(data.auto_reply_max_per_conversation ?? 3);
@@ -237,6 +245,8 @@ export function AiConfig() {
     api_key: keyPayload(),
     embeddings_api_key: embeddingsKeyPayload(),
     system_prompt: systemPrompt.trim() || null,
+    // undefined = leave unchanged; '' typed = null (clear); text = set.
+    agent_name: agentNamePayload(agentName, agentNameEdited),
     is_active: isActive,
     auto_reply_enabled: autoReplyEnabled,
     auto_reply_max_per_conversation: maxPerConversation,
@@ -589,6 +599,26 @@ export function AiConfig() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="ai-agent-name">{t('agentName')}</Label>
+              <Input
+                id="ai-agent-name"
+                name="agent-name"
+                value={agentName}
+                onChange={(e) => {
+                  setAgentName(e.target.value);
+                  setAgentNameEdited(true);
+                }}
+                placeholder={t('agentNamePlaceholder')}
+                maxLength={AGENT_NAME_MAX_LENGTH}
+                disabled={disabled}
+                autoComplete="off"
+              />
+              <p className="text-xs text-muted-foreground">
+                {t('agentNameHint')}
+              </p>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="ai-prompt">{t('businessContext')}</Label>
               <Textarea

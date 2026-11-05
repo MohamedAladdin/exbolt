@@ -36,7 +36,7 @@ export async function GET() {
       // `api_key` is selected only to derive `has_key` — it is stripped
       // out below and never returned to the client.
       .select(
-        'provider, model, base_url, system_prompt, is_active, auto_reply_enabled, auto_reply_max_per_conversation, context_message_limit, handoff_agent_id, handoff_agent_ids, ai_schedule_enabled, ai_schedule_start, ai_schedule_end, ai_schedule_days, ai_schedule_timezone, outside_hours_mode, outside_hours_message, handoff_message, api_key, embeddings_api_key',
+        'provider, model, base_url, system_prompt, agent_name, is_active, auto_reply_enabled, auto_reply_max_per_conversation, context_message_limit, handoff_agent_id, handoff_agent_ids, ai_schedule_enabled, ai_schedule_start, ai_schedule_end, ai_schedule_days, ai_schedule_timezone, outside_hours_mode, outside_hours_message, handoff_message, api_key, embeddings_api_key',
       )
       .eq('account_id', accountId)
       .maybeSingle()
@@ -240,6 +240,19 @@ export async function POST(request: Request) {
         ? body.handoff_message.trim().slice(0, 500)
         : ''
 
+    // The assistant's own display name — what `{{ agent_name }}` renders in
+    // an outgoing signature for an AI reply (migration 106). Empty string
+    // clears it back to "use the account name"; absent leaves it unchanged,
+    // so a partial save (flipping a toggle) cannot wipe it.
+    const agentNameProvided = Object.prototype.hasOwnProperty.call(
+      body ?? {},
+      'agent_name',
+    )
+    const agentName =
+      typeof body.agent_name === 'string'
+        ? body.agent_name.trim().slice(0, 60)
+        : ''
+
     const rawKey = typeof body.api_key === 'string' ? body.api_key.trim() : ''
 
     // Embeddings key (optional, for semantic KB search): a non-empty
@@ -359,6 +372,7 @@ export async function POST(request: Request) {
       auto_reply_enabled: autoReplyEnabled,
       auto_reply_max_per_conversation: maxPer,
     }
+    if (agentNameProvided) shared.agent_name = agentName || null
     if (contextProvided) shared.context_message_limit = contextLimit
     if (handoffMessageProvided) shared.handoff_message = handoffMessage || null
     // Only touch the handoff target when the form actually sent the field,

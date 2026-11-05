@@ -183,6 +183,7 @@ async function sendViaMeta(input: SendInput): Promise<{ whatsapp_message_id: str
   // phone-variant retry, so every attempt sends the same body and the row we
   // persist matches the text the customer received. Text sends only — a
   // template's body is Meta-approved (see lib/whatsapp/signature.ts).
+  // An automation has no human sender, so it signs with the business name.
   const signedText =
     input.kind === 'text'
       ? ((await signOutgoingText({
@@ -190,7 +191,7 @@ async function sendViaMeta(input: SendInput): Promise<{ whatsapp_message_id: str
           accountId: input.accountId,
           messageType: 'text',
           text: input.text,
-          senderId: input.userId,
+          sender: { kind: 'system' },
         })) ?? input.text)
       : null
 

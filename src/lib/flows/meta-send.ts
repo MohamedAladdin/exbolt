@@ -128,15 +128,16 @@ export async function engineSendText(
   const db = supabaseAdmin()
 
   // Optional account signature (Settings → Inbox), resolved once before the
-  // phone-variant retry so every attempt and the persisted row carry the same
-  // body. Rules live in lib/whatsapp/signature.ts; a lookup failure returns
-  // the text untouched and never blocks the send.
+  // phone-variant retry so every attempt carries the same body. Rules live in
+  // lib/whatsapp/signature.ts; a lookup failure returns the text untouched and
+  // never blocks the send. Who signs: the assistant's own name for AI replies,
+  // the business for a flow prompt (nobody typed either).
   const text = (await signOutgoingText({
     db,
     accountId: args.accountId,
     messageType: 'text',
     text: args.text,
-    senderId: args.userId,
+    sender: args.aiGenerated ? { kind: 'ai' } : { kind: 'system' },
   })) ?? args.text
 
   const { data: contact, error: contactErr } = await db

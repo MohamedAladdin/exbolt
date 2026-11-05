@@ -22,6 +22,12 @@
 // Failure direction: every lookup here swallows its error and returns the
 // unsigned text. A settings read must never be able to stop a reply from
 // going out.
+//
+// WHO SIGNS (`SignatureSender`): a teammate signs with their own name, the
+// assistant signs with `ai_configs.agent_name` (its own field — never the
+// human whose key it borrows), and a flow/automation signs with the account
+// name. When a name is missing the account name is used, so a signature never
+// ends up attributing the bot's words to a person who never wrote them.
 // ============================================================
 
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -172,6 +178,42 @@ export async function resolveSenderName(
 export const SIGNABLE_MESSAGE_TYPES = new Set(['text'])
 
 /**
+ * Who is speaking — the one thing the signature has to get right.
+ *
+ * `member`  a teammate typed it: their profile name.
+ * `ai`      the assistant answered: `ai_configs.agent_name` (106). It must
+ *           never fall back to the human who owns the key — a clinic's bot
+ *           signing with the doctor's personal name is the bug this was
+ *           added for.
+ * `system`  a flow or an automation: nobody is speaking, so the business is.
+ *
+ * Every kind falls back to the account name when its own name is missing.
+ */
+export type SignatureSender =
+  | { kind: 'member'; userId?: string | null }
+  | { kind: 'ai' }
+  | { kind: 'system' }
+
+/**
+ * The assistant's own display name (migration 106). Null when unset — the
+ * caller then signs with the account name rather than inventing one.
+ */
+export async function resolveAiAgentName(
+  db: SupabaseClient,
+  accountId: string,
+): Promise<string | null> {
+  const { data, error } = await db
+    .from('ai_configs')
+    .select('agent_name')
+    .eq('account_id', accountId)
+    .maybeSingle()
+
+  if (error || !data) return null
+  const name = ((data as { agent_name?: string | null }).agent_name ?? '').trim()
+  return name || null
+}
+
+/**
  * The one call a send path makes: hand it the text it was about to send and
  * get back the text to actually send. Returns the input untouched when the
  * feature is off, the type is not signable, or anything at all goes wrong.
@@ -183,6 +225,8 @@ export async function signOutgoingText(args: {
   text: string | null | undefined
   /** `messages.sender_id` — the teammate this message is attributed to. */
   senderId?: string | null
+  /** Defaults to `{ kind: 'member', userId: senderId }`. */
+  sender?: SignatureSender
 }): Promise<string | null | undefined> {
   const { db, accountId, messageType, text, senderId } = args
   try {
@@ -192,7 +236,15 @@ export async function signOutgoingText(args: {
     const settings = await loadAccountSignature(db, accountId)
     if (!settings.enabled) return text
 
-    const agentName = await resolveSenderName(db, senderId)
+    const sender: SignatureSender =
+      args.sender ?? { kind: 'member', userId: senderId }
+    const agentName =
+      sender.kind === 'member'
+        ? await resolveSenderName(db, sender.userId ?? null)
+        : sender.kind === 'ai'
+          ? await resolveAiAgentName(db, accountId)
+          : null
+
     const signature = renderSignature(settings.template, {
       agentName,
       businessName: settings.businessName,
