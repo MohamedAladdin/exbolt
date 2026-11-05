@@ -774,7 +774,7 @@ export function ConversationList({
             the row wraps exactly like the quick row below it. */}
         <div
           role="tablist"
-          className="flex flex-wrap gap-0.5 rounded-lg border border-border bg-muted/40 p-0.5"
+          className="flex flex-wrap justify-between gap-0.5 rounded-lg border border-border bg-muted/40 p-0.5"
         >
           {STATUS_TABS.map((value) => {
             const isActive = filter === value;
@@ -823,7 +823,7 @@ export function ConversationList({
         <div
           role="tablist"
           aria-label={t("quickFiltersLabel")}
-          className="flex flex-wrap gap-0.5 rounded-lg border border-border bg-muted/40 p-0.5"
+          className="flex flex-wrap justify-between gap-0.5 rounded-lg border border-border bg-muted/40 p-0.5"
         >
           {FILTER_OPTIONS.filter((opt) => QUICK_FILTERS.includes(opt.value)).map((opt) => {
             const isActive = filter === opt.value;
