@@ -40,13 +40,27 @@ async function tick() {
     p_window: RECONCILE_WINDOW,
   });
 
+  const reconciledCount = reconcileError ? null : Number(reconciled ?? 0);
+
+  // A non-zero count is not a routine repair — it means an event's enqueue trigger
+  // threw and the safety net had to rebuild the alert. Left as a silent number in a
+  // JSON body that a cron throws away, nobody would ever see it, so it goes out at
+  // error level (docker logs / any log shipper) and as an explicit alert field.
+  if (reconciledCount !== null && reconciledCount > 0) {
+    console.error(
+      `[push] reconciler backfilled ${reconciledCount} event(s) from the last 15 minutes — the enqueue trigger failed`,
+    );
+  }
+
   const drained = await drainPushOutbox();
 
   const { data: purged } = await admin.rpc("purge_push_outbox");
 
   return NextResponse.json({
     ok: true,
-    reconciled: reconcileError ? null : (reconciled ?? 0),
+    reconciled: reconciledCount,
+    alert:
+      reconciledCount !== null && reconciledCount > 0 ? "reconciler_backfilled" : null,
     reconcile_error: reconcileError?.message ?? null,
     ...drained,
     purged: purged ?? 0,
