@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { notificationsAccountFilter } from "@/lib/notifications/unread-count";
+import { isPopupType } from "@/lib/notifications/popup";
 import type { Notification } from "@/types";
 import { Bell, Bot, CheckCheck, Loader2, TriangleAlert, UserPlus } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -22,6 +23,11 @@ const TYPE_ICON: Record<Notification["type"], typeof Bell> = {
 
 export default function NotificationsPage() {
   const t = useTranslations("Notifications");
+  // Titles are written to the row by the producer (English, from the SQL
+  // trigger and the API). The product's own surface renders the type's
+  // localized title and keeps `n.title` only as the fallback for a type this
+  // build does not know yet.
+  const typeLabel = useTranslations("NotificationTypes");
   const router = useRouter();
   const { accountId } = useAuth();
   const [notifications, setNotifications] = useState<Notification[] | null>(
@@ -247,7 +253,7 @@ export default function NotificationsPage() {
                           isUnread ? "text-foreground" : "text-muted-foreground",
                         )}
                       >
-                        {n.title}
+                        {isPopupType(n.type) ? typeLabel(n.type) : n.title}
                       </span>
                       {isUnread && (
                         <span

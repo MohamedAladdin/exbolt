@@ -157,6 +157,44 @@ export function buildNotificationContent(
 }
 
 /**
+ * Options for every desktop alert the product raises.
+ *
+ * `requireInteraction: true` is the difference between an alert and a banner
+ * that disappears on its own: Chrome/Windows auto-dismisses a plain
+ * notification after a few seconds, so a user on another tab sees nothing at
+ * all — reported as «بتيجي صامتة». And because one alert per conversation
+ * replaces the previous one through `tag`, `renotify` is what makes the
+ * replacement ring again instead of silently swapping the body.
+ *
+ * `silent: false` is explicit (not a default to rely on) because the OS sound
+ * is the only sound a closed tab can give; the in-page chime in `sound.ts`
+ * covers the open-tab case.
+ */
+export interface DesktopNotificationOptions extends NotificationOptions {
+  /**
+   * In the spec and honoured by Chrome/Firefox, but absent from this
+   * TypeScript version's DOM lib — declared here instead of dropping a
+   * behaviour the browser supports (`renotify` is ignored without a tag,
+   * which is why both travel together).
+   */
+  renotify?: boolean;
+}
+
+export function desktopNotificationOptions(
+  content: NotificationContent,
+  tag: string,
+): DesktopNotificationOptions {
+  return {
+    body: content.body,
+    tag,
+    icon: "/icon",
+    requireInteraction: true,
+    renotify: true,
+    silent: false,
+  };
+}
+
+/**
  * Display name for the notification title, in the order the inbox uses:
  * saved name, then WhatsApp username, then phone. Null when none exist.
  */

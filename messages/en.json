@@ -2287,7 +2287,9 @@
         "document": "📄 Document",
         "location": "📍 Location",
         "template": "📋 Template"
-      }
+      },
+      "soundLabel": "Play a sound with every alert",
+      "soundDesc": "A short chime from this browser tab — audible even when the system’s own notification sound is muted."
     },
     "apiKeys": {
       "title": "API keys",
@@ -3993,5 +3995,13 @@
   },
   "AiAgent": {
     "awayMessage": "Thanks for your message 👋 We're outside our working hours — we'll reply as soon as we open."
+  },
+  "NotificationTypes": {
+    "conversation_assigned": "A conversation was assigned to you",
+    "ai_handoff_unassigned": "The assistant needs a human",
+    "report_alert": "Report alert"
+  },
+  "NotificationPopups": {
+    "open": "Open"
   }
 }

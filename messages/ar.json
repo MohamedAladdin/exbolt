@@ -2287,7 +2287,9 @@
         "document": "📄 مستند",
         "location": "📍 موقع",
         "template": "📋 قالب"
-      }
+      },
+      "soundLabel": "شغّل صوت مع كل تنبيه",
+      "soundDesc": "نغمة قصيرة من تبويب المتصفح نفسه — مسموعة حتى لو صوت إشعارات النظام مكتوم."
     },
     "apiKeys": {
       "title": "مفاتيح API",
@@ -3993,5 +3995,13 @@
   },
   "AiAgent": {
     "awayMessage": "أهلًا بك 👋 وصلتنا رسالتك خارج ساعات العمل، هنرد عليك أول ما نفتح."
+  },
+  "NotificationTypes": {
+    "conversation_assigned": "اتسندتلك محادثة جديدة",
+    "ai_handoff_unassigned": "المساعد الآلي محتاج تدخّل بشري",
+    "report_alert": "تنبيه من التقرير"
+  },
+  "NotificationPopups": {
+    "open": "فتح"
   }
 }

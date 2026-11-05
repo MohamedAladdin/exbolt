@@ -9,6 +9,7 @@ import {
   DEFAULT_NOTIFICATION_LABELS,
   buildNotificationContent,
   conversationHref,
+  desktopNotificationOptions,
   getNotificationPermission,
   pickContactDisplayName,
   readBrowserNotifyPref,
@@ -17,6 +18,11 @@ import {
   viewedConversationFromLocation,
   type NotificationLabels,
 } from "@/lib/notifications/browser-notify";
+import {
+  playNotificationChime,
+  readSoundPref,
+  subscribeSoundPref,
+} from "@/lib/notifications/sound";
 
 const serverSnapshot = () => false;
 
@@ -30,6 +36,15 @@ export function useBrowserNotifyPref(): boolean {
     readBrowserNotifyPref,
     serverSnapshot,
   );
+}
+
+/**
+ * Device-scoped "play a sound" preference (default on). Lives beside the
+ * opt-in because both describe this device's alert behaviour: turning the
+ * sound off must not turn the alerts off.
+ */
+export function useNotificationSoundPref(): boolean {
+  return useSyncExternalStore(subscribeSoundPref, readSoundPref, () => true);
 }
 
 /**
@@ -99,14 +114,19 @@ export function useBrowserNotifications(): void {
         labelsRef.current,
       );
 
+      // The chime is ours, so it is audible even when the OS mutes its own
+      // notification sound (and when the constructor below throws).
+      playNotificationChime();
+
       try {
-        const notification = new Notification(title, {
-          body,
+        const notification = new Notification(
+          title,
           // One alert per conversation: a second message from the same
-          // customer replaces the first instead of stacking.
-          tag: msg.conversation_id,
-          icon: "/icon",
-        });
+          // customer replaces the first instead of stacking — and `renotify`
+          // makes the replacement ring again. The banner stays until it is
+          // clicked or dismissed instead of vanishing in a few seconds.
+          desktopNotificationOptions({ title, body }, msg.conversation_id),
+        );
         notification.onclick = () => {
           window.focus();
           router.push(conversationHref(msg.conversation_id));

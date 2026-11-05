@@ -14,13 +14,14 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
-import { useBrowserNotifyPref } from '@/hooks/use-browser-notifications';
+import { useBrowserNotifyPref, useNotificationSoundPref } from '@/hooks/use-browser-notifications';
 import {
   BROWSER_NOTIFY_CHANGE_EVENT,
   getNotificationPermission,
   writeBrowserNotifyPref,
   type BrowserNotifyPermission,
 } from '@/lib/notifications/browser-notify';
+import { playNotificationChime, writeSoundPref } from '@/lib/notifications/sound';
 
 // `Notification.permission` has no change event of its own. Re-read it
 // whenever the tab regains focus (the user may have flipped the site
@@ -48,6 +49,7 @@ const serverPermission = (): BrowserNotifyPermission => 'unsupported';
 export function BrowserNotificationsCard({ className }: { className?: string }) {
   const t = useTranslations('Settings.browserNotifications');
   const enabled = useBrowserNotifyPref();
+  const soundOn = useNotificationSoundPref();
   const permission = useSyncExternalStore(
     subscribePermission,
     getNotificationPermission,
@@ -85,11 +87,15 @@ export function BrowserNotificationsCard({ className }: { className?: string }) 
   };
 
   const sendTest = () => {
+    // The click is also the user gesture that unlocks audio, so the test
+    // proves the sound as well as the banner.
+    playNotificationChime();
     try {
       new Notification(t('testTitle'), {
         body: t('testBody'),
         icon: '/icon',
         tag: 'exbolt-test-notification',
+        requireInteraction: true,
       });
     } catch {
       toast.error(t('unsupported'));
@@ -141,6 +147,26 @@ export function BrowserNotificationsCard({ className }: { className?: string }) 
             </div>
 
             <p className="text-xs text-muted-foreground">{t(statusKey)}</p>
+
+            {/* Sound is its own device preference: muting the chime must not
+                mute the alerts, and a muted OS must not make the product
+                silent (the chime is generated in the tab). */}
+            <div className="flex items-center justify-between gap-4 rounded-md border border-border p-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-foreground">
+                  {t('soundLabel')}
+                </p>
+                <p className="text-xs text-muted-foreground">{t('soundDesc')}</p>
+              </div>
+              <Switch
+                checked={soundOn}
+                onCheckedChange={(next) => {
+                  writeSoundPref(next);
+                  if (next) playNotificationChime();
+                }}
+                aria-label={t('soundLabel')}
+              />
+            </div>
 
             {permission === 'denied' && (
               <p className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
