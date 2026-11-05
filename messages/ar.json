@@ -388,7 +388,12 @@
       "resultsCount": "{count} نتيجة",
       "loadAll": "حمّل الكل",
       "loadingAll": "بيحمّل الكل…",
-      "backToTop": "العودة للأعلى"
+      "backToTop": "العودة للأعلى",
+      "participantFilterLabel": "محادثات عضو",
+      "allMembers": "كل الأعضاء",
+      "participantWindowLabel": "النافذة",
+      "participantActive": "محادثات {name} · آخر {days} يوم",
+      "participantClear": "مسح"
     },
     "messageThread": {
       "backToConversations": "العودة إلى المحادثات",

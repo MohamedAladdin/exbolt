@@ -388,7 +388,12 @@
       "resultsCount": "{count} results",
       "loadAll": "Load all",
       "loadingAll": "Loading all…",
-      "backToTop": "Back to top"
+      "backToTop": "Back to top",
+      "participantFilterLabel": "Member's conversations",
+      "allMembers": "All members",
+      "participantWindowLabel": "Window",
+      "participantActive": "{name}'s conversations · last {days} days",
+      "participantClear": "Clear"
     },
     "messageThread": {
       "backToConversations": "Back to conversations",

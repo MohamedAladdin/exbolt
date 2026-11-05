@@ -764,11 +764,17 @@ function InboxPageInner() {
             numbers={numbers}
             assignee={assigneeId ? { id: assigneeId, name: assigneeName } : null}
             onClearAssignee={() => router.replace("/inbox", { scroll: false })}
-            onClearParticipant={() => {
-              const next = new URLSearchParams();
-              if (activeConversation?.id) next.set("c", activeConversation.id);
-              if (assigneeId) next.set("assignee", assigneeId);
-              const qs = next.toString();
+            onSelectParticipant={(next) => {
+              // Switching the member (or the window) is a URL change: the
+              // filter lives in `inbox_page`, and `c`/`assignee` must survive.
+              const params = new URLSearchParams();
+              if (activeConversation?.id) params.set("c", activeConversation.id);
+              if (assigneeId) params.set("assignee", assigneeId);
+              if (next) {
+                params.set("participant", next.id);
+                params.set("days", String(next.days));
+              }
+              const qs = params.toString();
               router.replace(qs ? `/inbox?${qs}` : "/inbox", { scroll: false });
             }}
             participant={

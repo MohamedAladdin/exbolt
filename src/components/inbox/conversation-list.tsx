@@ -13,12 +13,13 @@ import {
   type InboxFilter,
 } from "@/lib/inbox/inbox-filters";
 import { cn } from "@/lib/utils";
-import type { Conversation, ConversationStatus, Tag } from "@/types";
-import { Search, X, Clock, SlidersHorizontal, ArrowUp } from "lucide-react";
+import type { AccountMember, Conversation, ConversationStatus, Tag } from "@/types";
+import { Search, X, Clock, SlidersHorizontal, ArrowUp, Users } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { fetchAccountMembers, memberLabel } from "@/lib/account/members";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -66,7 +67,9 @@ interface ConversationListProps {
     name: string | null;
     days: number;
   } | null;
-  onClearParticipant?: () => void;
+  /** Pick the member whose replies the list shows, change the window, or pass
+   *  null to show everyone. The page owns the URL for it. */
+  onSelectParticipant?: (next: { id: string; days: number } | null) => void;
 }
 
 /** Minimal shape the inbox needs to filter by number. */
@@ -81,6 +84,9 @@ export interface InboxNumberOption {
  *  occasional narrowing. */
 const STATUS_TABS: InboxFilter[] = ["all", "open", "pending", "closed", "followup"];
 const QUICK_FILTERS: InboxFilter[] = ["unread", "waiting", "unassigned", "expiring"];
+
+/** The reply windows a member profile can be looked at through. */
+const PARTICIPANT_WINDOWS = [7, 30, 90];
 
 const STATUS_COLORS: Record<ConversationStatus, string> = {
   open: "bg-primary",
@@ -100,7 +106,7 @@ export function ConversationList({
   assignee = null,
   onClearAssignee,
   participant = null,
-  onClearParticipant,
+  onSelectParticipant,
 }: ConversationListProps) {
   const t = useTranslations("Inbox.conversationList");
   
@@ -504,6 +510,30 @@ export function ConversationList({
 
   const showNumberFilter = numbers.length > 1;
 
+  /** The roster behind the «محادثات عضو» selector. Fetched the first time the
+   *  funnel opens: the inbox itself does not need it. */
+  const [members, setMembers] = useState<AccountMember[]>([]);
+  useEffect(() => {
+    if (!filtersOpen || members.length > 0) return;
+    let cancelled = false;
+    void fetchAccountMembers().then((list) => {
+      if (!cancelled) setMembers(list);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [filtersOpen, members.length]);
+
+  /** The member being viewed may have left the account since the link was
+   *  made, so the current id is always an option even when the roster omits it. */
+  const participantOptions = useMemo(() => {
+    const opts = members.map((m) => ({ id: m.user_id, name: memberLabel(m) }));
+    if (participant && !opts.some((o) => o.id === participant.id)) {
+      opts.unshift({ id: participant.id, name: participant.name ?? participant.id });
+    }
+    return opts;
+  }, [members, participant]);
+
   /** Filters that narrow the list but are not statuses — they live inside the
    *  funnel button, and this is the number on its badge. */
   const extraFilterCount =
@@ -603,6 +633,56 @@ export function ConversationList({
                 <p className="text-[11px] leading-relaxed text-muted-foreground">
                   {t("filtersHint")}
                 </p>
+              </div>
+
+              {/* Whose replies the list is showing. The member profile links
+                  here as `?participant=<userId>&days=<n>`, which used to be
+                  visible only as a "1" on the funnel badge — the popover then
+                  offered «مسح كل الفلاتر» and nothing to see or change. */}
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {t("participantFilterLabel")}
+                </p>
+                <select
+                  value={participant?.id ?? ""}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    onSelectParticipant?.(
+                      id ? { id, days: participant?.days ?? 30 } : null,
+                    );
+                  }}
+                  className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs text-foreground focus:border-foreground/30 focus:outline-none"
+                >
+                  <option value="">{t("allMembers")}</option>
+                  {participantOptions.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
+                {participant && (
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] text-muted-foreground">
+                      {t("participantWindowLabel")}
+                    </span>
+                    {PARTICIPANT_WINDOWS.map((d) => (
+                      <button
+                        key={d}
+                        type="button"
+                        aria-pressed={participant.days === d}
+                        onClick={() => onSelectParticipant?.({ id: participant.id, days: d })}
+                        className={cn(
+                          "rounded-full border px-2 py-0.5 text-[11px] tabular-nums transition-colors",
+                          participant.days === d
+                            ? "border-primary bg-primary/15 text-primary"
+                            : "border-border text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        {d}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-1.5">
@@ -755,7 +835,7 @@ export function ConversationList({
                     setSelectedCompany(null);
                     setSelectedTagIds([]);
                     onClearAssignee?.();
-                    onClearParticipant?.();
+                    onSelectParticipant?.(null);
                   }}
                   className="w-full rounded-md border border-border px-2 py-1.5 text-[11px] text-muted-foreground hover:text-foreground"
                 >
@@ -857,6 +937,27 @@ export function ConversationList({
         {searchQuery !== "" && !loading && (
           <div className="text-muted-foreground px-1 text-[11px] tabular-nums">
             {t("resultsCount", { count: total })}
+          </div>
+        )}
+
+        {/* One muted line while a member view is on, so «محادثات مين» is
+            answerable without opening the funnel. */}
+        {participant && (
+          <div className="flex items-center gap-1 px-1 text-[11px] text-muted-foreground">
+            <Users className="h-3 w-3 shrink-0" aria-hidden />
+            <span className="truncate">
+              {t("participantActive", {
+                name: participant.name ?? participant.id,
+                days: participant.days,
+              })}
+            </span>
+            <button
+              type="button"
+              onClick={() => onSelectParticipant?.(null)}
+              className="ms-auto shrink-0 underline-offset-2 hover:text-foreground hover:underline"
+            >
+              {t("participantClear")}
+            </button>
           </div>
         )}
 
