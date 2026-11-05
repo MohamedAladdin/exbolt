@@ -396,7 +396,18 @@
       "participantClear": "Clear",
       "assigneeFilterLabel": "Assignment",
       "allAssignees": "Anyone",
-      "assigneeActive": "Assigned to {name}"
+      "assigneeActive": "Assigned to {name}",
+      "searchTuneLabel": "Search settings",
+      "searchScopeLabel": "Search scope",
+      "searchScopeAll": "Name and messages",
+      "searchScopeName": "Name only",
+      "searchDaysLabel": "Period",
+      "searchDaysYear": "1 year",
+      "searchTuneHint": "Default is the last 30 days — a wider window makes the search slower.",
+      "searchNoResultsWider": "No results in this window. Widen the period or change the scope.",
+      "searchNoResultsMessages": "Currently searching names and numbers only.",
+      "searchTryMessages": "Search inside messages too",
+      "searchTryYear": "Search the last year"
     },
     "messageThread": {
       "backToConversations": "Back to conversations",
@@ -2350,7 +2361,7 @@
       "saveFailed": "Failed to save default currency",
       "saveSuccess": "Default currency updated",
       "currencySearch": "Search by code or name — e.g. EGP or pound",
-      "noCurrencyResults": "No currency matches. Try the code (EGP) or the English name.",
+      "noCurrencyResults": "No currency matches. Try the code (EGP) or the name in Arabic or English.",
       "arabCurrencies": "Common"
     },
     "inbox": {

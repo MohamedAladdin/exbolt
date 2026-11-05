@@ -14,7 +14,7 @@ import {
 } from "@/lib/inbox/inbox-filters";
 import { cn } from "@/lib/utils";
 import type { AccountMember, Conversation, ConversationStatus, Tag } from "@/types";
-import { Search, X, Clock, SlidersHorizontal, ArrowUp, Users } from "lucide-react";
+import { Search, X, Clock, SlidersHorizontal, ArrowUp, Users, Settings2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
@@ -125,6 +125,11 @@ export function ConversationList({
     { label: t("filterClosed"), value: "closed" },
   ], [t]);
 
+  // Search tuning (migration 109): a name/number search is a different
+  // question from "where did anyone write this", so the operator picks.
+  const [searchDays, setSearchDays] = useState(30);
+  const [searchScope, setSearchScope] = useState<"all" | "name">("all");
+  const [searchTuneOpen, setSearchTuneOpen] = useState(false);
   const [search, setSearch] = useState("");
   // Debounced copy: every keystroke must not become a query.
   const [searchQuery, setSearchQuery] = useState("");
@@ -221,6 +226,8 @@ export function ConversationList({
     () =>
       JSON.stringify([
         searchQuery,
+        searchDays,
+        searchScope,
         filter,
         channelFilter,
         numberFilter,
@@ -232,6 +239,8 @@ export function ConversationList({
       ]),
     [
       searchQuery,
+      searchDays,
+      searchScope,
       filter,
       channelFilter,
       numberFilter,
@@ -250,6 +259,8 @@ export function ConversationList({
         p_limit: limit,
         p_offset: offset,
         p_search: searchQuery || null,
+        p_search_days: searchDays,
+        p_search_scope: searchScope,
         p_filter: filter,
         p_channel: channelFilter === "all" ? null : channelFilter,
         p_number: numberFilter === "all" ? null : numberFilter,
@@ -876,6 +887,67 @@ export function ConversationList({
               )}
             </PopoverContent>
           </Popover>
+
+          {/* Search tuning — scope + window. Deliberately its own button: the
+              filter popover answers "which threads", this answers "how hard
+              should the search look". */}
+          <Popover open={searchTuneOpen} onOpenChange={setSearchTuneOpen}>
+            <PopoverTrigger
+              aria-label={t("searchTuneLabel")}
+              title={t("searchTuneLabel")}
+              className={cn(
+                "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors",
+                searchScope === "name" || searchDays !== 30
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Settings2 className="h-4 w-4" />
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-64 gap-3 p-3">
+              <div className="grid gap-1.5">
+                <p className="text-xs font-medium text-foreground">{t("searchScopeLabel")}</p>
+                <div className="flex gap-1.5">
+                  {(["all", "name"] as const).map((scope) => (
+                    <button
+                      key={scope}
+                      type="button"
+                      onClick={() => setSearchScope(scope)}
+                      className={cn(
+                        "flex-1 rounded-md border px-2 py-1.5 text-xs transition-colors",
+                        searchScope === scope
+                          ? "border-primary/50 bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {t(scope === "all" ? "searchScopeAll" : "searchScopeName")}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="grid gap-1.5">
+                <p className="text-xs font-medium text-foreground">{t("searchDaysLabel")}</p>
+                <div className="flex gap-1.5">
+                  {[7, 30, 90, 365].map((days) => (
+                    <button
+                      key={days}
+                      type="button"
+                      onClick={() => setSearchDays(days)}
+                      className={cn(
+                        "flex-1 rounded-md border px-1 py-1.5 text-xs transition-colors",
+                        searchDays === days
+                          ? "border-primary/50 bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {days === 365 ? t("searchDaysYear") : `${days}`}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-muted-foreground">{t("searchTuneHint")}</p>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
 
         {/* Status tabs: one click, and the count the filter would return.
@@ -1029,6 +1101,35 @@ export function ConversationList({
         ) : total === 0 ? (
           <div className="px-4 py-12 text-center">
             <p className="text-sm text-muted-foreground">{t("noConversations")}</p>
+            {searchQuery !== "" && (
+              <div className="mt-3 grid gap-2">
+                <p className="text-[11px] text-muted-foreground">
+                  {searchScope === "all"
+                    ? t("searchNoResultsWider")
+                    : t("searchNoResultsMessages")}
+                </p>
+                <div className="flex justify-center gap-1.5">
+                  {searchScope === "name" && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchScope("all")}
+                      className="text-primary text-[11px] underline-offset-2 hover:underline"
+                    >
+                      {t("searchTryMessages")}
+                    </button>
+                  )}
+                  {searchDays < 365 && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchDays(365)}
+                      className="text-primary text-[11px] underline-offset-2 hover:underline"
+                    >
+                      {t("searchTryYear")}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
             {/* A filter can be satisfied only by threads further down the
                 table; with 25-row pages that reads as "no results" until the
                 operator asks for more. Say so instead of lying. */}

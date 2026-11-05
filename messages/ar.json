@@ -396,7 +396,18 @@
       "participantClear": "مسح",
       "assigneeFilterLabel": "الإسناد",
       "allAssignees": "كل المُسند إليهم",
-      "assigneeActive": "مسندة لـ {name}"
+      "assigneeActive": "مسندة لـ {name}",
+      "searchTuneLabel": "تخصيص البحث",
+      "searchScopeLabel": "نطاق البحث",
+      "searchScopeAll": "الاسم والرسائل",
+      "searchScopeName": "الاسم فقط",
+      "searchDaysLabel": "المدة",
+      "searchDaysYear": "سنة",
+      "searchTuneHint": "الافتراضي آخر ٣٠ يوم — توسيع المدة بيبطّأ البحث شوية.",
+      "searchNoResultsWider": "مفيش نتائج في المدة دي. جرّب توسّع المدة أو غيّر النطاق.",
+      "searchNoResultsMessages": "البحث حاليًا في الأسماء والأرقام بس.",
+      "searchTryMessages": "ابحث جوه الرسائل كمان",
+      "searchTryYear": "ابحث في آخر سنة"
     },
     "messageThread": {
       "backToConversations": "العودة إلى المحادثات",
@@ -2350,7 +2361,7 @@
       "saveFailed": "تعذّر حفظ العملة الافتراضية",
       "saveSuccess": "تم تحديث العملة الافتراضية",
       "currencySearch": "ابحث بالكود أو الاسم — مثال: EGP أو جنيه",
-      "noCurrencyResults": "مفيش عملة بالاسم ده. جرّب الكود (EGP) أو الاسم بالإنجليزي.",
+      "noCurrencyResults": "لا توجد عملة بهذا الاسم. جرّب الكود (EGP) أو الاسم بالعربية أو الإنجليزية.",
       "arabCurrencies": "الأكثر استخدامًا"
     },
     "inbox": {
