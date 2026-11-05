@@ -13,6 +13,7 @@ import { AccountAccessAlert } from '@/components/layout/account-access-alert';
 import { PresenceHeartbeat } from '@/components/presence/presence-heartbeat';
 import { BrowserNotificationsListener } from '@/components/notifications/browser-notifications-listener';
 import { NotificationPopupListener } from '@/components/notifications/notification-popup-listener';
+import { PushRegistrar } from '@/components/push/push-registrar';
 
 // Auth-gated dashboard shell. Extracted from the layout so the layout
 // itself can stay a server component and export metadata (noindex) —
@@ -92,6 +93,9 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
           visible, audible popup instead of a row nobody scrolls to.
           Headless — renders nothing. */}
         <NotificationPopupListener />
+        {/* Registers /sw.js and keeps this device's push subscription in sync.
+          Headless — asks for nothing; enabling happens from Settings. */}
+        <PushRegistrar />
         <Sidebar open={sidebarOpen} onClose={closeSidebar} />
         <div className="flex flex-1 flex-col overflow-hidden">
           <Header onOpenSidebar={() => setSidebarOpen(true)} />

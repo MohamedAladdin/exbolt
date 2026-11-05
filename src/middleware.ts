@@ -12,7 +12,14 @@ export async function middleware(request: NextRequest) {
     pathname === "/en" ||
     pathname === "/meta-cost" ||
     pathname.startsWith("/landing/") ||
-    pathname.startsWith("/api/public/")
+    pathname.startsWith("/api/public/") ||
+    // Service worker + PWA manifest + install icons are fetched by the browser
+    // outside any page navigation. Running them through the auth flow redirects
+    // them to /login, which fails registration with "unsupported MIME type" — the
+    // push channel never comes up.
+    pathname === "/sw.js" ||
+    pathname === "/manifest.webmanifest" ||
+    pathname.startsWith("/pwa-icon")
   ) {
     return NextResponse.next();
   }
