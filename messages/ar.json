@@ -403,10 +403,10 @@
       "searchScopeName": "الاسم فقط",
       "searchDaysLabel": "المدة",
       "searchDaysYear": "سنة",
-      "searchTuneHint": "الافتراضي آخر ٣٠ يوم — توسيع المدة بيبطّأ البحث شوية.",
-      "searchNoResultsWider": "مفيش نتائج في المدة دي. جرّب توسّع المدة أو غيّر النطاق.",
-      "searchNoResultsMessages": "البحث حاليًا في الأسماء والأرقام بس.",
-      "searchTryMessages": "ابحث جوه الرسائل كمان",
+      "searchTuneHint": "الافتراضي آخر ٣٠ يومًا — توسيع المدة يُبطئ البحث قليلًا.",
+      "searchNoResultsWider": "لا توجد نتائج في هذه المدة. جرّب توسيع المدة أو تغيير النطاق.",
+      "searchNoResultsMessages": "البحث الآن في الأسماء والأرقام فقط.",
+      "searchTryMessages": "ابحث داخل الرسائل أيضًا",
       "searchTryYear": "ابحث في آخر سنة"
     },
     "messageThread": {
