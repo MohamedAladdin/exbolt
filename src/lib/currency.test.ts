@@ -1,10 +1,75 @@
 import { describe, expect, it } from "vitest";
 import {
+  ARAB_CURRENCIES,
   CURRENCIES,
   DEFAULT_CURRENCY,
+  currencyName,
   formatCurrency,
   formatCurrencyShort,
+  isCurrencyCode,
+  searchCurrencies,
 } from "./currency";
+
+describe("catalogue coverage", () => {
+  it("every code is structurally valid ISO-4217 and unique", () => {
+    const codes = CURRENCIES.map((c) => c.code);
+    expect(new Set(codes).size).toBe(codes.length);
+    for (const code of codes) {
+      expect(code, code).toMatch(/^[A-Z]{3}$/);
+      expect(isCurrencyCode(code)).toBe(true);
+    }
+  });
+
+  it("offers every Arab-world currency the old 15-code list was missing", () => {
+    const codes = new Set(CURRENCIES.map((c) => c.code));
+    for (const code of [
+      "EGP", "SAR", "KWD", "QAR", "BHD", "OMR", "JOD", "IQD",
+      "LBP", "MAD", "TND", "DZD", "LYD", "SDG", "YER", "SYP",
+    ]) {
+      expect(codes.has(code), code).toBe(true);
+    }
+    expect(ARAB_CURRENCIES.slice(0, 6)).toEqual(["EGP", "SAR", "AED", "KWD", "QAR", "BHD"]);
+  });
+
+  it("names an Arab currency in Arabic when the UI is Arabic", () => {
+    expect(currencyName("EGP", "ar")).toBe("جنيه مصري");
+    expect(currencyName("SAR", "ar")).toBe("ريال سعودي");
+    expect(currencyName("EGP", "en")).toBe("Egyptian Pound");
+    expect(currencyName("XYZ", "en")).toBe("XYZ");
+  });
+});
+
+describe("searchCurrencies", () => {
+  it("returns the whole catalogue for an empty query", () => {
+    expect(searchCurrencies("")).toHaveLength(CURRENCIES.length);
+    expect(searchCurrencies("   ")).toHaveLength(CURRENCIES.length);
+  });
+
+  it("finds by code, case-insensitively", () => {
+    expect(searchCurrencies("egp").map((c) => c.code)).toContain("EGP");
+  });
+
+  it("finds an Arab currency by its Arabic name", () => {
+    const codes = searchCurrencies("جنيه", "ar").map((c) => c.code);
+    expect(codes).toContain("EGP");
+    // «جنيه سوداني» — and note SYP/LBP are «ليرة» in Arabic, not «جنيه».
+    expect(codes).toContain("SDG");
+    expect(searchCurrencies("ليرة", "ar").map((c) => c.code)).toEqual(
+      expect.arrayContaining(["SYP", "LBP", "TRY"]),
+    );
+  });
+
+  it("finds by English name even in the Arabic UI", () => {
+    const codes = searchCurrencies("dinar", "ar").map((c) => c.code);
+    expect(codes).toEqual(
+      expect.arrayContaining(["KWD", "BHD", "JOD", "IQD", "TND", "DZD", "LYD"]),
+    );
+  });
+
+  it("returns nothing for a query no currency answers", () => {
+    expect(searchCurrencies("zzzzz")).toHaveLength(0);
+  });
+});
 
 describe("formatCurrency", () => {
   it("formats whole amounts with no minor units", () => {

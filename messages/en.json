@@ -2348,7 +2348,10 @@
       "save": "Save",
       "saving": "Saving...",
       "saveFailed": "Failed to save default currency",
-      "saveSuccess": "Default currency updated"
+      "saveSuccess": "Default currency updated",
+      "currencySearch": "Search by code or name — e.g. EGP or pound",
+      "noCurrencyResults": "No currency matches. Try the code (EGP) or the English name.",
+      "arabCurrencies": "Common"
     },
     "inbox": {
       "title": "Inbox",
