@@ -393,7 +393,10 @@
       "allMembers": "All members",
       "participantWindowLabel": "Window",
       "participantActive": "{name}'s conversations · last {days} days",
-      "participantClear": "Clear"
+      "participantClear": "Clear",
+      "assigneeFilterLabel": "Assignment",
+      "allAssignees": "Anyone",
+      "assigneeActive": "Assigned to {name}"
     },
     "messageThread": {
       "backToConversations": "Back to conversations",

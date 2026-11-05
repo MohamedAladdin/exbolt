@@ -37,8 +37,20 @@ describe('Inbox participant filter', () => {
     expect(banner).toContain('text-[11px] text-muted-foreground')
   })
 
-  it('clears the member view from «مسح كل الفلاتر» too', () => {
-    expect(source).toContain('onSelectParticipant?.(null);')
+  it('offers the same control for `?assignee=` — it was badge-only too', () => {
+    expect(source).toContain('t("assigneeFilterLabel")')
+    expect(source).toContain('onSelectAssignee?.(')
+    expect(source).toContain('t("assigneeActive"')
+    // `?assignee=` has no window: it is the current assignment, not a period.
+    expect(source).not.toContain('ASSIGNEE_WINDOWS')
+  })
+
+  it('clears both member views in ONE navigation', () => {
+    // Two router.replace() calls race and the loser drops the other filter.
+    const clearAll = source.slice(source.indexOf('t("clearFilters")') - 600, source.indexOf('t("clearFilters")'))
+    expect(clearAll).toContain('onClearDeepLinks?.()')
+    expect(clearAll).not.toContain('onSelectParticipant')
+    expect(clearAll).not.toContain('onSelectAssignee')
   })
 })
 
@@ -49,6 +61,9 @@ describe('Inbox participant copy', () => {
     'participantWindowLabel',
     'participantActive',
     'participantClear',
+    'assigneeFilterLabel',
+    'allAssignees',
+    'assigneeActive',
   ]
 
   for (const locale of ['ar', 'en'] as const) {
@@ -60,6 +75,7 @@ describe('Inbox participant copy', () => {
       for (const key of keys) expect(list[key], key).toBeTruthy()
       expect(list.participantActive).toContain('{name}')
       expect(list.participantActive).toContain('{days}')
+      expect(list.assigneeActive).toContain('{name}')
     })
   }
 })

@@ -56,7 +56,10 @@ interface ConversationListProps {
    * (`/inbox?assignee=<userId>`): show only threads assigned to them.
    */
   assignee?: { id: string; name: string | null } | null;
-  onClearAssignee?: () => void;
+  /** Pick the member whose assigned threads to show, or null for anyone. */
+  onSelectAssignee?: (id: string | null) => void;
+  /** Clear both member views in one navigation (the funnel's clear-all). */
+  onClearDeepLinks?: () => void;
   /**
    * Deep-link filter from the member's replies card
    * (`/inbox?participant=<userId>&days=<n>`). `ids` is the exact set the
@@ -104,7 +107,8 @@ export function ConversationList({
   initialFilter = null,
   numbers = [],
   assignee = null,
-  onClearAssignee,
+  onSelectAssignee,
+  onClearDeepLinks,
   participant = null,
   onSelectParticipant,
 }: ConversationListProps) {
@@ -534,6 +538,15 @@ export function ConversationList({
     return opts;
   }, [members, participant]);
 
+  /** Same roster, same "the id on screen is always an option" rule. */
+  const assigneeOptions = useMemo(() => {
+    const opts = members.map((m) => ({ id: m.user_id, name: memberLabel(m) }));
+    if (assignee && !opts.some((o) => o.id === assignee.id)) {
+      opts.unshift({ id: assignee.id, name: assignee.name ?? assignee.id });
+    }
+    return opts;
+  }, [members, assignee]);
+
   /** Filters that narrow the list but are not statuses — they live inside the
    *  funnel button, and this is the number on its badge. */
   const extraFilterCount =
@@ -685,6 +698,26 @@ export function ConversationList({
                 )}
               </div>
 
+              {/* The other half of the same idea: `?assignee=` was a badge
+                  too. Both selects are account-scoped and can be on at once. */}
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {t("assigneeFilterLabel")}
+                </p>
+                <select
+                  value={assignee?.id ?? ""}
+                  onChange={(e) => onSelectAssignee?.(e.target.value || null)}
+                  className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs text-foreground focus:border-foreground/30 focus:outline-none"
+                >
+                  <option value="">{t("allAssignees")}</option>
+                  {assigneeOptions.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="space-y-1.5">
                 <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                   {t("channelFilterLabel")}
@@ -834,8 +867,7 @@ export function ConversationList({
                     setNumberFilter("all");
                     setSelectedCompany(null);
                     setSelectedTagIds([]);
-                    onClearAssignee?.();
-                    onSelectParticipant?.(null);
+                    onClearDeepLinks?.();
                   }}
                   className="w-full rounded-md border border-border px-2 py-1.5 text-[11px] text-muted-foreground hover:text-foreground"
                 >
@@ -940,8 +972,24 @@ export function ConversationList({
           </div>
         )}
 
-        {/* One muted line while a member view is on, so «محادثات مين» is
-            answerable without opening the funnel. */}
+        {/* One muted line per member view that is on, so «مين» is answerable
+            without opening the funnel. */}
+        {assignee && (
+          <div className="flex items-center gap-1 px-1 text-[11px] text-muted-foreground">
+            <Users className="h-3 w-3 shrink-0" aria-hidden />
+            <span className="truncate">
+              {t("assigneeActive", { name: assignee.name ?? assignee.id })}
+            </span>
+            <button
+              type="button"
+              onClick={() => onSelectAssignee?.(null)}
+              className="ms-auto shrink-0 underline-offset-2 hover:text-foreground hover:underline"
+            >
+              {t("participantClear")}
+            </button>
+          </div>
+        )}
+
         {participant && (
           <div className="flex items-center gap-1 px-1 text-[11px] text-muted-foreground">
             <Users className="h-3 w-3 shrink-0" aria-hidden />

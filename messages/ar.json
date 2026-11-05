@@ -393,7 +393,10 @@
       "allMembers": "كل الأعضاء",
       "participantWindowLabel": "النافذة",
       "participantActive": "محادثات {name} · آخر {days} يوم",
-      "participantClear": "مسح"
+      "participantClear": "مسح",
+      "assigneeFilterLabel": "الإسناد",
+      "allAssignees": "كل المُسند إليهم",
+      "assigneeActive": "مسندة لـ {name}"
     },
     "messageThread": {
       "backToConversations": "العودة إلى المحادثات",

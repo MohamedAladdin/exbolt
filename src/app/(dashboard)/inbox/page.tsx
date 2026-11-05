@@ -36,6 +36,7 @@ const CONTACT_PANEL_STORAGE_KEY = "exbolt:inbox:contact-panel-open";
 // boundary or the production build bails to CSR and errors out. Thin
 // wrapper supplies it; the inner component holds all the inbox state.
 export default function InboxPage() {
+
   return (
     <Suspense fallback={null}>
       <InboxPageInner />
@@ -731,6 +732,37 @@ function InboxPageInner() {
   // before, unchanged.
   const hasActiveConv = !!activeConversation;
 
+  /**
+   * Write the member-view filters into the URL. Both `assignee` (threads
+   * assigned to a member) and `participant` (threads that member replied in,
+   * within a window) narrow the SAME list, so each one has to survive edits to
+   * the other — and clearing both is one navigation, not two replaces racing.
+   */
+  const syncDeepLinkFilters = useCallback(
+    (patch: {
+      assignee?: string | null;
+      participant?: { id: string; days: number } | null;
+    }) => {
+      const params = new URLSearchParams();
+      if (activeConversation?.id) params.set("c", activeConversation.id);
+      const nextAssignee = patch.assignee === undefined ? assigneeId : patch.assignee;
+      const nextParticipant =
+        patch.participant === undefined
+          ? participantId
+            ? { id: participantId, days: participantDays }
+            : null
+          : patch.participant;
+      if (nextAssignee) params.set("assignee", nextAssignee);
+      if (nextParticipant) {
+        params.set("participant", nextParticipant.id);
+        params.set("days", String(nextParticipant.days));
+      }
+      const qs = params.toString();
+      router.replace(qs ? `/inbox?${qs}` : "/inbox", { scroll: false });
+    },
+    [activeConversation?.id, assigneeId, participantId, participantDays, router],
+  );
+
   return (
     <div className="-m-4 flex h-[calc(100dvh-3.5rem)] flex-col overflow-hidden sm:-m-6">
       {/* WhatsApp connection banner — in the flex column, not absolute,
@@ -748,6 +780,7 @@ function InboxPageInner() {
         {/* Left panel: Conversation list.
             Hidden on mobile when a conversation is selected so the
             thread can occupy the full width. Always visible on lg+. */}
+
         <div
           className={cn(
             "flex h-full min-w-0 flex-1 lg:flex-none",
@@ -763,20 +796,9 @@ function InboxPageInner() {
             initialFilter={searchParams.get("filter")}
             numbers={numbers}
             assignee={assigneeId ? { id: assigneeId, name: assigneeName } : null}
-            onClearAssignee={() => router.replace("/inbox", { scroll: false })}
-            onSelectParticipant={(next) => {
-              // Switching the member (or the window) is a URL change: the
-              // filter lives in `inbox_page`, and `c`/`assignee` must survive.
-              const params = new URLSearchParams();
-              if (activeConversation?.id) params.set("c", activeConversation.id);
-              if (assigneeId) params.set("assignee", assigneeId);
-              if (next) {
-                params.set("participant", next.id);
-                params.set("days", String(next.days));
-              }
-              const qs = params.toString();
-              router.replace(qs ? `/inbox?${qs}` : "/inbox", { scroll: false });
-            }}
+            onSelectAssignee={(next) => syncDeepLinkFilters({ assignee: next })}
+            onSelectParticipant={(next) => syncDeepLinkFilters({ participant: next })}
+            onClearDeepLinks={() => syncDeepLinkFilters({ assignee: null, participant: null })}
             participant={
               participantId
                 ? {
