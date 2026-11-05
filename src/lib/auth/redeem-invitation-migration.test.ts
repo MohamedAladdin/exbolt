@@ -29,6 +29,12 @@ const tablesWithoutDomainData = new Set([
   // log line must never block someone from joining a team — the rows
   // cascade away with the old personal account.
   "account_activity_log",
+  // Device telemetry, not domain data (migration 105): turning notifications on
+  // writes a row, and it cascades with the account. The union below REFUSES the
+  // join when the old account "has data", so listing push_subscriptions there
+  // would mean "you enabled notifications once, so you cannot join the team".
+  // Re-enabling is one click; blocking a join is a support ticket.
+  "push_subscriptions",
 ]);
 
 function accountScopedTables(): Set<string> {

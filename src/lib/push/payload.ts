@@ -17,6 +17,12 @@ export const MAX_PUSH_PAYLOAD_BYTES = 3_900;
 /** How much of the body survives when the payload has to be trimmed. */
 export const MIN_BODY_CHARS = 40;
 
+/** Characters removed per shrink step — keeps the fitting loop monotonic. */
+export const SHRINK_STEP = 20;
+
+/** A title is a name, not a paragraph; clamp it so it can never blow the budget. */
+export const TITLE_MAX_CHARS = 120;
+
 /** Body length cap for the alert copy itself. */
 export const BODY_MAX_CHARS = 110;
 
@@ -55,6 +61,11 @@ function truncate(text: string, max: number): string {
  * with an empty title renders as «ExBolt» and says nothing); the body is what gets
  * shortened, then removed, then the optional url/tag are dropped — in that order,
  * because a too-long url is not a reason to lose the alert.
+ *
+ * The shrink loop is monotonic by construction: it always removes at least
+ * `SHRINK_STEP` characters, so it cannot spin on a string whose length stops
+ * shrinking (a truncate that returns the same length is an infinite loop — found by
+ * the "never over the wire limit" test, which hung while it existed).
  */
 export function fitPushPayload(
   content: PushContent,
@@ -66,17 +77,27 @@ export function fitPushPayload(
   };
   if (payloadBytes(fitted) <= maxBytes) return fitted;
 
-  // Shrink the body before touching anything else.
   let body = fitted.body;
-  while (body.length > MIN_BODY_CHARS && payloadBytes({ ...fitted, body }) > maxBytes) {
-    body = truncate(body, Math.max(MIN_BODY_CHARS, body.length - 20));
+  for (let step = 0; step < 40; step += 1) {
+    if (body.length <= MIN_BODY_CHARS) break;
+    if (payloadBytes({ ...fitted, body }) <= maxBytes) break;
+    const cut = body.slice(0, Math.max(0, body.length - SHRINK_STEP)).trimEnd();
+    body = cut.length > 0 ? `${cut}…` : "";
   }
   fitted.body = body;
   if (payloadBytes(fitted) <= maxBytes) return fitted;
 
   // Last resort: the alert matters, the deep link and the identity do not.
   const minimal: PushContent = { title: fitted.title, body: "", kind: fitted.kind };
-  return minimal;
+  if (payloadBytes(minimal) <= maxBytes) return minimal;
+
+  // A title that alone exceeds the budget (a 5 000-character contact name) still
+  // has to leave something readable, so it is clamped rather than dropped.
+  return {
+    title: truncate(minimal.title, TITLE_MAX_CHARS),
+    body: "",
+    kind: minimal.kind,
+  };
 }
 
 const TEST_COPY: Record<PushLocale, { title: string; body: string }> = {
