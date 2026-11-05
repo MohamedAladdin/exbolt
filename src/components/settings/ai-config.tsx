@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import {
   Card,
+  CardAction,
   CardContent,
   CardHeader,
   CardTitle,
@@ -25,6 +26,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { SettingsPanelHead } from './settings-panel-head';
+import { StatusDot } from './settings-chip';
 import { AiKnowledgeCard } from './ai-knowledge';
 import { AI_PROVIDER_DEFAULT_MODEL } from '@/lib/ai/defaults';
 import { handoffMessagePayload } from '@/lib/ai/handoff-message';
@@ -75,6 +77,10 @@ export function AiConfig() {
   const [systemPrompt, setSystemPrompt] = useState('');
   const [isActive, setIsActive] = useState(false);
   const [autoReplyEnabled, setAutoReplyEnabled] = useState(false);
+  // The quick switch at the top of the card writes immediately, so it needs
+  // its own in-flight flag: while the PATCH is open the switch must not
+  // accept a second click that would race the first.
+  const [quickReplySaving, setQuickReplySaving] = useState(false);
   const [maxPerConversation, setMaxPerConversation] = useState(3);
   const [contextLimit, setContextLimit] = useState(20);
   // Empty list = leave unassigned (shared queue alerts the whole team).
@@ -271,6 +277,40 @@ export function AiConfig() {
     }
   };
 
+  // The quick switch governs exactly one thing: does the agent answer
+  // customers inside conversations. It saves on click (a panic switch that
+  // needs a second trip to the bottom of the form is not a switch), and it
+  // goes through PATCH so a click can never rewrite a field that is being
+  // edited above it. The behaviour card's auto-reply switch reads the same
+  // state, so the two controls cannot disagree on screen.
+  const handleQuickReply = async (next: boolean) => {
+    const previous = autoReplyEnabled;
+    setAutoReplyEnabled(next);
+    setQuickReplySaving(true);
+    try {
+      const res = await fetch('/api/ai/config', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ auto_reply_enabled: next }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setAutoReplyEnabled(previous);
+        toast.error(data?.error ?? t('chatRepliesFailed'));
+        return;
+      }
+      // The inbox banner and the agent pills cache this for 30s; a stale
+      // cache would show the bot as running right after it was muted.
+      invalidateAiAccountStatus(accountId ?? undefined);
+      toast.success(t(next ? 'chatRepliesOnToast' : 'chatRepliesOffToast'));
+    } catch {
+      setAutoReplyEnabled(previous);
+      toast.error(t('chatRepliesFailed'));
+    } finally {
+      setQuickReplySaving(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!model.trim()) {
       toast.error(t('missingModel'));
@@ -364,13 +404,47 @@ export function AiConfig() {
 
       <div className="space-y-6">
         <Card>
-          <CardHeader>
+          <CardHeader className="max-sm:flex max-sm:flex-col max-sm:items-start">
             <CardTitle className="flex items-center gap-2 text-base">
               <Sparkles className="h-4 w-4 text-primary" /> {t('providerAndKey')}
             </CardTitle>
             <CardDescription>
               {t('encryptionNotice')}
             </CardDescription>
+            {/* The switch he asked for at the top of the card: one click
+                mutes or unmutes the agent on customer chats, without
+                scrolling to the behaviour card and pressing Save. */}
+            {configured && (
+              <CardAction className="max-sm:pt-1">
+                <div
+                  className="flex items-center gap-2 rounded-full border border-border bg-muted/40 py-1 ps-3 pe-1.5"
+                  title={t('chatRepliesHint')}
+                >
+                  <StatusDot
+                    tone={isActive && autoReplyEnabled ? 'ok' : 'muted'}
+                  />
+                  <span className="text-xs font-medium whitespace-nowrap text-foreground">
+                    {t('chatReplies')}
+                  </span>
+                  <span className="text-xs whitespace-nowrap text-muted-foreground">
+                    {!isActive
+                      ? t('chatRepliesMasterOff')
+                      : autoReplyEnabled
+                        ? t('chatRepliesOn')
+                        : t('chatRepliesOff')}
+                  </span>
+                  {quickReplySaving && (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                  )}
+                  <Switch
+                    checked={autoReplyEnabled}
+                    onCheckedChange={handleQuickReply}
+                    disabled={disabled || quickReplySaving || !isActive}
+                    aria-label={t('chatReplies')}
+                  />
+                </div>
+              </CardAction>
+            )}
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">

@@ -429,6 +429,65 @@ export async function POST(request: Request) {
 }
 
 /**
+ * PATCH /api/ai/config  (admin+)
+ *
+ * Flips ONE runtime gate without re-posting the whole form. Used by the
+ * quick switch at the top of Setup, which has to mute/unmute the agent on
+ * customer chats the moment it is clicked. Posting the full body instead
+ * would be wrong three ways: it rewrites columns the admin may be halfway
+ * through editing, it re-validates credentials when the provider/model
+ * changed in the form, and it fails outright on a screen that never held a
+ * key. `is_active` is deliberately NOT reachable here — that is the master
+ * switch in the behaviour card, and the quick control only governs replies
+ * to customers in conversations.
+ */
+export async function PATCH(request: Request) {
+  try {
+    const { supabase, accountId, userId } = await requireRole('admin')
+
+    const limit = checkRateLimit(`ai-config-flag:${userId}`, RATE_LIMITS.adminAction)
+    if (!limit.success) return rateLimitResponse(limit)
+
+    const body = await request.json().catch(() => null)
+    if (!body || typeof body !== 'object' || typeof body.auto_reply_enabled !== 'boolean') {
+      return bad(t('ai.autoReplyFlagRequired'))
+    }
+    const enabled = body.auto_reply_enabled === true
+
+    const { data: existing, error: readErr } = await supabase
+      .from('ai_configs')
+      .select('id, is_active')
+      .eq('account_id', accountId)
+      .maybeSingle()
+    if (readErr) {
+      console.error('[ai/config PATCH] fetch error:', readErr)
+      return NextResponse.json({ error: t('ai.loadConfigFailed') }, { status: 500 })
+    }
+    if (!existing) {
+      return NextResponse.json({ error: t('ai.notConfigured') }, { status: 404 })
+    }
+    // The agent's replies cannot be on while the agent itself is off; saying
+    // so is better than storing a flag that every runtime gate will ignore.
+    if (enabled && existing.is_active !== true) {
+      return bad(t('ai.enableAssistantFirst'))
+    }
+
+    const { error } = await supabase
+      .from('ai_configs')
+      .update({ auto_reply_enabled: enabled })
+      .eq('account_id', accountId)
+    if (error) {
+      console.error('[ai/config PATCH] update error:', error)
+      return NextResponse.json({ error: t('ai.toggleAutoReplyFailed') }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true, auto_reply_enabled: enabled })
+  } catch (err) {
+    return toErrorResponse(err)
+  }
+}
+
+/**
  * DELETE /api/ai/config  (admin+)
  *
  * Removes the account's AI config (turns everything off and forgets the

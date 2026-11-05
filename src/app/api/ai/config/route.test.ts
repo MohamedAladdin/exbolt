@@ -60,7 +60,7 @@ vi.mock('@/lib/ai/embeddings', () => ({
   embedTexts: async () => [],
 }))
 
-import { POST } from './route'
+import { PATCH, POST } from './route'
 import { __resetRateLimitForTests } from '@/lib/rate-limit'
 
 function post(body: Record<string, unknown>) {
@@ -166,5 +166,55 @@ describe('POST /api/ai/config transfer note (handoff_message)', () => {
     const res = await post({ ...base, handoff_message: '  لحظة واحدة.  ' })
     expect(res.status).toBe(200)
     expect(h.updates[0]).toHaveProperty('handoff_message', 'لحظة واحدة.')
+  })
+})
+
+describe('PATCH /api/ai/config — the quick chat-replies switch', () => {
+  function patch(body: Record<string, unknown>) {
+    return PATCH(
+      new Request('http://t/api/ai/config', {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      }),
+    ) as unknown as Promise<{ status: number; body: Record<string, unknown> }>
+  }
+
+  it('flips auto_reply_enabled and nothing else', async () => {
+    h.stored = { id: 'cfg-1', is_active: true }
+    const res = await patch({ auto_reply_enabled: false })
+    expect(res.status).toBe(200)
+    expect(res.body).toEqual({ success: true, auto_reply_enabled: false })
+    expect(h.updates).toEqual([{ auto_reply_enabled: false }])
+    // The switch must never be able to reach the credential or prompt
+    // columns — a click is not a form save.
+    expect(h.validateCalls).toEqual([])
+  })
+
+  it('rejects a body that is not a boolean flag', async () => {
+    h.stored = { id: 'cfg-1', is_active: true }
+    const res = await patch({ auto_reply_enabled: 'true' })
+    expect(res.status).toBe(400)
+    expect(h.updates).toEqual([])
+  })
+
+  it('refuses to enable replies while the agent itself is off', async () => {
+    h.stored = { id: 'cfg-1', is_active: false }
+    const res = await patch({ auto_reply_enabled: true })
+    expect(res.status).toBe(400)
+    expect(h.updates).toEqual([])
+  })
+
+  it('still allows muting a config whose master switch is off', async () => {
+    h.stored = { id: 'cfg-1', is_active: false }
+    const res = await patch({ auto_reply_enabled: false })
+    expect(res.status).toBe(200)
+    expect(h.updates).toEqual([{ auto_reply_enabled: false }])
+  })
+
+  it('answers 404 when the account has no AI config', async () => {
+    h.stored = null
+    const res = await patch({ auto_reply_enabled: true })
+    expect(res.status).toBe(404)
+    expect(h.updates).toEqual([])
   })
 })
