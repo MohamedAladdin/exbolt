@@ -27,6 +27,7 @@ import {
 import { SettingsPanelHead } from './settings-panel-head';
 import { AiKnowledgeCard } from './ai-knowledge';
 import { AI_PROVIDER_DEFAULT_MODEL } from '@/lib/ai/defaults';
+import { handoffMessagePayload } from '@/lib/ai/handoff-message';
 import type { AiProvider } from '@/lib/ai/types';
 import type { AccountMember } from '@/types';
 import { fetchAccountMembers, memberLabel } from '@/lib/account/members';
@@ -84,6 +85,12 @@ export function AiConfig() {
   const [outsideHoursMessage, setOutsideHoursMessage] = useState('');
   // Sent to the customer the moment the bot hands the thread to a human.
   const [handoffMessage, setHandoffMessage] = useState('');
+  // The note is optional and free text, so an untouched field must never be
+  // sent: a page that opened before the value arrived (or a read that failed)
+  // would post `null` and wipe a message the tenant had already saved. Only a
+  // hand that actually typed in the box may write this column — clearing it on
+  // purpose still works, because an edit with an empty box sends `null`.
+  const [handoffEdited, setHandoffEdited] = useState(false);
   // The assistant's own window — independent of the team's inbox hours.
   const [scheduleEnabled, setScheduleEnabled] = useState(false);
   const [scheduleStart, setScheduleStart] = useState('09:00');
@@ -129,6 +136,11 @@ export function AiConfig() {
             : 'always',
         );
         setOutsideHoursMessage(data.outside_hours_message ?? '');
+        // The transfer note is stored, so it must come back into the box —
+        // the field used to be rendered from an empty state that nothing ever
+        // filled, which is how a Save from a "blank" screen erased it.
+        setHandoffMessage(data.handoff_message ?? '');
+        setHandoffEdited(false);
         setScheduleEnabled(Boolean(data.ai_schedule_enabled));
         setScheduleStart(String(data.ai_schedule_start ?? '09:00').slice(0, 5));
         setScheduleEnd(String(data.ai_schedule_end ?? '21:00').slice(0, 5));
@@ -232,7 +244,8 @@ export function AiConfig() {
     outside_hours_mode: outsideHoursMode,
     outside_hours_message:
       outsideHoursMode === 'message' ? outsideHoursMessage.trim() || null : null,
-    handoff_message: handoffMessage.trim() || null,
+    // undefined = leave unchanged; '' typed = null (clear); text = set.
+    handoff_message: handoffMessagePayload(handoffMessage, handoffEdited),
   });
 
   const handleTest = async () => {
@@ -312,6 +325,8 @@ export function AiConfig() {
         setAutoReplyEnabled(false);
         setSystemPrompt('');
         setHandoffAgentIds([]);
+        setHandoffMessage('');
+        setHandoffEdited(false);
       } else {
         const data = await res.json();
         toast.error(data.error ?? t('removeFailed'));
@@ -632,7 +647,10 @@ export function AiConfig() {
                 <Textarea
                   id="ai-handoff-msg"
                   value={handoffMessage}
-                  onChange={(e) => setHandoffMessage(e.target.value)}
+                  onChange={(e) => {
+                    setHandoffMessage(e.target.value);
+                    setHandoffEdited(true);
+                  }}
                   placeholder={t('handoffMessagePlaceholder')}
                   rows={2}
                   maxLength={500}

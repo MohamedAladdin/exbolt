@@ -562,10 +562,11 @@ export function ConversationList({
       className="relative flex h-full w-full flex-col border-e border-border bg-card lg:w-80"
     >
       {/* Search + filter.
-          Two rows, always: the search box with one filter button, then the
-          status tabs. Channel / number / tags / company / assignee live inside
-          the button — five stacked rows turned a 320px panel into a wall of
-          chips, and every extra row pushed the actual conversations down. */}
+          Three rows, always: the search box with one filter button, then the
+          status tabs, then the quick filters as the same segmented control.
+          Channel / number / tags / company / assignee stay inside the button —
+          five stacked rows turned a 320px panel into a wall of chips, and
+          every extra row pushed the actual conversations down. */}
       <div className="shrink-0 space-y-2 border-b border-border bg-card p-3">
         <div className="flex items-center gap-1.5">
           <div className="relative flex-1">
@@ -602,37 +603,6 @@ export function ConversationList({
                 <p className="text-[11px] leading-relaxed text-muted-foreground">
                   {t("filtersHint")}
                 </p>
-              </div>
-
-              <div className="space-y-1.5">
-                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                  {t("quickFiltersLabel")}
-                </p>
-                <div className="flex flex-wrap gap-1">
-                  {FILTER_OPTIONS.filter((opt) => QUICK_FILTERS.includes(opt.value)).map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() =>
-                        setFilter(filter === opt.value ? DEFAULT_INBOX_FILTER : opt.value)
-                      }
-                      aria-pressed={filter === opt.value}
-                      className={cn(
-                        "inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] transition-colors",
-                        filter === opt.value
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      {opt.label}
-                      {typeof filterCounts[opt.value] === "number" && (
-                        <span className="tabular-nums text-[10px] opacity-70">
-                          {filterCounts[opt.value]}
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
               </div>
 
               <div className="space-y-1.5">
@@ -830,6 +800,46 @@ export function ConversationList({
                 {typeof filterCounts[value] === "number" && (
                   <span className="tabular-nums text-[10px] opacity-70">
                     {filterCounts[value]}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Quick filters: the SAME segmented control as the status row, one
+            row below it (his spec, 2026-11-05). They are attention filters —
+            unread / waiting / unassigned / expiring window — not statuses,
+            and they share the single `filter` state with the tabs above, so
+            picking one clears the status tab. That is exactly why they must
+            look like a sibling of the status row instead of a second, fancier
+            kind of chip. They used to live inside the funnel popover, where
+            nobody found them. */}
+        <div
+          role="tablist"
+          aria-label={t("quickFiltersLabel")}
+          className="flex flex-wrap gap-0.5 rounded-lg border border-border bg-muted/40 p-0.5"
+        >
+          {FILTER_OPTIONS.filter((opt) => QUICK_FILTERS.includes(opt.value)).map((opt) => {
+            const isActive = filter === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => setFilter(isActive ? DEFAULT_INBOX_FILTER : opt.value)}
+                className={cn(
+                  "inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[11.5px] transition-colors",
+                  isActive
+                    ? "bg-card font-medium text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {opt.label}
+                {typeof filterCounts[opt.value] === "number" && (
+                  <span className="tabular-nums text-[10px] opacity-70">
+                    {filterCounts[opt.value]}
                   </span>
                 )}
               </button>

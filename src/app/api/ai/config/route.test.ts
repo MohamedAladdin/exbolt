@@ -132,6 +132,39 @@ describe('POST /api/ai/config stored key reuse', () => {
     expect(h.validateCalls).toEqual([
       { provider: 'openai_compatible', apiKey: 'new-key', baseUrl: 'https://1.1.1.1/v1' },
     ])
-    expect(h.updates[0]).toMatchObject({ base_url: 'https://1.1.1.1/v1', api_key: 'enc:new-key' })
+    expect(h.updates[0]).toMatchObject({
+      base_url: 'https://1.1.1.1/v1',
+      api_key: 'enc:new-key',
+    })
+  })
+})
+
+describe('POST /api/ai/config transfer note (handoff_message)', () => {
+  const base = {
+    provider: 'openai_compatible',
+    model: 'm',
+    base_url: 'https://8.8.8.8/v1',
+    system_prompt: 'Be brief',
+  }
+
+  it('leaves the stored note alone when the form never sent the field', async () => {
+    // The Setup screen used to send `null` on every save, including the saves
+    // nobody made to this box — which erased a saved transfer note.
+    const res = await post(base)
+    expect(res.status).toBe(200)
+    expect(h.updates).toHaveLength(1)
+    expect(h.updates[0]).not.toHaveProperty('handoff_message')
+  })
+
+  it('clears the note on an explicit empty string', async () => {
+    const res = await post({ ...base, handoff_message: '' })
+    expect(res.status).toBe(200)
+    expect(h.updates[0]).toHaveProperty('handoff_message', null)
+  })
+
+  it('stores a typed note trimmed', async () => {
+    const res = await post({ ...base, handoff_message: '  لحظة واحدة.  ' })
+    expect(res.status).toBe(200)
+    expect(h.updates[0]).toHaveProperty('handoff_message', 'لحظة واحدة.')
   })
 })
