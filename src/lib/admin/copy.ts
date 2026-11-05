@@ -103,6 +103,7 @@ const D: Record<string, Entry> = {
 
   // ---------- accounts ----------
   'accounts.title': { ar: 'الحسابات', en: 'Accounts' },
+  'accounts.detail': { ar: 'تفاصيل الحساب', en: 'Account details' },
   'accounts.subtitle': {
     ar: 'كل مستأجر على المنصة: الحالة، الخطة، والاستهلاك.',
     en: 'Every tenant on the platform: status, plan and usage.',

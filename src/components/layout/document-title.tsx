@@ -123,3 +123,27 @@ function DocumentTitle() {
 
   return null;
 }
+
+/**
+ * The writer itself, for surfaces outside the dashboard shell (the admin
+ * console has its own layout and its own name table).
+ *
+ * Every symptom this fixes — an empty tab, a tab that snaps back to the
+ * brand — comes from the same two causes documented above, so the logic is
+ * shared rather than copied: one place writes `document.title`, and it keeps
+ * re-asserting it while Next reconciles `<head>`.
+ */
+export function useDocumentTitleText(title: string): void {
+  useEffect(() => {
+    const apply = () => {
+      if (document.title !== title) document.title = title;
+    };
+    apply();
+
+    const head = document.head;
+    if (!head) return;
+    const observer = new MutationObserver(apply);
+    observer.observe(head, { childList: true, subtree: true, characterData: true });
+    return () => observer.disconnect();
+  }, [title]);
+}

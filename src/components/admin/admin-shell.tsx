@@ -24,6 +24,8 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import { adminT } from '@/lib/admin/copy';
+import { adminTitleKey, composeAdminTitle } from '@/lib/admin/titles';
+import { useDocumentTitleText } from '@/components/layout/document-title';
 
 const NAV = [
   { href: '/admin', key: 'nav.overview', icon: LayoutDashboard },
@@ -51,6 +53,17 @@ export function AdminShell({
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+
+  // The console's own tab title. `/admin` is outside the dashboard shell, so
+  // it inherited the layout's single metadata title («ExBolt · Control») on
+  // every page — the same defect the tenant app was reported for.
+  const titleKey = adminTitleKey(pathname);
+  useDocumentTitleText(
+    composeAdminTitle(
+      titleKey ? t(titleKey) : '',
+      t('appName'),
+    ),
+  );
 
   const signOut = async () => {
     await createClient().auth.signOut();
