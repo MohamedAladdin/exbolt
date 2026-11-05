@@ -15,6 +15,7 @@ import {
   type InboxNumberOption,
 } from "@/components/inbox/conversation-list";
 import { parseInboxFilter } from "@/lib/inbox/inbox-filters";
+import { deepLinkTarget } from "@/lib/inbox/deep-link";
 import { MessageThread } from "@/components/inbox/message-thread";
 import { ContactSidebar } from "@/components/inbox/contact-sidebar";
 import { OPEN_CONVERSATION_EVENT } from "@/components/inbox/contact-peek";
@@ -568,8 +569,7 @@ function InboxPageInner() {
       // user back to the deep-linked thread after they've navigated.
       if (
         deepLinkConvId &&
-        autoSelectedForDeepLinkRef.current !== deepLinkConvId &&
-        loaded.length > 0
+        autoSelectedForDeepLinkRef.current !== deepLinkConvId
       ) {
         autoSelectedForDeepLinkRef.current = deepLinkConvId;
         // If the deep-linked conversation is already the active one
@@ -582,6 +582,21 @@ function InboxPageInner() {
         // refetch. The thread would read "No messages yet" until a
         // full page reload rehydrated state from scratch.
         if (activeConversation?.id === deepLinkConvId) return;
+        // The list holds ONE page (25 rows), and a pasted link ages fast:
+        // every inbound message reshuffles the order, so the target is
+        // usually not in the rows we just fetched (measured: the reported
+        // thread sat at rank 27 of 1551). Fetch it by id — the same helper
+        // the phone peek uses — instead of leaving the center panel on
+        // «اختر محادثة من القائمة» for a thread that exists.
+        if (
+          deepLinkTarget(
+            deepLinkConvId,
+            loaded.map((c) => c.id),
+          ) === "database"
+        ) {
+          void openConversationById(deepLinkConvId);
+          return;
+        }
         const match = loaded.find((c) => c.id === deepLinkConvId);
         if (match) {
           setActiveConversation(match);
@@ -601,7 +616,7 @@ function InboxPageInner() {
         }
       }
     },
-    [deepLinkConvId, activeConversation?.id]
+    [deepLinkConvId, activeConversation?.id, openConversationById]
   );
 
   const handleSelectConversation = useCallback(
