@@ -559,7 +559,7 @@ export function ConversationList({
     // row with the thread + contact sidebar.
     <div
       ref={panelRef}
-      className="relative flex h-full w-full flex-col border-e border-border bg-card lg:w-80"
+      className="relative flex h-full w-full flex-col border-e border-border bg-card lg:w-96"
     >
       {/* Search + filter.
           Three rows, always: the search box with one filter button, then the
@@ -766,10 +766,15 @@ export function ConversationList({
           </Popover>
         </div>
 
-        {/* Status tabs: one click, and the count the filter would return. */}
+        {/* Status tabs: one click, and the count the filter would return.
+            Live counts are four digits (الكل 1522 · معلّقة 624), and the five
+            chips are wider than the panel: a sideways scroll with a hidden
+            scrollbar clipped «متابعة» down to a clock and one letter on
+            desktop while mobile showed it whole. A chip is never hidden —
+            the row wraps exactly like the quick row below it. */}
         <div
           role="tablist"
-          className="flex gap-0.5 overflow-x-auto rounded-lg border border-border bg-muted/40 p-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex flex-wrap gap-0.5 rounded-lg border border-border bg-muted/40 p-0.5"
         >
           {STATUS_TABS.map((value) => {
             const isActive = filter === value;
@@ -785,7 +790,7 @@ export function ConversationList({
                 aria-selected={isActive}
                 onClick={() => setFilter(value)}
                 className={cn(
-                  "inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[11.5px] transition-colors",
+                  "inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[11.5px] transition-colors",
                   isActive
                     ? isFollowup
                       ? "bg-amber-400 font-semibold text-amber-950"
@@ -830,7 +835,7 @@ export function ConversationList({
                 aria-selected={isActive}
                 onClick={() => setFilter(isActive ? DEFAULT_INBOX_FILTER : opt.value)}
                 className={cn(
-                  "inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[11.5px] transition-colors",
+                  "inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[11.5px] transition-colors",
                   isActive
                     ? "bg-card font-medium text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground",
