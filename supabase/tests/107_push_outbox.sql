@@ -2,6 +2,13 @@
 BEGIN;
 UPDATE notification_preferences SET customer_message = true, push_enabled = true;
 DELETE FROM push_outbox;
+-- A recipient with no device gets no row (see the EXISTS guard in 107), so the
+-- test registers one for the owner. It is rolled back with the transaction.
+DELETE FROM push_subscriptions WHERE user_id = '5b0ce6ed-d58f-42b1-8a8e-1dfa9aaa3403';
+INSERT INTO push_subscriptions (account_id, user_id, endpoint, p256dh, auth, locale)
+VALUES ('1c4f2d09-fe93-43cd-a284-bc1e8460f9da', '5b0ce6ed-d58f-42b1-8a8e-1dfa9aaa3403',
+        'https://fcm.googleapis.com/fcm/send/test-107', repeat('B', 87),
+        'abcdefghijklmnopqrstuv', 'ar');
 
 INSERT INTO messages (conversation_id, sender_type, content_type, content_text, message_id, status)
 VALUES ('d0000000-0000-0000-0000-0000000000c1','customer','text','عايز اعرف سعر الكشف','wamid.t1','delivered');

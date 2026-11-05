@@ -200,6 +200,13 @@ BEGIN
       AND m.sender_type = 'customer'
       AND r.user_id IS NOT NULL
       AND public.push_enabled_for(r.user_id, 'customer_message')
+      -- No device, no row. A team that has not enabled notifications yet must
+      -- not accumulate a queue that replays stale alerts the day a phone is
+      -- registered (production: 13 members, zero devices, 130 rows/minute).
+      AND EXISTS (
+        SELECT 1 FROM public.push_subscriptions s
+         WHERE s.user_id = r.user_id AND s.account_id = c.account_id
+      )
     ON CONFLICT (dedupe_key) DO UPDATE
       SET severity = GREATEST(public.push_outbox.severity, EXCLUDED.severity),
           kind = CASE
@@ -287,6 +294,10 @@ BEGIN
           WHEN 'conversation_assigned' THEN 'conversation_assigned'
           ELSE 'report_alert'
         END
+      )
+      AND EXISTS (
+        SELECT 1 FROM public.push_subscriptions s
+         WHERE s.user_id = n.user_id AND s.account_id = n.account_id
       )
     ON CONFLICT (dedupe_key) DO UPDATE
       SET severity = GREATEST(public.push_outbox.severity, EXCLUDED.severity),
