@@ -14,6 +14,7 @@ import { PresenceHeartbeat } from '@/components/presence/presence-heartbeat';
 import { BrowserNotificationsListener } from '@/components/notifications/browser-notifications-listener';
 import { NotificationPopupListener } from '@/components/notifications/notification-popup-listener';
 import { PushRegistrar } from '@/components/push/push-registrar';
+import { PushPrompt } from '@/components/notifications/push-prompt';
 
 // Auth-gated dashboard shell. Extracted from the layout so the layout
 // itself can stay a server component and export metadata (noindex) —
@@ -99,6 +100,9 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
         <Sidebar open={sidebarOpen} onClose={closeSidebar} />
         <div className="flex flex-1 flex-col overflow-hidden">
           <Header onOpenSidebar={() => setSidebarOpen(true)} />
+          {/* One-time ask for this device. Renders nothing once enabled or
+            dismissed for good — see lib/push/prompt.ts. */}
+          <PushPrompt />
           {/* Thinner horizontal padding on mobile so cards have room to breathe.
               `relative` is load-bearing: page content contains absolutely
               positioned helpers (`sr-only` labels, chart wrappers). Without a

@@ -39,6 +39,20 @@ export interface PushResult {
   sent?: number;
 }
 
+/**
+ * Fired on `window` whenever this tab changes the device's push state, so every
+ * surface that shows it (the settings panel, the first-run prompt) agrees without a
+ * shared store. Cross-tab changes are covered by `focus`/`visibilitychange`, because
+ * `storage` events do not carry this and a subscription lives in the browser, not in
+ * localStorage.
+ */
+export const PUSH_CHANGE_EVENT = "exbolt:push-changed";
+
+function announcePushChange(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(PUSH_CHANGE_EVENT));
+}
+
 /** `localStorage`-free: state that matters lives in the browser + the server. */
 export function pushSupported(): boolean {
   return (
@@ -158,7 +172,9 @@ export async function enablePush(locale: PushLocale = currentLocale()): Promise<
     }
   }
 
-  return saveSubscription(subscription, locale);
+  const saved = await saveSubscription(subscription, locale);
+  if (saved.ok) announcePushChange();
+  return saved;
 }
 
 export async function disablePush(): Promise<PushResult> {
@@ -181,6 +197,7 @@ export async function disablePush(): Promise<PushResult> {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ endpoint }),
     });
+    announcePushChange();
     return { ok: true };
   } catch {
     return { ok: false, reason: "network" };
@@ -216,5 +233,6 @@ export async function refreshSubscription(locale: PushLocale = currentLocale()):
   if (!pushSupported() || currentPermission() !== "granted") return;
   const subscription = await getExistingSubscription();
   if (!subscription) return;
-  await saveSubscription(subscription, locale);
+  const saved = await saveSubscription(subscription, locale);
+  if (saved.ok) announcePushChange();
 }

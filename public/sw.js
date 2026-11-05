@@ -59,7 +59,10 @@ self.addEventListener('push', (event) => {
 
   event.waitUntil(
     (async () => {
-      if (await hasFocusedClient()) return
+      // An explicit «إرسال إشعار تجريبي» must always appear — the user is looking
+      // at the screen by definition, and suppressing it would make the button look
+      // broken. Everything else stays quiet on a focused dashboard.
+      if (payload.kind !== 'test' && (await hasFocusedClient())) return
 
       const tag = payload.tag || undefined
       const already = await existingCount(tag)

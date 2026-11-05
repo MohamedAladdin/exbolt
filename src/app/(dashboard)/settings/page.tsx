@@ -11,6 +11,7 @@ import { SettingsOverview } from '@/components/settings/settings-overview';
 import { ProfileForm } from '@/components/settings/profile-form';
 import { SecurityPanel } from '@/components/settings/security-panel';
 import { AppearancePanel } from '@/components/settings/appearance-panel';
+import { NotificationsPanel } from '@/components/settings/notifications-panel';
 import { WhatsAppConfig } from '@/components/settings/whatsapp-config';
 import { ChannelsPanel } from '@/components/settings/channels-panel';
 import { BrandingPanel } from '@/components/settings/branding-panel';
@@ -82,6 +83,7 @@ function SettingsPageInner() {
     profile: <ProfileForm />,
     security: <SecurityPanel />,
     appearance: <AppearancePanel />,
+    notifications: <NotificationsPanel />,
     whatsapp: <WhatsAppConfig />,
     channels: <ChannelsPanel />,
     branding: <BrandingPanel />,

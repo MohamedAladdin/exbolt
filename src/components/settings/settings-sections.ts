@@ -1,5 +1,6 @@
 import type { Feature } from '@/lib/plans/entitlements';
 import {
+  Bell,
   Coins,
   CreditCard,
   FileText,
@@ -33,6 +34,7 @@ export const SETTINGS_SECTIONS = [
   'profile',
   'security',
   'appearance',
+  'notifications',
   'whatsapp',
   'channels',
   'branding',
@@ -74,6 +76,7 @@ export const SECTION_META: Record<SettingsSection, SectionMeta> = {
   profile: { id: 'profile', label: 'Your profile', icon: User, group: 'account' },
   security: { id: 'security', label: 'Login & security', icon: Shield, group: 'account' },
   appearance: { id: 'appearance', label: 'Appearance', icon: Palette, group: 'account' },
+  notifications: { id: 'notifications', label: 'Notifications', icon: Bell, group: 'account' },
   whatsapp: { id: 'whatsapp', label: 'WhatsApp', icon: PlugZap, group: 'workspace' },
   channels: { id: 'channels', label: 'Channels', icon: MessagesSquare, group: 'workspace' },
   branding: { id: 'branding', label: 'Branding', icon: Sparkles, group: 'workspace' },

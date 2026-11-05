@@ -2183,7 +2183,8 @@
       "branding": "Branding",
       "plan": "Plan",
       "activity": "Activity log",
-      "billing": "Invoices"
+      "billing": "Invoices",
+      "notifications": "Notifications"
     },
     "groups": {
       "account": "Account",
@@ -2920,6 +2921,53 @@
         "paid": "Paid",
         "overdue": "Overdue",
         "void": "Void"
+      }
+    },
+    "notifications": {
+      "title": "Notifications",
+      "description": "Every alert in one place: turn it on for this device, choose the channels, and pick the types you care about.",
+      "saveFailed": "Could not save — try again.",
+      "device": {
+        "title": "This device",
+        "description": "Browser notifications are set up per device and need the browser's permission once.",
+        "toggleLabel": "Turn on notifications on this device",
+        "stateEnabled": "On — alerts arrive even with the tab closed.",
+        "stateOff": "Off on this device.",
+        "stateDenied": "Blocked by the browser",
+        "stateDeniedHint": "Allow notifications from the lock icon next to the address bar, then reload the page.",
+        "stateUnsupported": "This browser does not support notifications.",
+        "soundLabel": "Sound with every alert",
+        "soundDesc": "A short chime from this tab — audible even when the system's own notification sound is muted.",
+        "sendTest": "Send a test notification",
+        "installHint": "On iPhone: add the app to your Home Screen first — Safari does not deliver push to a site that is not installed.",
+        "notConfigured": "Push is not configured on this server.",
+        "tooManyDevices": "You reached the limit (10 devices) — remove one from the list.",
+        "noDevice": "No registered device — turn notifications on first.",
+        "failed": "That did not go through — try again.",
+        "enabledToast": "Enabled on this device.",
+        "disabledToast": "Turned off on this device.",
+        "testSent": "Sent — check your desktop."
+      },
+      "channels": {
+        "title": "Channels",
+        "description": "Choose where an alert should land. The record in the notifications page stays complete whatever you pick.",
+        "in_app_alerts": "Alerts while the app is open",
+        "in_app_alertsDesc": "An in-app popup — shown while you are working in the product.",
+        "push_enabled": "Out-of-app notifications (push)",
+        "push_enabledDesc": "Arrives even with the tab or the browser closed."
+      },
+      "types": {
+        "title": "Alert types",
+        "description": "Each type gates every channel together.",
+        "customer_message": "New customer message",
+        "customer_messageDesc": "An inbound message on a thread assigned to you, or on one nobody owns.",
+        "conversation_assigned": "Conversation assigned to you",
+        "conversation_assignedDesc": "When a teammate assigns you a thread, or auto-claim takes it.",
+        "ai_handoff": "Assistant handoff",
+        "ai_handoffDesc": "When the AI agent hands a conversation to a human.",
+        "report_alert": "Report alert",
+        "report_alertDesc": "When a metric in a saved report crosses the threshold you set.",
+        "recordNote": "Every alert is still recorded on the notifications page, even with all switches off."
       }
     }
   },
@@ -4038,5 +4086,17 @@
   },
   "NotificationPopups": {
     "open": "Open"
+  },
+  "PushPrompt": {
+    "title": "Turn on browser notifications",
+    "body": "So new activity reaches you first — a customer message, an assignment, or an assistant handoff — even with the app closed.",
+    "enable": "Enable now",
+    "later": "Not now",
+    "ok": "OK",
+    "deniedTitle": "Notifications are blocked by the browser",
+    "deniedBody": "Allow notifications from the lock icon next to the address bar, then enable them from Settings → Notifications.",
+    "enabledToast": "Done — alerts will reach this device.",
+    "notConfigured": "Push is not configured on this server.",
+    "failed": "Could not enable notifications — try again from Settings."
   }
 }

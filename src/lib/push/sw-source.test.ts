@@ -32,6 +32,12 @@ describe("service worker — the contract", () => {
     expect(source).toContain("hasFocusedClient");
   });
 
+  it("but never suppresses the explicit test notification", () => {
+    // The test button is pressed while looking at the screen; a suppressed test
+    // reads as «الإشعارات مش شغالة».
+    expect(source).toContain("payload.kind !== 'test'");
+  });
+
   it("collapses a burst on one conversation into a single banner", () => {
     expect(source).toContain("getNotifications({ tag })");
     expect(source).toContain("renotify: already === 0");

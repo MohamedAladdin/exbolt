@@ -35,6 +35,10 @@ const tablesWithoutDomainData = new Set([
   // would mean "you enabled notifications once, so you cannot join the team".
   // Re-enabling is one click; blocking a join is a support ticket.
   "push_subscriptions",
+  // Same reasoning (migration 106): alert preferences are defaults-plus, not
+  // content. Losing "I muted the report alerts" on joining a team costs one
+  // switch, and refusing the join over it would be absurd.
+  "notification_preferences",
 ]);
 
 function accountScopedTables(): Set<string> {
