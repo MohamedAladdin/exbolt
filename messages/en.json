@@ -2988,6 +2988,32 @@
         "report_alert": "Report alert",
         "report_alertDesc": "When a metric in a saved report crosses the threshold you set.",
         "recordNote": "Every alert is still recorded on the notifications page, even with all switches off."
+      },
+      "privacy": {
+        "title": "Privacy and quiet hours",
+        "description": "What shows on the lock screen, and when the alerts stay silent — without turning the record off.",
+        "previewLabel": "Notification content on the lock screen",
+        "preview_none": "No content",
+        "preview_name": "Contact name only",
+        "preview_full": "Full content",
+        "previewHint": "«Contact name only» is the default: you know who is writing without the message appearing on a shared desk.",
+        "quietLabel": "Quiet hours",
+        "quietHint": "Push stops during this window — the in-app popup keeps working for whoever is at the desk.",
+        "from": "From",
+        "to": "To"
+      },
+      "devices": {
+        "title": "Devices",
+        "description": "Every device where notifications are enabled. A device that never answers is one to remove.",
+        "loading": "Loading...",
+        "empty": "No device registered — enable notifications above.",
+        "unknownDevice": "Unknown device",
+        "lastSeen": "Last seen",
+        "failing": "This device keeps rejecting pushes — remove it and enable again.",
+        "remove": "Remove device",
+        "removed": "Device removed",
+        "removeFailed": "Could not remove the device",
+        "hint": "Maximum 10 devices per account."
       }
     }
   },

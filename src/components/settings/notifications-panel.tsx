@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { SettingsPanelHead } from "./settings-panel-head";
+import { PushDevicesCard, PushPrivacyCard } from "./push-settings-cards";
 import {
   Card,
   CardContent,
@@ -317,6 +318,12 @@ export function NotificationsPanel() {
           <p className="text-xs text-muted-foreground">{tTypes("recordNote")}</p>
         </CardContent>
       </Card>
+
+      {/* 4 + 5 — privacy and quiet hours */}
+      <PushPrivacyCard prefs={prefs} loading={loading} onSave={savePrefs} />
+
+      {/* 6 — devices */}
+      <PushDevicesCard />
     </div>
   );
 }
