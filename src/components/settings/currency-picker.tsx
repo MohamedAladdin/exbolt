@@ -16,9 +16,9 @@
 
 import { useMemo, useState } from "react";
 import { Check, Search } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
-import { ARAB_CURRENCIES, CURRENCIES, currencyName, searchCurrencies } from "@/lib/currency";
+import { ARAB_CURRENCIES, CURRENCIES, currencySymbol, currencyName, searchCurrencies } from "@/lib/currency";
 
 interface Props {
   value: string;
@@ -28,9 +28,12 @@ interface Props {
 
 export function CurrencyPicker({ value, onChange, disabled }: Props) {
   const t = useTranslations("Settings.deals");
+  // The active UI locale, not the build-time `NEXT_PUBLIC_APP_LOCALE`: the
+  // Arabic screen must read «جنيه مصري» and answer an Arabic search.
+  const locale = useLocale();
   const [query, setQuery] = useState("");
 
-  const results = useMemo(() => searchCurrencies(query), [query]);
+  const results = useMemo(() => searchCurrencies(query, locale), [query, locale]);
 
   // The current value must always be reachable, even while searching for
   // something else: an operator who filtered and then panicked needs to see
@@ -49,9 +52,9 @@ export function CurrencyPicker({ value, onChange, disabled }: Props) {
           <span className="text-sm text-foreground">
             <span className="font-medium">{current.code}</span>
             <span className="mx-1.5 text-muted-foreground">·</span>
-            {currencyName(current.code)}
+            {currencyName(current.code, locale)}
           </span>
-          <span className="text-sm text-muted-foreground">{current.symbol}</span>
+          <span className="text-sm text-muted-foreground">{currencySymbol(current.code, locale)}</span>
         </div>
       )}
 
@@ -108,10 +111,10 @@ export function CurrencyPicker({ value, onChange, disabled }: Props) {
               <span className="min-w-0">
                 <span className="font-mono text-xs text-foreground">{option.code}</span>
                 <span className="mx-2 text-muted-foreground">·</span>
-                <span className="truncate">{currencyName(option.code)}</span>
+                <span className="truncate">{currencyName(option.code, locale)}</span>
               </span>
               <span className="flex shrink-0 items-center gap-2 text-xs">
-                {option.symbol}
+                {currencySymbol(option.code, locale)}
                 {active && <Check className="size-3.5 text-primary" />}
               </span>
             </button>

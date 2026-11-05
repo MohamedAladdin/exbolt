@@ -30,6 +30,17 @@ export interface CurrencyOption {
   symbol: string;
 }
 
+/**
+ * Build-time fallback locale only.
+ *
+ * `NEXT_PUBLIC_APP_LOCALE` is baked at build time and is empty on the live box,
+ * so it is "en" no matter what the visitor reads — a currency picker that used
+ * it printed «US Dollar» inside the Arabic UI and answered «جنيه» with no
+ * results (measured on bolt.excal.uk, 2026-11-05). Any **rendered** screen must
+ * pass the active next-intl locale (`useLocale()`) explicitly; this default
+ * exists for non-component callers (reports, exports, CSV) that have no locale
+ * in hand.
+ */
 function appLocale(): string {
   const env = process.env.NEXT_PUBLIC_APP_LOCALE ?? "";
   return env === "ar" ? "ar" : "en";
@@ -191,6 +202,19 @@ export const CURRENCIES: CurrencyOption[] = CODES.map((code) => ({
   label: currencyName(code),
   symbol: currencySymbol(code),
 }));
+
+/**
+ * The catalogue with labels and symbols in the caller's locale — what a picker
+ * or a settings tile must render. `CURRENCIES` carries the build-time fallback
+ * labels, so a localized screen that reads `.label` off it prints English.
+ */
+export function currencyOptions(locale: string): CurrencyOption[] {
+  return CODES.map((code) => ({
+    code,
+    label: currencyName(code, locale),
+    symbol: currencySymbol(code, locale),
+  }));
+}
 
 /** Structural check — the DB enforces the same shape. */
 export function isCurrencyCode(value: unknown): value is string {
