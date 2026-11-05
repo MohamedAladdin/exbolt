@@ -13,8 +13,9 @@ import {
   getExistingSubscription,
 } from "@/hooks/use-push";
 import {
-  readPromptDismissals,
-  recordPromptDismissal,
+  clearPromptSessionHide,
+  hidePromptForSession,
+  isPromptHiddenThisSession,
   shouldShowPushPrompt,
   type PromptDecision,
 } from "@/lib/push/prompt";
@@ -24,8 +25,10 @@ import {
  *
  * Deliberately not a modal and not a permission dialog on load — Chrome
  * quiet-blocks an unprompted `Notification.requestPermission()` and the block is
- * what the user is stuck with. The bar appears once, its button is the gesture that
- * asks, and «مش دلوقتي» buys two weeks of silence, then one reminder, then nothing.
+ * what the user is stuck with. Instead the bar is persistent while the device cannot
+ * receive alerts: its button is the gesture that asks, and «ليس الآن» only hides it
+ * until the next sign-in. A device with notifications off is a customer whose reply
+ * nobody hears about.
  *
  * The decision itself is pure (`lib/push/prompt.ts`); this component only renders it
  * and remembers the dismissal on this device.
@@ -38,15 +41,13 @@ export function PushPrompt() {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const { dismissals, dismissedAt } = readPromptDismissals();
       const subscribed = Boolean(await getExistingSubscription());
       if (cancelled) return;
       setDecision(
         shouldShowPushPrompt({
           permission: currentPermission(),
           subscribed,
-          dismissals,
-          dismissedAt,
+          hiddenThisSession: isPromptHiddenThisSession(),
         }),
       );
     })();
@@ -58,7 +59,7 @@ export function PushPrompt() {
   if (!decision?.show) return null;
 
   const dismiss = () => {
-    recordPromptDismissal();
+    hidePromptForSession();
     setDecision(null);
   };
 
@@ -68,6 +69,7 @@ export function PushPrompt() {
       const result = await enablePush(currentLocale());
       if (result.ok) {
         toast.success(t("enabledToast"));
+        clearPromptSessionHide();
         setDecision(null);
         return;
       }
