@@ -17,26 +17,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useNotificationSoundPref } from "@/hooks/use-browser-notifications";
+import { useNotificationPreferences } from "@/hooks/use-notification-preferences";
+import { usePushDevice } from "@/hooks/use-push-device";
+import { currentLocale, sendTestPush } from "@/hooks/use-push";
 import {
-  currentLocale,
-  currentPermission,
-  disablePush,
-  enablePush,
-  getExistingSubscription,
-  pushSupported,
-  sendTestPush,
-  PUSH_CHANGE_EVENT,
-  type PushFailure,
-  type PushPermissionState,
-} from "@/hooks/use-push";
-import {
-  DEFAULT_PREFERENCES,
-  TYPE_KEYS,
   CHANNEL_KEYS,
+  TYPE_KEYS,
   type ChannelKey,
   type NotificationPreferences,
   type TypeKey,
 } from "@/lib/push/preferences";
+import { pushFailureMessageKey } from "@/lib/push/failure";
 import { playNotificationChime, writeSoundPref } from "@/lib/notifications/sound";
 import { useAuth } from "@/hooks/use-auth";
 import type { PushStatusSummary } from "@/lib/push/status";
@@ -65,51 +56,11 @@ export function NotificationsPanel() {
   const tTeam = useTranslations("Settings.notifications.team");
 
   const soundOn = useNotificationSoundPref();
-  const [permission, setPermission] = useState<PushPermissionState>("unsupported");
-  const [subscribed, setSubscribed] = useState(false);
-  const [prefs, setPrefs] = useState<NotificationPreferences>(DEFAULT_PREFERENCES);
-  const [loading, setLoading] = useState(true);
+  const device = usePushDevice();
+  const { prefs, loading, saving, save } = useNotificationPreferences();
   const [busy, setBusy] = useState<string | null>(null);
   const { canManageMembers } = useAuth();
   const [team, setTeam] = useState<PushStatusSummary | null>(null);
-
-  const refreshDevice = useCallback(async () => {
-    setPermission(currentPermission());
-    setSubscribed(Boolean(await getExistingSubscription()));
-  }, []);
-
-  useEffect(() => {
-    void refreshDevice();
-    // Enabling from the first-run prompt (or another tab) must move this switch
-    // too — otherwise the panel keeps saying «مقفولة» on a device that is live.
-    const onChange = () => void refreshDevice();
-    window.addEventListener(PUSH_CHANGE_EVENT, onChange);
-    window.addEventListener("focus", onChange);
-    document.addEventListener("visibilitychange", onChange);
-    return () => {
-      window.removeEventListener(PUSH_CHANGE_EVENT, onChange);
-      window.removeEventListener("focus", onChange);
-      document.removeEventListener("visibilitychange", onChange);
-    };
-  }, [refreshDevice]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const res = await fetch("/api/push/preferences", { credentials: "include" });
-        const body = (await res.json()) as { preferences?: NotificationPreferences };
-        if (!cancelled && body.preferences) setPrefs(body.preferences);
-      } catch {
-        // The defaults are what a fresh user sees anyway.
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   // Admin view: who on this team can actually receive an alert. Refetched after any
   // change on this device, because this device is one of the rows.
@@ -128,40 +79,14 @@ export function NotificationsPanel() {
     void refreshTeam();
   }, [refreshTeam]);
 
-  const failureMessage = useCallback(
-    (reason?: PushFailure) => {
-      switch (reason) {
-        case "not_configured":
-          return tDevice("notConfigured");
-        case "too_many_devices":
-          return tDevice("tooManyDevices");
-        case "denied":
-          return tDevice("stateDeniedHint");
-        case "no_device":
-          return tDevice("noDevice");
-        case "unsupported":
-          return tDevice("stateUnsupported");
-        default:
-          return tDevice("failed");
-      }
-    },
-    [tDevice],
-  );
-
   const onToggleDevice = async (next: boolean) => {
-    setBusy("device");
-    try {
-      const result = next ? await enablePush(currentLocale()) : await disablePush();
-      if (!result.ok) {
-        toast.error(failureMessage(result.reason));
-        return;
-      }
-      await refreshDevice();
-      void refreshTeam();
-      toast.success(next ? tDevice("enabledToast") : tDevice("disabledToast"));
-    } finally {
-      setBusy(null);
+    const failure = await device.toggle(next);
+    if (failure) {
+      toast.error(tDevice(pushFailureMessageKey(failure)));
+      return;
     }
+    void refreshTeam();
+    toast.success(next ? tDevice("enabledToast") : tDevice("disabledToast"));
   };
 
   const onSendTest = async () => {
@@ -172,40 +97,21 @@ export function NotificationsPanel() {
         toast.success(tDevice("testSent"));
         return;
       }
-      toast.error(failureMessage(result.reason));
+      toast.error(tDevice(pushFailureMessageKey(result.reason)));
     } finally {
       setBusy(null);
     }
   };
 
   const savePrefs = async (patch: Partial<NotificationPreferences>) => {
-    const before = prefs;
-    setPrefs({ ...prefs, ...patch });
-    setBusy("prefs");
-    try {
-      const res = await fetch("/api/push/preferences", {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(patch),
-      });
-      if (!res.ok) {
-        setPrefs(before);
-        toast.error(t("saveFailed"));
-      }
-    } catch {
-      setPrefs(before);
-      toast.error(t("saveFailed"));
-    } finally {
-      setBusy(null);
-    }
+    if (!(await save(patch))) toast.error(t("saveFailed"));
   };
 
-  const deviceState = !pushSupported()
+  const deviceState = !device.supported
     ? tDevice("stateUnsupported")
-    : permission === "denied"
+    : device.permission === "denied"
       ? tDevice("stateDenied")
-      : subscribed
+      : device.subscribed
         ? tDevice("stateEnabled")
         : tDevice("stateOff");
 
@@ -229,17 +135,17 @@ export function NotificationsPanel() {
               <p className="text-xs text-muted-foreground">{deviceState}</p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              {busy === "device" && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
+              {device.busy && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
               <Switch
-                checked={subscribed && permission === "granted"}
+                checked={device.subscribed && device.permission === "granted"}
                 onCheckedChange={(next) => void onToggleDevice(next)}
-                disabled={busy === "device" || !pushSupported() || permission === "denied"}
+                disabled={device.busy || !device.supported || device.permission === "denied"}
                 aria-label={tDevice("toggleLabel")}
               />
             </div>
           </div>
 
-          {permission === "denied" && (
+          {device.permission === "denied" && (
             <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
               {tDevice("stateDeniedHint")}
             </p>
@@ -268,7 +174,7 @@ export function NotificationsPanel() {
             variant="outline"
             size="sm"
             onClick={() => void onSendTest()}
-            disabled={busy === "test" || !subscribed}
+            disabled={busy === "test" || !device.subscribed}
           >
             {busy === "test" ? (
               <Loader2 className="size-4 animate-spin" />
@@ -303,7 +209,7 @@ export function NotificationsPanel() {
               <Switch
                 checked={prefs[key]}
                 onCheckedChange={(next) => void savePrefs({ [key]: next })}
-                disabled={loading || busy === "prefs"}
+                disabled={loading || saving}
                 aria-label={tChannels(key)}
               />
             </div>
@@ -333,7 +239,7 @@ export function NotificationsPanel() {
               <Switch
                 checked={prefs[key]}
                 onCheckedChange={(next) => void savePrefs({ [key]: next })}
-                disabled={loading || busy === "prefs"}
+                disabled={loading || saving}
                 aria-label={tTypes(key)}
               />
             </div>

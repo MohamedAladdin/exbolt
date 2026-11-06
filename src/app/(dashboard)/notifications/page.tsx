@@ -10,6 +10,7 @@ import type { Notification } from "@/types";
 import { Bell, Bot, CheckCheck, Loader2, TriangleAlert, UserPlus } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
+import { NotificationQuickSettings } from "@/components/notifications/notification-quick-settings";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
@@ -205,6 +206,11 @@ export default function NotificationsPage() {
           {t("markAllRead")}
         </Button>
       </div>
+
+      {/* The switches live where the alerts are read: silencing a noisy type is a
+          reaction to the pile, not a trip to Settings. Everything with an
+          explanation behind it stays in Settings → الإشعارات, one click away. */}
+      <NotificationQuickSettings />
 
       {notifications.length === 0 ? (
         <div className="flex h-48 flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/40">
