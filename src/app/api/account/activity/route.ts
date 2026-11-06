@@ -23,7 +23,10 @@ import { NextResponse } from "next/server";
 
 import { toErrorResponse } from "@/lib/auth/account";
 import { requireFeature } from "@/lib/plans/guard";
-import { isActivityCategory } from "@/lib/audit/activity";
+import {
+  isActivityCategory,
+  isActivityScope,
+} from "@/lib/audit/activity";
 import {
   checkRateLimit,
   rateLimitResponse,
@@ -64,6 +67,7 @@ export async function GET(request: Request) {
         : DEFAULT_LIMIT;
 
     const category = params.get("category");
+    const scope = params.get("scope");
     const actor = params.get("actor");
     const before = Number(params.get("before") ?? 0);
     const search = (params.get("q") ?? "").replace(SEARCH_STRIP, "").trim();
@@ -77,6 +81,15 @@ export async function GET(request: Request) {
       .order("id", { ascending: false })
       .limit(pageSize + 1); // +1 row tells us whether there is another page
 
+    // Scope is the split the screen is built on: the operator log must not
+    // be flooded by inbox traffic, and the inbox widget must not show
+    // settings changes. An unknown value falls back to the whole trail.
+    if (isActivityScope(scope)) {
+      query =
+        scope === "inbox"
+          ? query.eq("category", "inbox")
+          : query.neq("category", "inbox");
+    }
     if (category && isActivityCategory(category)) {
       query = query.eq("category", category);
     }

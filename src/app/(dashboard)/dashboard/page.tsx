@@ -31,6 +31,7 @@ import { ReplyQueueCard } from '@/components/dashboard/reply-queue-card'
 import { SetupChecklist } from '@/components/dashboard/setup-checklist'
 import { TeamCard } from '@/components/dashboard/team-card'
 import { ChangesCard } from '@/components/dashboard/changes-card'
+import { InboxEventsCard } from '@/components/dashboard/inbox-events-card'
 
 const POLL_MS = 60_000
 const REALTIME_DEBOUNCE_MS = 2_000
@@ -171,8 +172,11 @@ function DashboardPageInner() {
               <CampaignsCard data={data} />
             </div>
             {/* Renders only for admin+ on a plan that includes the trail,
-                so a closed gate leaves the grid untouched. */}
+                so a closed gate leaves the grid untouched. The two cards
+                are the two sides of that trail: system changes and inbox
+                events, side by side. */}
             <ChangesCard />
+            <InboxEventsCard />
           </div>
 
           <ActivityFeed items={activity} loading={activityLoading} />

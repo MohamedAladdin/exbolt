@@ -71,6 +71,40 @@ export function isActivityCategory(value: unknown): value is ActivityCategory {
 }
 
 /**
+ * The trail carries two kinds of event and they answer different questions:
+ *
+ *   admin → who changed the system (settings, integrations, content, team…)
+ *   inbox → what happened to conversations (assignment, status changes)
+ *
+ * They are recorded in ONE table because that table is the audit trail, but
+ * they are read through two scopes: inbox events are the loudest traffic in
+ * the account and used to bury every settings change. Splitting at the read
+ * boundary keeps the single source of truth and stops the operator log from
+ * being a message stream.
+ */
+export type ActivityScope = "admin" | "inbox";
+
+export const ACTIVITY_SCOPES: readonly ActivityScope[] = ["admin", "inbox"] as const;
+
+/** Categories that belong to the operator log — everything except the inbox. */
+export const ADMIN_ACTIVITY_CATEGORIES: readonly ActivityCategory[] =
+  ACTIVITY_CATEGORIES.filter((category) => category !== "inbox");
+
+export function isActivityScope(value: unknown): value is ActivityScope {
+  return typeof value === "string" && (ACTIVITY_SCOPES as readonly string[]).includes(value);
+}
+
+/** Categories a scope is allowed to show. */
+export function scopeCategories(scope: ActivityScope): readonly ActivityCategory[] {
+  return scope === "inbox" ? ["inbox"] : ADMIN_ACTIVITY_CATEGORIES;
+}
+
+/** Client-side mirror of the SQL filter, used by widgets that filter in memory. */
+export function eventInScope(event: ActivityEvent, scope: ActivityScope): boolean {
+  return scope === "inbox" ? event.category === "inbox" : event.category !== "inbox";
+}
+
+/**
  * `settings.whatsapp_updated` → `actions.settings_whatsapp_updated`.
  *
  * Flat keys on purpose: next-intl reads dots as nesting, and the

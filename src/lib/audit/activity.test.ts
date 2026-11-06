@@ -3,11 +3,14 @@ import { describe, expect, it } from "vitest";
 import {
   actionKey,
   dayKey,
+  eventInScope,
   fieldKey,
   groupByDay,
   isActivityCategory,
+  isActivityScope,
   isDestructive,
   previewValue,
+  scopeCategories,
   valueKind,
   visibleChanges,
   type ActivityEvent,
@@ -154,5 +157,30 @@ describe("isDestructive", () => {
     expect(isDestructive("integrations.api_key_deleted")).toBe(true);
     expect(isDestructive("settings.whatsapp_disconnected")).toBe(true);
     expect(isDestructive("automations.flow_updated")).toBe(false);
+  });
+});
+
+describe("activity scopes", () => {
+  it("accepts only the two scopes the screens read", () => {
+    expect(isActivityScope("admin")).toBe(true);
+    expect(isActivityScope("inbox")).toBe(true);
+    expect(isActivityScope("all")).toBe(false);
+    expect(isActivityScope(null)).toBe(false);
+  });
+
+  it("keeps inbox events out of the admin scope", () => {
+    expect(eventInScope(event({ category: "inbox" }), "admin")).toBe(false);
+    expect(eventInScope(event({ category: "settings" }), "admin")).toBe(true);
+    expect(eventInScope(event({ category: "members" }), "admin")).toBe(true);
+  });
+
+  it("keeps admin events out of the inbox scope", () => {
+    expect(eventInScope(event({ category: "inbox" }), "inbox")).toBe(true);
+    expect(eventInScope(event({ category: "settings" }), "inbox")).toBe(false);
+  });
+
+  it("never advertises the inbox category inside the admin log", () => {
+    expect(scopeCategories("admin")).not.toContain("inbox");
+    expect(scopeCategories("inbox")).toEqual(["inbox"]);
   });
 });

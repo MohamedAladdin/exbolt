@@ -18,6 +18,7 @@
 // ============================================================
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import {
   Bot,
@@ -48,12 +49,14 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import {
-  ACTIVITY_CATEGORIES,
+  ACTIVITY_SCOPES,
   actionKey,
   fieldKey,
   groupByDay,
+  isActivityScope,
   isDestructive,
   previewValue,
+  scopeCategories,
   statusReasonKey,
   valueKind,
   valueLabelKey,
@@ -61,6 +64,7 @@ import {
   type ActivityActor,
   type ActivityCategory,
   type ActivityEvent,
+  type ActivityScope,
 } from '@/lib/audit/activity';
 
 const PAGE_SIZE = 50;
@@ -90,11 +94,43 @@ export function ActivityLog() {
   // Same reason vocabulary as the thread timeline (Inbox.messageThread.reason*).
   const tReason = useTranslations('Inbox.messageThread');
   const locale = useLocale();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
+  // The URL is the source of truth for the scope too, so the dashboard's
+  // inbox widget can deep-link straight into the inbox log and the browser's
+  // back button moves between the two records. Deriving it (rather than
+  // copying it into state) keeps the panel honest when the URL changes.
+  const scopeParam = searchParams.get('scope');
+  const scope: ActivityScope = isActivityScope(scopeParam) ? scopeParam : 'admin';
   const [category, setCategory] = useState<'all' | ActivityCategory>('all');
   const [actorId, setActorId] = useState('all');
   const [search, setSearch] = useState('');
   const [term, setTerm] = useState('');
+
+  // Category chips belong to the admin log; a chip carried into the inbox
+  // scope would filter it into an empty page, so clear it when scope moves.
+  useEffect(() => {
+    setCategory('all');
+  }, [scope]);
+
+  // Admin scope excludes the inbox; inbox scope has exactly one category,
+  // so it shows no category chips at all.
+  const categories = useMemo(() => scopeCategories(scope), [scope]);
+
+  const changeScope = useCallback(
+    (next: ActivityScope) => {
+      if (next === scope) return;
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('tab', 'activity');
+      params.set('scope', next);
+      // `push`, not `replace`: the two records are separate views, and the
+      // browser's back button should move between them before leaving the
+      // page. (The settings rail itself still uses `replace`.)
+      router.push(`/settings?${params.toString()}`, { scroll: false });
+    },
+    [router, scope, searchParams],
+  );
 
   const [events, setEvents] = useState<ActivityEvent[]>([]);
   const [actors, setActors] = useState<ActivityActor[]>([]);
@@ -116,7 +152,10 @@ export function ActivityLog() {
     async (before?: number | null) => {
       const params = new URLSearchParams();
       params.set('limit', String(PAGE_SIZE));
-      if (category !== 'all') params.set('category', category);
+      params.set('scope', scope);
+      // In the inbox scope the category is the scope itself; sending a
+      // stale admin chip would AND the two filters into an empty page.
+      if (scope === 'admin' && category !== 'all') params.set('category', category);
       if (actorId !== 'all') params.set('actor', actorId);
       if (term) params.set('q', term);
       if (before) params.set('before', String(before));
@@ -131,7 +170,7 @@ export function ActivityLog() {
         actors: ActivityActor[];
       };
     },
-    [category, actorId, term],
+    [category, actorId, term, scope],
   );
 
   useEffect(() => {
@@ -256,7 +295,7 @@ export function ActivityLog() {
     <div>
       <SettingsPanelHead
         title={t('title')}
-        description={t('description')}
+        description={t(`scopeDescriptions.${scope}`)}
         action={
           <Button
             type="button"
@@ -271,25 +310,57 @@ export function ActivityLog() {
         }
       />
 
+      {/* Scope — the operator log and the inbox stream are two records. */}
+      <div
+        role="tablist"
+        aria-label={t('scopeLabel')}
+        className="border-border bg-muted/50 mb-4 inline-flex rounded-lg border p-1"
+      >
+        {ACTIVITY_SCOPES.map((s) => {
+          const Icon = s === 'inbox' ? Inbox : Settings2;
+          const active = scope === s;
+          return (
+            <button
+              key={s}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => changeScope(s)}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+                active
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <Icon className="size-3.5" />
+              {t(`scopes.${s}`)}
+            </button>
+          );
+        })}
+      </div>
+
       {/* Filters */}
       <div className="mb-4 flex flex-col gap-3">
-        <div className="flex flex-wrap gap-1.5">
-          <FilterChip
-            active={category === 'all'}
-            onClick={() => setCategory('all')}
-          >
-            {t('allCategories')}
-          </FilterChip>
-          {ACTIVITY_CATEGORIES.map((c) => (
+        {scope === 'admin' ? (
+          <div className="flex flex-wrap gap-1.5">
             <FilterChip
-              key={c}
-              active={category === c}
-              onClick={() => setCategory(c)}
+              active={category === 'all'}
+              onClick={() => setCategory('all')}
             >
-              {t(`categories.${c}`)}
+              {t('allCategories')}
             </FilterChip>
-          ))}
-        </div>
+            {categories.map((c) => (
+              <FilterChip
+                key={c}
+                active={category === c}
+                onClick={() => setCategory(c)}
+              >
+                {t(`categories.${c}`)}
+              </FilterChip>
+            ))}
+          </div>
+        ) : null}
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <div className="relative min-w-0 flex-1">
@@ -341,9 +412,11 @@ export function ActivityLog() {
       ) : events.length === 0 ? (
         <div className="border-border bg-card flex flex-col items-center gap-2 rounded-xl border border-dashed p-10 text-center">
           <History className="text-muted-foreground/60 size-6" />
-          <p className="text-foreground text-sm font-medium">{t('empty')}</p>
+          <p className="text-foreground text-sm font-medium">
+            {t(scope === 'inbox' ? 'emptyInbox' : 'empty')}
+          </p>
           <p className="text-muted-foreground max-w-[46ch] text-xs">
-            {t('emptyHint')}
+            {t(scope === 'inbox' ? 'emptyInboxHint' : 'emptyHint')}
           </p>
         </div>
       ) : (

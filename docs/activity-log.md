@@ -36,12 +36,26 @@ cascades its trail away with it.
 
 ## Reading it
 
-* UI: `Settings → Activity log` — day-grouped timeline, category chips, actor
-  filter, debounced search, inline before → after diffs, keyset pagination.
-* API: `GET /api/account/activity?limit=&before=&category=&actor=&q=`
-  (admin+, 120 requests/min/user).
-* Dashboard: the **Change log** widget shows the newest six events, so an
-  admin who never opens settings still sees a colleague rotate a token.
+The trail holds two different records, and the UI reads them through a
+**scope** so the louder one cannot bury the other:
+
+* `admin` — settings, integrations, content, automations and team changes.
+  This is the operator log.
+* `inbox` — conversation assignments and status changes (with the
+  `from → to` state). This is the inbox stream.
+
+* UI: `Settings → Activity log` — a scope switcher over a day-grouped
+  timeline; the admin scope carries the category chips, actor filter,
+  debounced search, inline before → after diffs and keyset pagination.
+  `?scope=inbox` deep-links straight to the inbox record.
+* API: `GET /api/account/activity?scope=admin|inbox&limit=&before=&category=&actor=&q=`
+  (admin+, 120 requests/min/user). `scope` is applied in SQL
+  (`category <> 'inbox'` / `category = 'inbox'`); an unknown value reads the
+  whole trail.
+* Dashboard: **Admin activity** shows the newest six admin events and
+  **Inbox activity** sits beside it with the newest six inbox events, so an
+  admin who never opens settings sees both a colleague rotating a token and
+  the day's assignment/status traffic without one hiding the other.
 
 ## Plan gate
 

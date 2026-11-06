@@ -1,11 +1,15 @@
 'use client';
 
 // ============================================================
-// ChangesCard — dashboard widget for the account activity log.
+// ChangesCard — dashboard widget for the ADMIN side of the account
+// activity log.
 //
 // The dashboard already answers "what is happening with customers"
 // (ActivityFeed). This card answers the other question: "who changed
-// the system". It is the same data as Settings → Activity log, six
+// the system". Inbox events (assignment / status changes) live in
+// InboxEventsCard beside it — they are the loudest traffic in the
+// account and used to bury every settings change here.
+// It is the same data as Settings → Activity log (admin scope), six
 // rows deep, so an admin who never opens settings still sees a
 // colleague rotate a token or flip a role.
 //
@@ -76,7 +80,7 @@ function ChangesCardBody() {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch(`/api/account/activity?limit=${ROW_LIMIT}`, {
+      const res = await fetch(`/api/account/activity?limit=${ROW_LIMIT}&scope=admin`, {
         cache: 'no-store',
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

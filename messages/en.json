@@ -332,11 +332,20 @@
       }
     },
     "changes": {
-      "title": "Change log",
-      "description": "Who changed what",
+      "title": "Admin activity",
+      "description": "Changes to settings, integrations, content and roles",
       "open": "Open log",
       "loading": "Loading…",
       "empty": "No system changes yet.",
+      "unavailable": "The log is not available on this account yet.",
+      "unknownActor": "Unknown"
+    },
+    "inboxEvents": {
+      "title": "Inbox activity",
+      "description": "Latest assignments and conversation status changes",
+      "open": "Open log",
+      "loading": "Loading…",
+      "empty": "No inbox events yet.",
       "unavailable": "The log is not available on this account yet.",
       "unknownActor": "Unknown"
     }
@@ -2771,6 +2780,15 @@
     "activity": {
       "title": "Activity log",
       "description": "Every change to account settings, integrations, content, automations, roles and assignments — with who did it and when. Written by the database itself; nothing here can be edited or deleted.",
+      "scopeLabel": "Log type",
+      "scopes": {
+        "admin": "Admin activity",
+        "inbox": "Inbox activity"
+      },
+      "scopeDescriptions": {
+        "admin": "Every change to account settings, integrations, content, automations and roles — with who did it and when.",
+        "inbox": "Conversation assignments and status changes only — with who did it and when."
+      },
       "refresh": "Refresh",
       "allCategories": "All",
       "categories": {
@@ -2794,6 +2812,8 @@
       "loadFailed": "Could not load the activity log.",
       "empty": "Nothing logged yet",
       "emptyHint": "The first settings or role change will appear here with the name of whoever made it.",
+      "emptyInbox": "No inbox events yet",
+      "emptyInboxHint": "The first assignment or conversation status change will appear here with the name of whoever made it.",
       "moreChanges": "{count, plural, one {and # more change} other {and # more changes}}",
       "loadMore": "Load more",
       "endOfLog": "That's the start of the log.",

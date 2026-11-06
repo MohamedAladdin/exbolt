@@ -51,12 +51,22 @@ const logRows = [
 ];
 
 const orCalls: string[] = [];
+const eqCalls: [string, unknown][] = [];
+const neqCalls: [string, unknown][] = [];
 
 function builder(result: unknown) {
   const b: Record<string, unknown> = {};
-  for (const method of ['select', 'eq', 'order', 'limit', 'lt']) {
+  for (const method of ['select', 'order', 'limit', 'lt']) {
     b[method] = vi.fn(() => b);
   }
+  b.eq = vi.fn((column: string, value: unknown) => {
+    eqCalls.push([column, value]);
+    return b;
+  });
+  b.neq = vi.fn((column: string, value: unknown) => {
+    neqCalls.push([column, value]);
+    return b;
+  });
   b.or = vi.fn((value: string) => {
     orCalls.push(value);
     return b;
@@ -103,6 +113,8 @@ async function get(query = '') {
 beforeEach(() => {
   requireFeature.mockReset();
   orCalls.length = 0;
+  eqCalls.length = 0;
+  neqCalls.length = 0;
   ctx.supabase = supabaseMock();
 });
 
@@ -174,5 +186,29 @@ describe('GET /api/account/activity', () => {
     requireFeature.mockResolvedValue(ctx);
     const res = await get('?category=everything&actor=../../etc');
     expect(res.status).toBe(200);
+  });
+
+  it('scope=admin excludes the inbox from the operator log', async () => {
+    requireFeature.mockResolvedValue(ctx);
+    const res = await get('?scope=admin');
+    expect(res.status).toBe(200);
+    expect(neqCalls).toContainEqual(['category', 'inbox']);
+    expect(eqCalls).toContainEqual(['account_id', 'acct-1']);
+  });
+
+  it('scope=inbox selects only inbox events', async () => {
+    requireFeature.mockResolvedValue(ctx);
+    const res = await get('?scope=inbox');
+    expect(res.status).toBe(200);
+    expect(eqCalls).toContainEqual(['category', 'inbox']);
+    expect(neqCalls).toHaveLength(0);
+  });
+
+  it('ignores an unknown scope instead of narrowing the log', async () => {
+    requireFeature.mockResolvedValue(ctx);
+    const res = await get('?scope=everything');
+    expect(res.status).toBe(200);
+    expect(neqCalls).toHaveLength(0);
+    expect(eqCalls.filter(([column]) => column === 'category')).toHaveLength(0);
   });
 });
