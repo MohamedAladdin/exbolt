@@ -7,7 +7,6 @@ import {
   popupBody,
   popupHref,
   rememberOnce,
-  shouldShowDesktop,
   typeLabelKey,
 } from "./popup";
 
@@ -72,25 +71,6 @@ describe("popupHref", () => {
   });
 });
 
-describe("shouldShowDesktop", () => {
-  it("uses an in-page card while the tab is in front of the user", () => {
-    expect(shouldShowDesktop({ documentVisible: true, permission: "granted" })).toBe(
-      false,
-    );
-  });
-
-  it("needs a desktop notification once the tab is hidden", () => {
-    expect(shouldShowDesktop({ documentVisible: false, permission: "granted" })).toBe(
-      true,
-    );
-  });
-
-  it("stays in-page when the browser never granted permission", () => {
-    for (const permission of ["default", "denied", "unsupported"] as const) {
-      expect(shouldShowDesktop({ documentVisible: false, permission })).toBe(false);
-    }
-  });
-});
 
 describe("rememberOnce", () => {
   it("lets an id through once and swallows the realtime replay", () => {

@@ -1,155 +1,110 @@
 "use client";
 
 import { useEffect, useRef, useSyncExternalStore } from "react";
-import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
 import type { Message } from "@/types";
 import {
-  DEFAULT_NOTIFICATION_LABELS,
-  buildNotificationContent,
-  conversationHref,
-  desktopNotificationOptions,
+  clearLegacyBrowserNotifyPref,
   getNotificationPermission,
-  pickContactDisplayName,
-  readBrowserNotifyPref,
+  readLegacyBrowserNotifyPref,
   shouldNotifyForMessage,
-  subscribeBrowserNotifyPref,
   viewedConversationFromLocation,
-  type NotificationLabels,
 } from "@/lib/notifications/browser-notify";
+import { desktopAlertAllowed } from "@/lib/notifications/gate";
 import {
   playNotificationChime,
   readSoundPref,
   subscribeSoundPref,
 } from "@/lib/notifications/sound";
-
-const serverSnapshot = () => false;
-
-/**
- * The device-scoped "browser notifications" opt-in, kept in sync with
- * localStorage across this tab (settings toggle) and other tabs.
- */
-export function useBrowserNotifyPref(): boolean {
-  return useSyncExternalStore(
-    subscribeBrowserNotifyPref,
-    readBrowserNotifyPref,
-    serverSnapshot,
-  );
-}
+import { useNotificationPreferences } from "@/hooks/use-notification-preferences";
+import { usePushDevice } from "@/hooks/use-push-device";
+import {
+  currentLocale,
+  enablePush,
+  getExistingSubscription,
+  pushSupported,
+} from "@/hooks/use-push";
 
 /**
- * Device-scoped "play a sound" preference (default on). Lives beside the
- * opt-in because both describe this device's alert behaviour: turning the
- * sound off must not turn the alerts off.
+ * Device-scoped "play a sound" preference (default on).
  */
 export function useNotificationSoundPref(): boolean {
   return useSyncExternalStore(subscribeSoundPref, readSoundPref, () => true);
 }
 
 /**
- * Desktop notifications for new inbound customer messages. Mount ONCE
- * per signed-in dashboard tab (the dashboard shell does this via
- * <BrowserNotificationsListener />) so alerts fire on any page.
+ * The sound that belongs to a new inbound customer message.
  *
- * Listens for realtime INSERTs on `messages` — RLS scopes the stream to
- * the caller's account, same as useTotalUnread / useRealtime. Only
- * live events are considered: there is no initial fetch, so an existing
- * backlog never produces a burst of alerts on page load.
+ * This hook used to draw its own desktop banner with `new Notification(...)`, which
+ * meant two things: the banner ignored every switch in Settings (it obeyed a
+ * localStorage flag and the browser's permission, nothing else), and once Web Push
+ * was enabled the same message could raise two banners. The OS banner now comes
+ * from the service worker only — the single path the device switch can turn off —
+ * and this hook contributes exactly the part a push payload cannot carry: the
+ * product's own chime.
  *
- * Own channel name so it coexists with the inbox page's subscription
- * and the sidebar's unread counters.
+ * When a dashboard tab is open the worker shows the banner silently (a tab means
+ * the operator is here), so this is the only sound that rings. With no tab open the
+ * OS plays its own. Both cases are gated by the same preferences:
+ * `desktopAlertAllowed(...)` — out-of-app channel, the customer-message type, quiet
+ * hours and this device's subscription.
  *
- * Fires only while a dashboard tab is open — there is no service worker
- * or Web Push here, so a closed browser stays quiet.
+ * Mount ONCE per signed-in dashboard tab (<BrowserNotificationsListener />).
+ * Listens for realtime INSERTs on `messages`; RLS scopes the stream to the caller's
+ * account. No initial fetch: an existing backlog never rings on page load.
  */
 export function useBrowserNotifications(): void {
-  const enabled = useBrowserNotifyPref();
-  const router = useRouter();
-  const t = useTranslations("Settings.browserNotifications.labels");
+  const { prefs, loading } = useNotificationPreferences();
+  const device = usePushDevice();
+  const soundOn = useNotificationSoundPref();
 
-  // Translated labels, read inside the async Realtime callback. Kept in
-  // a ref (assigned in an effect, not during render) so a locale change
-  // doesn't tear down and re-open the channel.
-  const labelsRef = useRef<NotificationLabels>(DEFAULT_NOTIFICATION_LABELS);
-  useEffect(() => {
-    labelsRef.current = {
-      fallbackTitle: t("fallbackTitle"),
-      image: t("image"),
-      audio: t("audio"),
-      video: t("video"),
-      document: t("document"),
-      location: t("location"),
-      template: t("template"),
-    };
-  });
-
-  // Message ids already handled, for replay dedupe. Survives re-renders,
-  // pruned by shouldNotifyForMessage.
+  // Message ids already handled, for replay dedupe. Pruned by shouldNotifyForMessage.
   const seenRef = useRef<Map<string, number>>(new Map());
 
+  // Read inside the realtime callback, assigned in an effect so a re-render does not
+  // tear down and re-open the channel.
+  const stateRef = useRef({ prefs, deviceSubscribed: device.subscribed, soundOn });
   useEffect(() => {
-    if (!enabled) return;
-    if (getNotificationPermission() === "unsupported") return;
+    stateRef.current = { prefs, deviceSubscribed: device.subscribed, soundOn };
+  });
+
+  /**
+   * One-time migration: a device that had the old localStorage opt-in on gets a real
+   * push subscription instead of silently losing its alerts. The browser already
+   * holds the permission, so this subscribes without a prompt.
+   */
+  useEffect(() => {
+    if (!pushSupported()) return;
+    if (!readLegacyBrowserNotifyPref()) return;
+    if (getNotificationPermission() !== "granted") return;
+
+    let cancelled = false;
+    void (async () => {
+      const existing = await getExistingSubscription();
+      if (cancelled) return;
+      if (!existing) await enablePush(currentLocale());
+      if (cancelled) return;
+      clearLegacyBrowserNotifyPref();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    // Wait for the server's switches: the defaults are "on", and chiming before the
+    // real answer lands would ring for a tenant who turned alerts off.
+    if (loading) return;
 
     const supabase = createClient();
-    let cancelled = false;
-
-    const notify = async (msg: Message) => {
-      // One small select to put the contact's name in the title. A
-      // failure here just means the generic fallback title.
-      const { data } = await supabase
-        .from("conversations")
-        .select("contact:contacts(name, wa_username, phone)")
-        .eq("id", msg.conversation_id)
-        .maybeSingle();
-      if (cancelled) return;
-
-      const contact = (data as {
-        contact?: { name?: string | null; wa_username?: string | null; phone?: string | null } | null;
-      } | null)?.contact;
-      const { title, body } = buildNotificationContent(
-        msg,
-        pickContactDisplayName(contact),
-        labelsRef.current,
-      );
-
-      // The chime is ours, so it is audible even when the OS mutes its own
-      // notification sound (and when the constructor below throws).
-      playNotificationChime();
-
-      try {
-        const notification = new Notification(
-          title,
-          // One alert per conversation: a second message from the same
-          // customer replaces the first instead of stacking — and `renotify`
-          // makes the replacement ring again. The banner stays until it is
-          // clicked or dismissed instead of vanishing in a few seconds.
-          desktopNotificationOptions({ title, body }, msg.conversation_id),
-        );
-        notification.onclick = () => {
-          window.focus();
-          router.push(conversationHref(msg.conversation_id));
-          notification.close();
-        };
-      } catch (err) {
-        // Some browsers throw from the constructor (e.g. Android Chrome
-        // requires a service worker). Non-fatal.
-        console.error("[useBrowserNotifications] failed to show:", err);
-      }
-    };
-
     const channel = supabase
       .channel("browser-notifications")
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages" },
         (payload) => {
-          // Re-check every time: the user can revoke permission in the
-          // browser without the preference flipping.
-          if (getNotificationPermission() !== "granted") return;
           const msg = payload.new as Message;
-          const shouldNotify = shouldNotifyForMessage(msg, {
+          const eligible = shouldNotifyForMessage(msg, {
             documentVisible: document.visibilityState === "visible",
             viewingConversationId: viewedConversationFromLocation(
               window.location.pathname,
@@ -157,15 +112,28 @@ export function useBrowserNotifications(): void {
             ),
             seen: seenRef.current,
           });
-          if (!shouldNotify) return;
-          void notify(msg);
+          if (!eligible) return;
+
+          const current = stateRef.current;
+          // Re-read permission every time: the user can revoke it in the browser
+          // without any of our switches flipping.
+          const allowed = desktopAlertAllowed(
+            {
+              prefs: current.prefs,
+              permission: getNotificationPermission(),
+              deviceSubscribed: current.deviceSubscribed,
+            },
+            "customer_message",
+          );
+          if (!allowed) return;
+          if (!current.soundOn) return;
+          playNotificationChime();
         },
       )
       .subscribe();
 
     return () => {
-      cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [enabled, router]);
+  }, [loading]);
 }

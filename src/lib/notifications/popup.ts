@@ -66,19 +66,6 @@ export function popupHref(
     : "/notifications";
 }
 
-/**
- * A popup is only *visible* if something is on screen in front of the user.
- * When the tab is hidden we need a desktop notification instead of an
- * in-page card — and only when the browser has granted permission.
- */
-export function shouldShowDesktop(args: {
-  documentVisible: boolean;
-  permission: NotificationPermission | "unsupported";
-}): boolean {
-  if (args.documentVisible) return false;
-  return args.permission === "granted";
-}
-
 /** Cap on the replay-dedupe set, so a long-lived tab cannot grow forever. */
 export const SEEN_MAX = 200;
 

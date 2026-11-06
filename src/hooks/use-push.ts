@@ -190,6 +190,16 @@ export async function disablePush(): Promise<PushResult> {
     // pushing to a device the user asked us to leave alone.
   }
 
+  // Turning the switch off must also clear what is already on screen: a banner
+  // that stays after «قفلت الإشعارات» reads as the switch not working.
+  try {
+    const registration = await navigator.serviceWorker.getRegistration("/");
+    const shown = (await registration?.getNotifications()) ?? [];
+    for (const notification of shown) notification.close();
+  } catch {
+    // Best-effort: the subscription is gone, so nothing new can arrive.
+  }
+
   try {
     await fetch("/api/push/subscribe", {
       method: "DELETE",

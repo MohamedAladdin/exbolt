@@ -5,22 +5,81 @@
  * performance and debugging tax (stale chunks, opaque failures) for zero benefit.
  * Only `push` and `notificationclick` are handled.
  *
+ * This worker is the ONLY thing that raises an out-of-app alert. The dashboard used
+ * to draw its own banners with `new Notification(...)`, which meant a switch in
+ * Settings could not turn them off and a single message could produce two banners.
+ *
  * Rules that come from the product decisions, not from taste:
- *   - Never show an OS notification on a device whose dashboard tab is visible AND
- *     focused — that device already got the in-app popup.
+ *   - Never interrupt a user who is already looking at that conversation — the
+ *     thread itself is the alert. Being on a different page is not "looking at it",
+ *     so a focused tab elsewhere still gets a banner.
+ *   - An assignment/handoff/report alert is suppressed while a dashboard tab is
+ *     focused: the in-app card already fired on that device.
  *   - One conversation = one banner. A burst collapses into «N رسائل جديدة» by
  *     reusing the tag, without delaying anything.
+ *   - Every banner dismisses itself after CLOSE_AFTER_MS. A notification that sits
+ *     on screen until the user closes it by hand is the reported bug: «الإشعار
+ *     بيظهر فترة طويلة لحد ما بقفله أنا».
  *   - A click focuses an existing tab and navigates it, or opens a new one.
  *
  * Bump SW_VERSION when the behaviour changes; the page registers with
  * `updateViaCache: 'none'` so a new file is picked up on the next load.
  */
-const SW_VERSION = 'v1-2026-11-05'
+const SW_VERSION = 'v2-2026-11-06'
 
-/** Is there a dashboard window the user is actually looking at? */
-async function hasFocusedClient() {
-  const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-  return windows.some((client) => client.visibilityState === 'visible' && client.focused === true)
+/** How long a banner stays on screen before it dismisses itself. */
+const CLOSE_AFTER_MS = 10_000
+
+/** Kinds the in-app card already covers on a focused device. */
+const POPUP_KINDS = ['conversation_assigned', 'ai_handoff_unassigned', 'report_alert']
+
+async function windowClients() {
+  return self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+}
+
+function queryConversationId(payload) {
+  const tag = typeof payload.tag === 'string' ? payload.tag : ''
+  if (tag.startsWith('conv:')) return tag.slice('conv:'.length)
+  try {
+    return new URL(payload.url || '', self.location.origin).searchParams.get('c')
+  } catch {
+    return null
+  }
+}
+
+function isViewingConversation(client, conversationId) {
+  if (!conversationId) return false
+  try {
+    return new URL(client.url).searchParams.get('c') === conversationId
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Should this push become a banner?
+ *
+ * Returns false only when the device is already showing the user the thing the
+ * banner would tell them about — the open thread, or an in-app card for an alert
+ * that has one. Everything else is a real interruption and gets a banner.
+ */
+function shouldShow(payload, clients) {
+  // The explicit test button is pressed while looking at the screen; suppressing it
+  // would make the button look broken.
+  if (payload.kind === 'test') return true
+
+  const focused = clients.filter(
+    (client) => client.visibilityState === 'visible' && client.focused === true,
+  )
+  if (focused.length === 0) return true
+
+  const conversationId = queryConversationId(payload)
+  if (conversationId && focused.some((client) => isViewingConversation(client, conversationId))) {
+    return false
+  }
+
+  if (payload.kind === 'customer_message') return true
+  return !POPUP_KINDS.includes(payload.kind)
 }
 
 /** Count of already-shown notifications for this tag, so a burst reads as «N». */
@@ -44,6 +103,16 @@ function readPayload(event) {
   }
 }
 
+/** Dismiss our own banner after a limited time, never someone else's. */
+async function dismissAfterDelay(tag) {
+  await new Promise((resolve) => setTimeout(resolve, CLOSE_AFTER_MS))
+  const shown = await self.registration.getNotifications(tag ? { tag } : {})
+  for (const notification of shown) {
+    const data = notification.data || {}
+    if (data.v === SW_VERSION) notification.close()
+  }
+}
+
 self.addEventListener('install', (event) => {
   // Take over as soon as the file is parsed; there is no cached shell to wait for.
   event.waitUntil(self.skipWaiting())
@@ -59,10 +128,8 @@ self.addEventListener('push', (event) => {
 
   event.waitUntil(
     (async () => {
-      // An explicit «إرسال إشعار تجريبي» must always appear — the user is looking
-      // at the screen by definition, and suppressing it would make the button look
-      // broken. Everything else stays quiet on a focused dashboard.
-      if (payload.kind !== 'test' && (await hasFocusedClient())) return
+      const clients = await windowClients()
+      if (!shouldShow(payload, clients)) return
 
       const tag = payload.tag || undefined
       const already = await existingCount(tag)
@@ -86,10 +153,17 @@ self.addEventListener('push', (event) => {
         lang,
         data: { url: payload.url || '/notifications', kind: payload.kind || 'alert', v: SW_VERSION },
         renotify: already === 0,
+        // Never `true`: that is what pinned the banner to the screen until it was
+        // closed by hand. The worker dismisses it itself after CLOSE_AFTER_MS.
         requireInteraction: false,
         vibrate: already === 0 ? [80, 40, 80] : undefined,
-        silent: false,
+        // A dashboard tab is open somewhere, so the page plays the product's own
+        // chime (`sound.ts`) and the OS must not ring twice. With no tab open this
+        // is the only sound the user gets.
+        silent: clients.length > 0,
       })
+
+      await dismissAfterDelay(tag)
     })(),
   )
 })
@@ -100,7 +174,7 @@ self.addEventListener('notificationclick', (event) => {
 
   event.waitUntil(
     (async () => {
-      const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      const windows = await windowClients()
       for (const client of windows) {
         if ('focus' in client) {
           try {

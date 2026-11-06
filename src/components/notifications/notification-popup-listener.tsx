@@ -8,16 +8,13 @@ import { toast } from "sonner";
 
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import {
-  desktopNotificationOptions,
-  getNotificationPermission,
-} from "@/lib/notifications/browser-notify";
+import { useNotificationPreferences } from "@/hooks/use-notification-preferences";
+import { alertTypeForRow, inAppAlertAllowed } from "@/lib/notifications/gate";
 import {
   isPopupType,
   popupBody,
   popupHref,
   rememberOnce,
-  shouldShowDesktop,
   type PopupType,
 } from "@/lib/notifications/popup";
 import {
@@ -42,12 +39,16 @@ const TYPE_ICON: Record<PopupType, typeof Bell> = {
  *
  * Three surfaces, chosen by where the user actually is:
  *   - tab in front of them → a sonner card, top-right, with an action;
- *   - tab hidden + browser permission granted → a desktop notification that
- *     stays on screen (`requireInteraction`) and opens the conversation;
- *   - tab hidden, no permission → the card is queued by sonner and is there
- *     when they come back.
- * Every case plays the chime (see `sound.ts`), independently of the OS's own
- * notification sound.
+ *   - tab hidden → sonner queues the same card and it is there when they come back,
+ *     while the service worker's push banner covers the "not looking" case;
+ *   - every case rings the chime (see `sound.ts`), independently of the OS sound.
+ *
+ * The card is NOT a desktop notification any more. This listener used to raise its
+ * own `new Notification(...)` whenever the tab was hidden and the browser allowed
+ * it, which ignored every switch in Settings — an operator who turned «إسناد
+ * محادثة» off still got the banner, and once Web Push shipped the same row could
+ * produce two banners. Out-of-app alerts now come from the worker alone (one switch,
+ * one path); this component owns the in-app card and obeys `inAppAlertAllowed`.
  *
  * Mount ONCE per signed-in dashboard tab — the dashboard shell does it next
  * to <BrowserNotificationsListener />.
@@ -58,10 +59,18 @@ export function NotificationPopupListener() {
   const t = useTranslations("NotificationPopups");
   const typeLabel = useTranslations("NotificationTypes");
   const userId = user?.id ?? null;
+  const { prefs } = useNotificationPreferences();
 
   // Replay guard: realtime redelivers after a reconnect and each tab holds
   // its own listener.
   const seen = useRef<Set<string>>(new Set());
+
+  // The channel is opened once; the switches are read per event through a ref so
+  // flipping a toggle does not tear the subscription down.
+  const prefsRef = useRef(prefs);
+  useEffect(() => {
+    prefsRef.current = prefs;
+  });
 
   // Audio can only start after a gesture — retried on every gesture until
   // the context is actually running (see attachAudioUnlock).
@@ -94,37 +103,17 @@ export function NotificationPopupListener() {
       if (row.account_id !== accountId) return;
       if (!rememberOnce(seen.current, row.id)) return;
 
+      const type = alertTypeForRow(row.type);
+      if (!type) return;
+      // The same switches that gate the phone gate this card: a type switched off
+      // in Settings must not pop here, and quiet hours mean quiet here too.
+      if (!inAppAlertAllowed(prefsRef.current, type)) return;
+
       const title = typeLabel(row.type);
       const body = popupBody(row.body);
       const Icon = TYPE_ICON[row.type];
 
       playNotificationChime();
-
-      if (
-        shouldShowDesktop({
-          documentVisible: document.visibilityState === "visible",
-          permission: getNotificationPermission(),
-        })
-      ) {
-        try {
-          const desktop = new Notification(
-            title,
-            desktopNotificationOptions(
-              { title, body },
-              `exbolt-alert-${row.id}`,
-            ),
-          );
-          desktop.onclick = () => {
-            window.focus();
-            void open(row);
-            desktop.close();
-          };
-          return;
-        } catch {
-          // Android Chrome refuses the constructor outside a service worker;
-          // fall through to the in-page card instead of losing the alert.
-        }
-      }
 
       toast(title, {
         // `dir="auto"`: the stored body is one Latin sentence with the
