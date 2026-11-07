@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { __resetRateLimitForTests } from '@/lib/rate-limit'
 import type { AiConfig } from './types'
 
 // Shared, hoisted mock state so the module mocks can close over it.
@@ -172,6 +173,10 @@ function aiConfig(overrides: Partial<AiConfig> = {}): AiConfig {
 }
 
 beforeEach(() => {
+  // The dispatcher's per-account throttle is a module-level fixed window: a
+  // long file would otherwise spend acct-1's 30-request budget as it grows and
+  // fail the LAST tests with «hit the per-account rate limit».
+  __resetRateLimitForTests()
   h.state.conv = {
     assigned_agent_id: null,
     ai_autoreply_disabled: false,
@@ -361,6 +366,61 @@ describe('dispatchInboundToAiReply — handoff holding message', () => {
           u.payload?.ai_autoreply_disabled === true,
       ),
     ).toBe(true)
+  })
+})
+
+describe('dispatchInboundToAiReply — handoff marker with no words', () => {
+  it('retries once with a write-a-sentence instruction and sends that text', async () => {
+    h.loadAiConfig.mockResolvedValue(aiConfig({ handoffMessage: 'لحظة واحدة.' }))
+    h.generateReply
+      .mockResolvedValueOnce({ text: '', handoff: true })
+      .mockResolvedValueOnce({ text: 'هحوّلك لواحد من الفريق حالًا.', handoff: true })
+
+    await dispatchInboundToAiReply(ARGS)
+
+    expect(h.generateReply).toHaveBeenCalledTimes(2)
+    const retrySystemPrompt = h.generateReply.mock.calls[1][0].systemPrompt as string
+    expect(retrySystemPrompt).toContain('Never send the marker alone')
+    // The retry wrote words for THIS customer, so those words are what goes
+    // out — not the generic configured line.
+    expect(h.engineSendText).toHaveBeenCalledTimes(1)
+    expect(h.engineSendText.mock.calls[0][0].text).toBe('هحوّلك لواحد من الفريق حالًا.')
+    expect(
+      h.state.updates.some(
+        (u: { payload?: { ai_autoreply_disabled?: boolean } }) =>
+          u.payload?.ai_autoreply_disabled === true,
+      ),
+    ).toBe(true)
+  })
+
+  it('sends the retry text even when no holding line is configured', async () => {
+    h.generateReply
+      .mockResolvedValueOnce({ text: '', handoff: true })
+      .mockResolvedValueOnce({ text: 'وصلني طلبك، بدور عليه وأرد عليك.', handoff: true })
+
+    await dispatchInboundToAiReply(ARGS)
+
+    expect(h.engineSendText).toHaveBeenCalledTimes(1)
+    expect(h.engineSendText.mock.calls[0][0].text).toBe('وصلني طلبك، بدور عليه وأرد عليك.')
+  })
+
+  it('falls back to the configured line when the retry is empty too', async () => {
+    h.loadAiConfig.mockResolvedValue(aiConfig({ handoffMessage: 'استلمنا، الفريق هيرد.' }))
+    h.generateReply.mockResolvedValue({ text: '', handoff: true })
+
+    await dispatchInboundToAiReply(ARGS)
+
+    expect(h.generateReply).toHaveBeenCalledTimes(2)
+    expect(h.engineSendText).toHaveBeenCalledTimes(1)
+    expect(h.engineSendText.mock.calls[0][0].text).toBe('استلمنا، الفريق هيرد.')
+  })
+
+  it('does not retry an answer that already carries words', async () => {
+    h.generateReply.mockResolvedValue({ text: 'تحت أمرك، بحوّلك.', handoff: true })
+
+    await dispatchInboundToAiReply(ARGS)
+
+    expect(h.generateReply).toHaveBeenCalledTimes(1)
   })
 })
 

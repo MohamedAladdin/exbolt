@@ -366,6 +366,10 @@ export async function dispatchInboundToAiReply(
       generated = await generateReply(generateArgs)
     }
     let { text, handoff, usage } = generated
+    // Text the empty-answer retry produced. It is customer-facing: if the
+    // model wrote a sentence this time, that sentence is what must reach the
+    // customer — the configured holding line is only the fallback.
+    let retryText: string | null = null
 
     // A handoff must carry words. Retry once when the model sent the marker
     // alone, so «handed off» never reaches the customer as nothing at all.
@@ -380,6 +384,7 @@ export async function dispatchInboundToAiReply(
         })
         if (second.text) {
           text = second.text
+          retryText = second.text
           handoff = second.handoff
           usage = second.usage ?? usage
         }
@@ -414,6 +419,7 @@ export async function dispatchInboundToAiReply(
         config,
         replyCount: conv.ai_reply_count ?? 0,
         messages,
+        holdingText: retryText ?? undefined,
       })
       return
     }
@@ -473,6 +479,12 @@ interface HandoffArgs {
   messages: ChatMessage[]
   /** Extra sentence for the internal note — what media we could not read. */
   note?: string
+  /**
+   * Customer-facing text the model wrote after the empty-answer retry.
+   * Preferred over the configured holding line: the point of that retry is to
+   * produce real words, and dropping them would leave the thread silent again.
+   */
+  holdingText?: string
 }
 
 /**
@@ -498,6 +510,7 @@ async function handoffToHuman(args: HandoffArgs): Promise<void> {
     replyCount,
     messages,
     note,
+    holdingText,
   } = args
 
   const summary = buildHandoffSummary({ messages, replyCount, note })
@@ -537,7 +550,10 @@ async function handoffToHuman(args: HandoffArgs): Promise<void> {
     fallbackToTeam: !owner,
   })
 
-  if (config.handoffMessage) {
+  // The retry's own words win over the configured line — they answer this
+  // customer's message, where the holding line only acknowledges the handoff.
+  const customerText = holdingText?.trim() || config.handoffMessage
+  if (customerText) {
     try {
       await sendAssistantText({
         db,
@@ -546,7 +562,7 @@ async function handoffToHuman(args: HandoffArgs): Promise<void> {
         conversationId,
         contactId,
         channel,
-        text: config.handoffMessage,
+        text: customerText,
       })
     } catch (err) {
       console.error('[ai auto-reply] handoff message failed:', err)
