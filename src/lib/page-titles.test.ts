@@ -6,7 +6,9 @@ import {
   SETTINGS_TABS,
   composeDocumentTitle,
   normalizeSettingsTab,
+  normalizeTitle,
   resolvePageTitle,
+  titleMatches,
 } from "./page-titles";
 import { SETTINGS_SECTIONS } from "@/components/settings/settings-sections";
 
@@ -193,5 +195,33 @@ describe("composeDocumentTitle", () => {
     expect(composeDocumentTitle(null, ["صندوق الوارد"], "ExBolt")).toBe(
       "صندوق الوارد — ExBolt",
     );
+  });
+});
+
+describe("normalizeTitle", () => {
+  it("collapses a multi-line contact name into one line", () => {
+    expect(normalizeTitle("سبحان الله وبحمده٠٩٠\n/\n- — صندوق الوارد — Hemocure")).toBe(
+      "سبحان الله وبحمده٠٩٠ / - — صندوق الوارد — Hemocure",
+    );
+  });
+
+  it("trims the ends", () => {
+    expect(normalizeTitle("  A — B  ")).toBe("A — B");
+  });
+});
+
+describe("titleMatches", () => {
+  const desired = "سبحان الله وبحمده٠٩٠ / - — صندوق الوارد — Hemocure";
+
+  it("is idempotent: writing the normalised title satisfies the guard", () => {
+    expect(titleMatches(normalizeTitle(desired), desired)).toBe(true);
+  });
+
+  it("treats the browser's whitespace-collapsed title as equal", () => {
+    expect(titleMatches("A  —  B", "A — B")).toBe(true);
+  });
+
+  it("still reports a genuinely different title", () => {
+    expect(titleMatches("صندوق الوارد — Hemocure", desired)).toBe(false);
   });
 });

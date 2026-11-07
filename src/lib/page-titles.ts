@@ -194,3 +194,21 @@ export function composeDocumentTitle(
   const parts = head ? [head, ...labels.slice(0, 1)] : labels;
   return [...parts.filter(Boolean), brand].join(" — ");
 }
+
+/**
+ * A tab title is a single line, and the browser normalises whitespace when
+ * it stores one. An object name may not be single-line (a WhatsApp contact
+ * can be named "…\n/\n-"), so composing it verbatim produces a string that
+ * `document.title` can never equal after assignment — the writer's
+ * `document.title !== title` guard is then always true, its MutationObserver
+ * sees its own write, and the tab spins in a synchronous mutation loop until
+ * it freezes. Collapse whitespace before writing.
+ */
+export function normalizeTitle(title: string): string {
+  return title.replace(/\s+/g, " ").trim();
+}
+
+/** Does the live `document.title` already say what we want (per whitespace)? */
+export function titleMatches(current: string, desired: string): boolean {
+  return normalizeTitle(current) === normalizeTitle(desired);
+}

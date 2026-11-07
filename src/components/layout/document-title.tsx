@@ -40,7 +40,9 @@ import { useTitleTranslator } from "@/hooks/use-page-title";
 import { PRODUCT_NAME, brandName } from "@/lib/branding";
 import {
   composeDocumentTitle,
+  normalizeTitle,
   resolvePageTitle,
+  titleMatches,
 } from "@/lib/page-titles";
 
 interface TitleState {
@@ -105,21 +107,7 @@ function DocumentTitle() {
     return composeDocumentTitle(page.named ? name : null, labels, brand);
   }, [pathname, tab, name, brand, translate]);
 
-  useEffect(() => {
-    const apply = () => {
-      if (document.title !== title) document.title = title;
-    };
-    apply();
-
-    // Next re-renders `<head>`'s title element on every navigation, which
-    // resets `document.title`; put ours back. The compare in `apply` is the
-    // loop guard — writing the same string fires no further mutation.
-    const head = document.head;
-    if (!head) return;
-    const observer = new MutationObserver(apply);
-    observer.observe(head, { childList: true, subtree: true, characterData: true });
-    return () => observer.disconnect();
-  }, [title]);
+  useTitleWriter(title);
 
   return null;
 }
@@ -134,9 +122,36 @@ function DocumentTitle() {
  * re-asserting it while Next reconciles `<head>`.
  */
 export function useDocumentTitleText(title: string): void {
+  useTitleWriter(title);
+}
+
+/**
+ * The one place that writes `document.title`.
+ *
+ * Next re-renders `<head>`'s title element on every navigation, so the
+ * writer keeps a MutationObserver on `<head>` and re-asserts its value.
+ * That observer watches the very element the writer mutates, and its
+ * callback runs as a microtask — so the "is it already right?" check must
+ * be true after our own write, or the tab spins forever. The browser
+ * normalises whitespace in a stored title, so comparing raw strings is not
+ * idempotent for a name containing a newline (a WhatsApp contact named
+ * "…\n/\n-" froze the inbox tab); compare normalised, and hold a flag for
+ * the turn as a second guard.
+ */
+function useTitleWriter(title: string): void {
   useEffect(() => {
+    const desired = normalizeTitle(title);
+    let writing = false;
+
     const apply = () => {
-      if (document.title !== title) document.title = title;
+      if (writing || titleMatches(document.title, desired)) return;
+      writing = true;
+      document.title = desired;
+      // Release after the observer's own microtask has run, so our write
+      // cannot re-enter this callback.
+      window.setTimeout(() => {
+        writing = false;
+      }, 0);
     };
     apply();
 
