@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildAnthropicSystem } from './anthropic'
+import { buildAnthropicSystem, emptyContentDiagnostic } from './anthropic'
 
 describe('buildAnthropicSystem — prompt cache breakpoint', () => {
   const STABLE = 'You are the clinic assistant.\n\nBusiness context:\n- be brief'
@@ -45,5 +45,20 @@ describe('buildAnthropicSystem — prompt cache breakpoint', () => {
     }[]
     expect(system).toHaveLength(1)
     expect(system[0].cache_control).toEqual({ type: 'ephemeral' })
+  })
+})
+
+describe('emptyContentDiagnostic', () => {
+  it('names the stop reason and the block types', () => {
+    expect(
+      emptyContentDiagnostic([{ type: 'thinking' }, { type: 'thinking' }], 'max_tokens'),
+    ).toBe('stop_reason=max_tokens blocks=thinking,thinking')
+  })
+
+  it('says none when the provider sent no blocks at all', () => {
+    expect(emptyContentDiagnostic(undefined, 'end_turn')).toBe(
+      'stop_reason=end_turn blocks=none',
+    )
+    expect(emptyContentDiagnostic([], null)).toBe('stop_reason=unknown blocks=none')
   })
 })

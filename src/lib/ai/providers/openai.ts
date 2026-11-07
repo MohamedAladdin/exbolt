@@ -1,5 +1,5 @@
 import { AiError, type ProviderResult } from '../types'
-import { MAX_OUTPUT_TOKENS } from '../defaults'
+import { maxOutputTokens } from '../defaults'
 import {
   mergeConsecutive,
   normalizeUsage,
@@ -50,7 +50,7 @@ export async function generateOpenAi(args: ProviderArgs): Promise<ProviderResult
             content: toOpenAiContent(message),
           })),
         ],
-        max_completion_tokens: MAX_OUTPUT_TOKENS,
+        max_completion_tokens: maxOutputTokens(),
       }),
       signal: AbortSignal.timeout(timeoutMs),
     })

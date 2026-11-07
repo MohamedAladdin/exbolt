@@ -1,5 +1,5 @@
 import { AiError, type ChatMessage, type ProviderResult } from '../types'
-import { MAX_OUTPUT_TOKENS } from '../defaults'
+import { maxOutputTokens } from '../defaults'
 import {
   mergeConsecutive,
   normalizeUsage,
@@ -17,6 +17,8 @@ const ANTHROPIC_VERSION = '2023-06-01'
 
 interface AnthropicResponse {
   content?: { type?: string; text?: string }[]
+  /** `end_turn`, `max_tokens`, `stop_sequence`, `tool_use`, `refusal` … */
+  stop_reason?: string | null
   usage?: {
     input_tokens?: number
     output_tokens?: number
@@ -87,6 +89,22 @@ export function buildAnthropicSystem(
   return blocks
 }
 
+/**
+ * What the provider actually returned when we found no text.
+ *
+ * Without this the operator sees only «empty response» and everyone guesses:
+ * a tenant once blamed the model and the CRM link for what was a handoff
+ * sentinel with nothing around it, or a response made of non-text blocks.
+ * `stop_reason` + the block types turn that guess into a fact.
+ */
+export function emptyContentDiagnostic(
+  blocks: { type?: string }[] | undefined,
+  stopReason?: string | null,
+): string {
+  const types = (blocks ?? []).map((b) => b?.type ?? 'unknown')
+  return `stop_reason=${stopReason ?? 'unknown'} blocks=${types.length ? types.join(',') : 'none'}`
+}
+
 export async function generateAnthropic(args: ProviderArgs): Promise<ProviderResult> {
   const { apiKey, model, systemPrompt, messages, timeoutMs } = args
   const system = buildAnthropicSystem(systemPrompt, args.stablePrefixLength)
@@ -103,7 +121,7 @@ export async function generateAnthropic(args: ProviderArgs): Promise<ProviderRes
       body: JSON.stringify({
         model,
         system,
-        max_tokens: MAX_OUTPUT_TOKENS,
+        max_tokens: maxOutputTokens(),
         messages: normalizeForAnthropic(messages).map((message) => ({
           role: message.role,
           // Photos go up as base64 image blocks: a lab report or a lesion is
@@ -128,9 +146,17 @@ export async function generateAnthropic(args: ProviderArgs): Promise<ProviderRes
     .join('')
     .trim()
   if (!text) {
-    throw new AiError(t('ai.emptyResponse', { provider: 'Anthropic' }), {
-      code: 'empty_response',
-    })
+    const detail = emptyContentDiagnostic(data?.content, data?.stop_reason)
+    console.error(`[ai anthropic] no text in response model=${model} ${detail}`)
+    throw new AiError(
+      `${t('ai.emptyResponse', { provider: 'Anthropic' })} (${detail})`,
+      { code: 'empty_response' },
+    )
+  }
+  if (data?.stop_reason === 'max_tokens') {
+    console.warn(
+      `[ai anthropic] reply truncated at max_tokens=${maxOutputTokens()} model=${model}`,
+    )
   }
   // Proof that the cache breakpoint is doing something: a hit shows up as
   // cache_read_input_tokens. Zero on every call means the prefix is shorter

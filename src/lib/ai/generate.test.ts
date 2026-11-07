@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { MAX_OUTPUT_TOKENS } from './defaults'
 import { generateReply, parseGeneration } from './generate'
 import { AiError, type AiConfig } from './types'
 
@@ -235,7 +236,7 @@ describe('generateReply — OpenAI-compatible', () => {
     const [url, opts] = fetchMock.mock.calls[0]
     expect(url).toBe('https://8.8.8.8/v1/chat/completions')
     expect(opts.headers.Authorization).toBe('Bearer sk-test')
-    expect(JSON.parse(opts.body).max_tokens).toBe(1024)
+    expect(JSON.parse(opts.body).max_tokens).toBe(MAX_OUTPUT_TOKENS)
     expect(opts.redirect).toBe('manual')
   })
 

@@ -23,9 +23,25 @@ export const AI_PROVIDER_DEFAULT_MODEL: Record<AiProvider, string> = {
  */
 export const HANDOFF_SENTINEL = '[[HANDOFF]]'
 
-/** Cap on generated reply length — keeps WhatsApp replies short and
- *  bounds token spend on the caller's own key. */
-export const MAX_OUTPUT_TOKENS = 1024
+/**
+ * Cap on generated reply length — keeps WhatsApp replies short and
+ * bounds token spend on the caller's own key.
+ *
+ * 1024 was too small for the newer Sonnet/Opus models: they answer longer
+ * than Haiku, hit the cap mid-sentence and the customer sees a cut-off
+ * reply. The cap is a safety rail, not a style control (the soul already
+ * asks for short answers), so it is generous by default and overridable
+ * per deployment.
+ */
+export const MAX_OUTPUT_TOKENS = 4096
+
+/** Provider output cap. One generous cap for every model — an upper bound
+ *  costs nothing unless the model actually writes that much. */
+export function maxOutputTokens(): number {
+  const override = Number(process.env.AI_MAX_OUTPUT_TOKENS)
+  if (Number.isFinite(override) && override > 0) return Math.floor(override)
+  return MAX_OUTPUT_TOKENS
+}
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 30_000
 const DEFAULT_CONTEXT_MESSAGE_LIMIT = 20

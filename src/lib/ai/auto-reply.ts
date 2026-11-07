@@ -48,6 +48,19 @@ const AWAY_REPLY_COOLDOWN_MS = 6 * 60 * 60 * 1000
 const HANDOFF_PAUSE_MS = 10 * 60 * 1000
 
 /**
+ * Appended for ONE retry when the model answered with the handoff marker
+ * alone.
+ *
+ * The marker is stripped before sending, so a sentinel-only answer is
+ * silence on the customer's screen *and* a muted thread — the exact
+ * «الوكيل بيسكت» report. The newer models take «prefer handing off over
+ * guessing» more literally than Haiku, so the first answer can be the
+ * marker and nothing else.
+ */
+const HANDOFF_TEXT_NUDGE =
+  'Your previous answer contained no customer-visible text. Write the reply now in the customer\'s language — one or two short sentences. If you must hand off, write the holding sentence for the customer first, then the handoff marker. Never send the marker alone.'
+
+/**
  * Acknowledgements and punctuation that need no answer.
  *
  * The model used to answer these with the handoff sentinel, and a handoff
@@ -352,7 +365,28 @@ export async function dispatchInboundToAiReply(
       )
       generated = await generateReply(generateArgs)
     }
-    const { text, handoff, usage } = generated
+    let { text, handoff, usage } = generated
+
+    // A handoff must carry words. Retry once when the model sent the marker
+    // alone, so «handed off» never reaches the customer as nothing at all.
+    if (handoff && !text) {
+      console.warn(
+        `[ai auto-reply] handoff-only reply on ${conversationId} — one retry for text.`,
+      )
+      try {
+        const second = await generateReply({
+          ...generateArgs,
+          systemPrompt: `${systemPrompt}\n\n${HANDOFF_TEXT_NUDGE}`,
+        })
+        if (second.text) {
+          text = second.text
+          handoff = second.handoff
+          usage = second.usage ?? usage
+        }
+      } catch (err) {
+        console.warn('[ai auto-reply] handoff-only retry failed:', err)
+      }
+    }
 
     // Record token spend on the account's BYO key. Fire-and-forget so it
     // never adds latency to the customer-facing send: `logAiUsage`
