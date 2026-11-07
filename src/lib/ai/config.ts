@@ -25,7 +25,7 @@ interface AiConfigRow {
 }
 
 const CONFIG_COLUMNS =
-  'provider, model, base_url, api_key, system_prompt, is_active, auto_reply_enabled, auto_reply_max_per_conversation, context_message_limit, handoff_agent_ids, ai_schedule_enabled, ai_schedule_start, ai_schedule_end, ai_schedule_days, ai_schedule_timezone, outside_hours_mode, outside_hours_message, embeddings_api_key'
+  'provider, model, base_url, api_key, system_prompt, is_active, auto_reply_enabled, auto_reply_max_per_conversation, context_message_limit, handoff_agent_ids, ai_schedule_enabled, ai_schedule_start, ai_schedule_end, ai_schedule_days, ai_schedule_timezone, outside_hours_mode, outside_hours_message, handoff_message, embeddings_api_key'
 
 /**
  * Load and decrypt the account's AI config for *use* (draft or
