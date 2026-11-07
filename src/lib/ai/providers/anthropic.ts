@@ -4,6 +4,7 @@ import {
   mergeConsecutive,
   normalizeUsage,
   providerHttpError,
+  toAnthropicContent,
   toNetworkError,
   type ProviderArgs,
 } from './shared'
@@ -103,7 +104,12 @@ export async function generateAnthropic(args: ProviderArgs): Promise<ProviderRes
         model,
         system,
         max_tokens: MAX_OUTPUT_TOKENS,
-        messages: normalizeForAnthropic(messages),
+        messages: normalizeForAnthropic(messages).map((message) => ({
+          role: message.role,
+          // Photos go up as base64 image blocks: a lab report or a lesion is
+          // answered from the picture, not from the (often empty) caption.
+          content: toAnthropicContent(message),
+        })),
       }),
       signal: AbortSignal.timeout(timeoutMs),
     })

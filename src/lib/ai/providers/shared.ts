@@ -104,6 +104,9 @@ export async function providerHttpError(
  * Collapse consecutive same-role turns into one (joined with blank
  * lines). Anthropic requires strictly alternating roles; merging is
  * also harmless for OpenAI and keeps the transcript compact.
+ *
+ * Images ride along with the turn they belong to: a merged user turn keeps
+ * every image it carried, so the customer's two photos stay one turn.
  */
 export function mergeConsecutive(messages: ChatMessage[]): ChatMessage[] {
   const out: ChatMessage[] = []
@@ -111,9 +114,72 @@ export function mergeConsecutive(messages: ChatMessage[]): ChatMessage[] {
     const last = out[out.length - 1]
     if (last && last.role === m.role) {
       last.content = `${last.content}\n\n${m.content}`
+      if (m.images?.length) {
+        last.images = [...(last.images ?? []), ...m.images]
+      }
     } else {
-      out.push({ role: m.role, content: m.content })
+      out.push({
+        role: m.role,
+        content: m.content,
+        ...(m.images?.length ? { images: [...m.images] } : {}),
+      })
     }
   }
   return out
+}
+
+/** OpenAI chat-completions content: a plain string, or text + image parts. */
+export type OpenAiContentPart =
+  | { type: 'text'; text: string }
+  | { type: 'image_url'; image_url: { url: string } }
+
+export function toOpenAiContent(
+  message: ChatMessage,
+): string | OpenAiContentPart[] {
+  const images = message.images ?? []
+  if (images.length === 0) return message.content
+  return [
+    ...(message.content
+      ? [{ type: 'text', text: message.content } as const]
+      : []),
+    ...images.map(
+      (image) =>
+        ({
+          type: 'image_url',
+          image_url: {
+            url: `data:${image.mediaType};base64,${image.dataBase64}`,
+          },
+        }) as const,
+    ),
+  ]
+}
+
+/**
+ * Anthropic content blocks for one turn. Images go first: the API reads a
+ * turn better when the picture precedes the words, and a caption-only text
+ * block would otherwise sit alone next to the image.
+ */
+export type AnthropicContentBlock =
+  | { type: 'text'; text: string }
+  | {
+      type: 'image'
+      source: { type: 'base64'; media_type: string; data: string }
+    }
+
+export function toAnthropicContent(
+  message: ChatMessage,
+): string | AnthropicContentBlock[] {
+  const images = message.images ?? []
+  if (images.length === 0) return message.content
+  const blocks: AnthropicContentBlock[] = images.map((image) => ({
+    type: 'image',
+    source: {
+      type: 'base64',
+      media_type: image.mediaType,
+      data: image.dataBase64,
+    },
+  }))
+  // Anthropic rejects an empty text block, so only add one when there are words.
+  if (message.content.trim()) blocks.push({ type: 'text', text: message.content })
+  return blocks
 }

@@ -53,6 +53,22 @@ interface ChannelConfigRow {
 /** 16 MB, matching the chat-media bucket's object ceiling. */
 const MAX_MIRROR_BYTES = 16 * 1024 * 1024;
 
+/**
+ * Is this inbound something the assistant should look at?
+ *
+ * Words are obvious. An attachment with no caption still is one: the customer
+ * sent a photo or a voice note and is waiting, and the assistant reads those
+ * in `lib/ai/media.ts` (or hands the thread to a human when it cannot). A
+ * reaction or a read-receipt has neither, and stays out of the AI path.
+ */
+export function shouldDispatchAi(event: {
+  text: string | null;
+  attachments: unknown[];
+}): boolean {
+  if (event.attachments.length > 0) return true;
+  return Boolean(event.text && event.text.trim());
+}
+
 export interface ProcessMessagingResult {
   processed: number;
   skipped: number;
@@ -251,8 +267,11 @@ async function persistEvent(
   // replies run together — so a customer firing three messages at once gets
   // one answer (each dispatch sees a newer inbound and stands down), and a
   // batch never serialises N LLM round trips inside the webhook's budget.
+  // An attachment with no caption is still an inbound: the assistant reads the
+  // photo or transcribes the voice note (`lib/ai/media.ts`), and hands off when
+  // it cannot — silence is the one outcome that loses the customer.
   // `dispatchInboundToAiReply` owns its gates and never throws.
-  if (event.text && event.text.trim()) {
+  if (shouldDispatchAi(event)) {
     aiJobs.push(() =>
       dispatchInboundToAiReply({
         accountId,

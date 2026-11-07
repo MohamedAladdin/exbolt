@@ -939,12 +939,15 @@ async function processMessage(
     }).catch((err) => console.error('[automations] dispatch failed:', err))
   }
 
-  // AI auto-reply. Runs only for plain-text inbound the deterministic
-  // flow runner did NOT consume (flows win over the LLM), and only when
-  // the account has enabled it. Awaited inside `after()` (same reason as
-  // the webhook dispatch below); `dispatchInboundToAiReply` owns its
-  // eligibility gates + try/catch and never throws.
-  if (!contentConsumed && !interactiveReplyId && inboundText.trim()) {
+  // AI auto-reply. Runs only for inbound the deterministic flow runner did NOT
+  // consume (flows win over the LLM), and only when the account has enabled it.
+  // A media message with no caption has no text at all, but it is still a
+  // customer waiting for an answer — the assistant reads the photo or the voice
+  // note (see `lib/ai/media.ts`). Awaited inside `after()` (same reason as the
+  // webhook dispatch below); `dispatchInboundToAiReply` owns its eligibility
+  // gates + try/catch and never throws.
+  const hasMedia = contentType !== 'text'
+  if (!contentConsumed && !interactiveReplyId && (inboundText.trim() || hasMedia)) {
     await dispatchInboundToAiReply({
       accountId,
       conversationId: conversation.id,

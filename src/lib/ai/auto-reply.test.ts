@@ -5,6 +5,15 @@ import type { AiConfig } from './types'
 const h = vi.hoisted(() => ({
   loadAiConfig: vi.fn(),
   buildConversationContext: vi.fn(),
+  /** Media rows for the current inbound batch; empty = text-only thread. */
+  media: [] as {
+    content_type: string | null
+    media_url: string | null
+    content_text: string | null
+  }[],
+  /** What the media layer "reads" from this batch. */
+  readMediaForModel: vi.fn(),
+  audioTranscriptionTarget: vi.fn(),
   retrieveKnowledge: vi.fn(),
   generateReply: vi.fn(),
   engineSendText: vi.fn(),
@@ -26,7 +35,15 @@ const h = vi.hoisted(() => ({
 }))
 
 vi.mock('./config', () => ({ loadAiConfig: h.loadAiConfig }))
-vi.mock('./context', () => ({ buildConversationContext: h.buildConversationContext }))
+vi.mock('./context', () => ({
+  buildConversationContext: h.buildConversationContext,
+  // The dispatcher reads the media rows of the current batch through the turn
+  // builder; tests set `h.media` and share the transcript mock above.
+  buildConversationTurn: async (...args: unknown[]) => ({
+    messages: (await h.buildConversationContext(...args)) ?? [],
+    media: h.media,
+  }),
+}))
 vi.mock('./knowledge', () => ({
   // The dispatcher now asks for the pinned/variable split; keep the test
   // surface as a flat list by returning everything as `retrieved`.
@@ -36,6 +53,16 @@ vi.mock('./knowledge', () => ({
   }),
 }))
 vi.mock('./generate', () => ({ generateReply: h.generateReply }))
+vi.mock('./media', async (importOriginal) => {
+  // Keep the pure shapers real (they are what puts a transcript on the turn)
+  // and stub only the two calls that would hit the network.
+  const actual = await importOriginal<typeof import('./media')>()
+  return {
+    ...actual,
+    readMediaForModel: h.readMediaForModel,
+    audioTranscriptionTarget: h.audioTranscriptionTarget,
+  }
+})
 vi.mock('@/lib/flows/meta-send', () => ({
   engineSendText: h.engineSendText,
   loadConversationMetaCredentials: h.loadConversationMetaCredentials,
@@ -160,6 +187,9 @@ beforeEach(() => {
   h.buildConversationContext.mockResolvedValue([
     { role: 'user', content: 'عايز أحجز موعد بكرة الصبح' },
   ])
+  h.media = []
+  h.readMediaForModel.mockResolvedValue({ images: [], transcripts: [], skipped: [] })
+  h.audioTranscriptionTarget.mockReturnValue(null)
   h.retrieveKnowledge.mockResolvedValue([])
   h.generateReply.mockResolvedValue({ text: 'Hello!', handoff: false })
   h.engineSendText.mockResolvedValue({ whatsapp_message_id: 'm1' })
@@ -604,5 +634,127 @@ describe('dispatchInboundToAiReply — context window', () => {
       'conv-1',
       8,
     )
+  })
+})
+
+describe('dispatchInboundToAiReply — inbound media', () => {
+  const IMAGE_ROW = {
+    content_type: 'image',
+    media_url: 'https://cdn.test/photo.jpg',
+    content_text: null,
+  }
+
+  it('answers a photo-only message with the image attached', async () => {
+    h.loadAiConfig.mockResolvedValue(aiConfig({ provider: 'anthropic', model: 'claude-haiku-4-5-20251001' }))
+    h.buildConversationContext.mockResolvedValue([{ role: 'user', content: '[image]' }])
+    h.media = [IMAGE_ROW]
+    h.readMediaForModel.mockResolvedValue({
+      images: [{ mediaType: 'image/jpeg', dataBase64: 'AQID' }],
+      transcripts: [],
+      skipped: [],
+    })
+
+    await dispatchInboundToAiReply(ARGS)
+
+    expect(h.generateReply).toHaveBeenCalledTimes(1)
+    const sent = h.generateReply.mock.calls[0][0].messages
+    const lastUser = sent[sent.length - 1]
+    expect(lastUser.role).toBe('user')
+    expect(lastUser.images).toEqual([{ mediaType: 'image/jpeg', dataBase64: 'AQID' }])
+    expect(h.sendTypingIndicator).toHaveBeenCalled()
+  })
+
+  it('puts a voice-note transcript on the customer turn', async () => {
+    h.loadAiConfig.mockResolvedValue(aiConfig({ provider: 'openai', model: 'gpt-4o' }))
+    h.buildConversationContext.mockResolvedValue([{ role: 'user', content: '[voice message]' }])
+    h.media = [
+      { content_type: 'audio', media_url: 'https://cdn.test/v.ogg', content_text: null },
+    ]
+    h.readMediaForModel.mockResolvedValue({
+      images: [],
+      transcripts: ['عايز أحجز موعد بكرة الصبح'],
+      skipped: [],
+    })
+
+    await dispatchInboundToAiReply(ARGS)
+
+    const sent = h.generateReply.mock.calls[0][0].messages
+    expect(sent[sent.length - 1].content).toContain(
+      '[voice message transcription] عايز أحجز موعد بكرة الصبح',
+    )
+  })
+
+  it('hands a document to a human instead of going silent', async () => {
+    h.loadAiConfig.mockResolvedValue(
+      aiConfig({ handoffMessage: 'استلمنا ملف حضرتك، الفريق هيراجعه.' }),
+    )
+    h.buildConversationContext.mockResolvedValue([{ role: 'user', content: '[document]' }])
+    h.media = [
+      { content_type: 'document', media_url: 'https://cdn.test/report.pdf', content_text: null },
+    ]
+    h.readMediaForModel.mockResolvedValue({
+      images: [],
+      transcripts: [],
+      skipped: [{ type: 'document', reason: 'unsupported_type' }],
+    })
+
+    await dispatchInboundToAiReply(ARGS)
+
+    // No model call: it cannot see the file, so it must not guess.
+    expect(h.generateReply).not.toHaveBeenCalled()
+    expect(h.notifyHandoff).toHaveBeenCalledTimes(1)
+    const summary = h.notifyHandoff.mock.calls[0][1].summary as string
+    expect(summary).toContain('Customer sent a document')
+    // The customer still gets a word — a silent handoff reads as ignored.
+    expect(h.engineSendText).toHaveBeenCalledTimes(1)
+    expect(h.engineSendText.mock.calls[0][0].text).toBe(
+      'استلمنا ملف حضرتك، الفريق هيراجعه.',
+    )
+    expect(
+      h.state.updates.some(
+        (u: { payload?: { ai_autoreply_disabled?: boolean } }) =>
+          u.payload?.ai_autoreply_disabled === true,
+      ),
+    ).toBe(true)
+  })
+
+  it('hands a voice note off when the account has no speech key', async () => {
+    // Anthropic-only account: nowhere to transcribe, so silence is not an option.
+    h.loadAiConfig.mockResolvedValue(aiConfig({ provider: 'anthropic', model: 'claude-haiku-4-5-20251001' }))
+    h.buildConversationContext.mockResolvedValue([{ role: 'user', content: '[voice message]' }])
+    h.media = [
+      { content_type: 'audio', media_url: 'https://cdn.test/v.ogg', content_text: null },
+    ]
+    h.readMediaForModel.mockResolvedValue({
+      images: [],
+      transcripts: [],
+      skipped: [{ type: 'audio', reason: 'no_audio_key' }],
+    })
+
+    await dispatchInboundToAiReply(ARGS)
+
+    expect(h.generateReply).not.toHaveBeenCalled()
+    const summary = h.notifyHandoff.mock.calls[0][1].summary as string
+    expect(summary).toContain('a voice note')
+    expect(summary).toContain('no speech-to-text key')
+  })
+
+  it('still answers normally when the caption carries the question', async () => {
+    h.loadAiConfig.mockResolvedValue(aiConfig({ provider: 'openai', model: 'gpt-4o' }))
+    h.buildConversationContext.mockResolvedValue([
+      { role: 'user', content: 'التحليل ده كويس؟' },
+    ])
+    h.media = [{ ...IMAGE_ROW, content_text: 'التحليل ده كويس؟' }]
+    h.readMediaForModel.mockResolvedValue({
+      images: [{ mediaType: 'image/jpeg', dataBase64: 'AQID' }],
+      transcripts: [],
+      skipped: [],
+    })
+
+    await dispatchInboundToAiReply(ARGS)
+
+    expect(h.generateReply).toHaveBeenCalledTimes(1)
+    // Retrieval runs on the caption, not on the "[image]" marker.
+    expect(h.retrieveKnowledge.mock.calls[0].at(-1)).toBe('التحليل ده كويس؟')
   })
 })

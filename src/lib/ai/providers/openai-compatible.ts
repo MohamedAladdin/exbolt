@@ -5,6 +5,7 @@ import {
   normalizeUsage,
   providerHttpError,
   toNetworkError,
+  toOpenAiContent,
   type ProviderArgs,
 } from './shared'
 import { isDeliverableUrl } from '@/lib/webhooks/ssrf'
@@ -122,7 +123,13 @@ export async function generateOpenAiCompatible(
       },
       body: JSON.stringify({
         model,
-        messages: [{ role: 'system', content: systemPrompt }, ...mergeConsecutive(messages)],
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...mergeConsecutive(messages).map((message) => ({
+            role: message.role,
+            content: toOpenAiContent(message),
+          })),
+        ],
         max_tokens: MAX_OUTPUT_TOKENS,
       }),
       signal: AbortSignal.timeout(timeoutMs),

@@ -20,8 +20,14 @@ const MAX_QUOTE_LEN = 160
 export function buildHandoffSummary(args: {
   messages: ChatMessage[]
   replyCount: number
+  /**
+   * Why the assistant could not answer when it is not the model's judgement —
+   * e.g. a voice note on an account with no speech-to-text key. Appended to
+   * the base line so the human knows to open the attachment.
+   */
+  note?: string
 }): string {
-  const { messages, replyCount } = args
+  const { messages, replyCount, note } = args
 
   const lastCustomer = [...messages]
     .reverse()
@@ -32,7 +38,8 @@ export function buildHandoffSummary(args: {
       ? 'without replying'
       : `after ${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}`
 
-  const base = `🤖 AI agent handed off ${replies}.`
+  const extra = note?.trim() ? ` ${note.trim()}` : ''
+  const base = `🤖 AI agent handed off ${replies}.${extra}`
 
   if (!lastCustomer) return base
 

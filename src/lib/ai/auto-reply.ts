@@ -1,6 +1,6 @@
 import { supabaseAdmin } from './admin-client'
 import { loadAiConfig } from './config'
-import { buildConversationContext } from './context'
+import { buildConversationTurn } from './context'
 import { retrieveKnowledgeParts } from './knowledge'
 import { generateReply } from './generate'
 import { buildSystemPromptParts } from './defaults'
@@ -12,9 +12,15 @@ import {
   loadAiSchedule,
 } from './hours'
 import { logAiUsage } from './usage'
-import { latestUserMessage } from './query'
+import { latestUserMessage, knowledgeQuery } from './query'
 import { aiPauseState } from './pause'
-import { AiError } from './types'
+import {
+  attachReadableMedia,
+  audioTranscriptionTarget,
+  readMediaForModel,
+  type ReadableMedia,
+} from './media'
+import { AiError, type AiConfig, type ChatMessage } from './types'
 import {
   engineSendText,
   loadConversationMetaCredentials,
@@ -198,16 +204,61 @@ export async function dispatchInboundToAiReply(
       }
     }
 
-    const messages = await buildConversationContext(
+    const turn = await buildConversationTurn(
       db,
       conversationId,
       config.contextMessageLimit,
     )
+    const messages = turn.messages
     if (messages.length === 0) return
 
+    // Read whatever the customer attached in this batch: photos for a vision
+    // model, speech-to-text for voice notes. A media-only inbound used to be
+    // dropped before it ever got here (the webhook gate required text), so
+    // this is the first point where the assistant can actually answer one.
+    const readable =
+      turn.media.length > 0
+        ? await readMediaForModel(turn.media, {
+            provider: config.provider,
+            model: config.model,
+            audio: audioTranscriptionTarget(config),
+          })
+        : { images: [], transcripts: [], skipped: [] }
+
+    const understood = readable.images.length > 0 || readable.transcripts.length > 0
+
+    if (turn.media.length > 0 && !understood) {
+      // Something arrived that the assistant cannot read — a video, a PDF, a
+      // photo on a text-only model, a voice note on an Anthropic-only account.
+      // Staying silent is the one outcome that loses the customer, so hand it
+      // to a human now and say what it was.
+      console.log(
+        `[ai auto-reply] unreadable media on ${conversationId}: ${readable.skipped
+          .map((s) => `${s.type}:${s.reason}`)
+          .join(', ')}`,
+      )
+      await handoffToHuman({
+        db,
+        accountId,
+        conversationId,
+        contactId,
+        configOwnerUserId,
+        channel,
+        config,
+        replyCount: conv.ai_reply_count ?? 0,
+        messages,
+        note: describeSkippedMedia(readable),
+      })
+      return
+    }
+
+    // The customer's own words, plus any speech we transcribed, in one turn.
+    const answerable = attachReadableMedia(messages, readable)
+
     // «شكرًا» / «..» get silence — not a handoff, which would mute the thread
-    // for this customer for good.
-    if (isTrivialInbound(latestUserMessage(messages))) {
+    // for this customer for good. A photo or a voice note is never trivial:
+    // its placeholder keeps the turn substantial.
+    if (isTrivialInbound(latestUserMessage(answerable))) {
       console.log(
         `[ai auto-reply] trivial inbound on ${conversationId} — no reply, thread stays enabled.`,
       )
@@ -241,12 +292,14 @@ export async function dispatchInboundToAiReply(
       await showTypingIndicator(db, accountId, conversationId, inboundMessageId)
     }
 
-    // Ground the reply in the account's knowledge base (best-effort).
+    // Ground the reply in the account's knowledge base (best-effort). The
+    // query is the customer's words with media markers stripped: a photo of a
+    // lab report retrieves on "تحليل" from the caption, not on "[image]".
     const knowledgeParts = await retrieveKnowledgeParts(
       db,
       accountId,
       config,
-      latestUserMessage(messages),
+      knowledgeQuery(answerable) || latestUserMessage(answerable),
     )
 
     // Customer memory is OFF until it earns its place: the client's own tests
@@ -270,7 +323,7 @@ export async function dispatchInboundToAiReply(
       // providers with explicit prompt caching (Anthropic) get a breakpoint
       // there, so the instructions stop being billed at full price each turn.
       stablePrefixLength: prompt.stable.length,
-      messages,
+      messages: answerable,
     }
 
     // A provider that answers with no text (Anthropic does this under load:
@@ -305,69 +358,18 @@ export async function dispatchInboundToAiReply(
     })
 
     if (handoff || !text) {
-      // The model can't (or shouldn't) answer — stop auto-replying on
-      // this thread and hand it to a human. We (a) pause the bot here
-      // (sticky until re-enabled), (b) route the conversation to the
-      // configured handoff agent — null leaves it in the shared queue —
-      // and (c) leave a short internal note so whoever picks it up has
-      // context. Assigning fires the `on_conversation_assigned` trigger,
-      // which notifies the agent.
-      const summary = buildHandoffSummary({
-        messages,
-        replyCount: conv.ai_reply_count ?? 0,
-      })
-      await db
-        .from('conversations')
-        .update({
-          ai_autoreply_disabled: true,
-          // Bounded: if no agent takes the thread, the next inbound after
-          // this instant resumes the assistant (see `aiPauseState`).
-          ai_paused_until: new Date(Date.now() + HANDOFF_PAUSE_MS).toISOString(),
-          ai_handoff_summary: summary,
-        })
-        .eq('id', conversationId)
-      // One owner (the first target) so the inbox says who has it; the whole
-      // list is alerted. Assigning fires the `on_conversation_assigned`
-      // trigger, so the assignee must not be notified twice.
-      const targets = config.handoffAgentIds
-      const owner = targets[0] ?? null
-      if (owner) {
-        await db
-          .from('conversations')
-          .update({ assigned_agent_id: owner })
-          .eq('id', conversationId)
-          .is('assigned_agent_id', null)
-      }
-      // Empty list → the whole team (nobody owns it and nobody was told; the
-      // note lives inside the thread, so this is the only thing that reaches
-      // a human).
-      await notifyHandoff(db, {
+      // The model can't (or shouldn't) answer — hand the thread to a human.
+      await handoffToHuman({
+        db,
         accountId,
         conversationId,
         contactId,
-        summary,
-        targets: owner ? targets.slice(1) : [],
-        fallbackToTeam: !owner,
+        configOwnerUserId,
+        channel,
+        config,
+        replyCount: conv.ai_reply_count ?? 0,
+        messages,
       })
-      // From the customer's side, a handoff that sends nothing is the same as
-      // being ignored — worst on the exact message that usually triggers it
-      // (a complaint). If the account configured a holding line, send it now:
-      // the thread is already muted, so this cannot double-reply.
-      if (config.handoffMessage) {
-        try {
-          await sendAssistantText({
-            db,
-            accountId,
-            userId: configOwnerUserId,
-            conversationId,
-            contactId,
-            channel,
-            text: config.handoffMessage,
-          })
-        } catch (err) {
-          console.error('[ai auto-reply] handoff message failed:', err)
-        }
-      }
       return
     }
 
@@ -412,6 +414,128 @@ export async function dispatchInboundToAiReply(
   } catch (err) {
     console.error('[ai auto-reply] dispatch failed:', err)
   }
+}
+
+interface HandoffArgs {
+  db: ReturnType<typeof supabaseAdmin>
+  accountId: string
+  conversationId: string
+  contactId: string
+  configOwnerUserId: string
+  channel: Channel
+  config: AiConfig
+  replyCount: number
+  messages: ChatMessage[]
+  /** Extra sentence for the internal note — what media we could not read. */
+  note?: string
+}
+
+/**
+ * Hand the thread to a human, from either entry point.
+ *
+ * We (a) pause the assistant here with a bounded window, (b) route the
+ * conversation to the configured handoff agent — null leaves it in the shared
+ * queue — (c) leave a short internal note so whoever picks it up has context,
+ * and (d) send the account's holding line if it has one, because from the
+ * customer's side a silent handoff is indistinguishable from being ignored.
+ * Assigning fires the `on_conversation_assigned` trigger, which notifies the
+ * agent.
+ */
+async function handoffToHuman(args: HandoffArgs): Promise<void> {
+  const {
+    db,
+    accountId,
+    conversationId,
+    contactId,
+    configOwnerUserId,
+    channel,
+    config,
+    replyCount,
+    messages,
+    note,
+  } = args
+
+  const summary = buildHandoffSummary({ messages, replyCount, note })
+
+  await db
+    .from('conversations')
+    .update({
+      ai_autoreply_disabled: true,
+      // Bounded: if no agent takes the thread, the next inbound after this
+      // instant resumes the assistant (see `aiPauseState`).
+      ai_paused_until: new Date(Date.now() + HANDOFF_PAUSE_MS).toISOString(),
+      ai_handoff_summary: summary,
+    })
+    .eq('id', conversationId)
+
+  // One owner (the first target) so the inbox says who has it; the whole list
+  // is alerted. Assigning fires the `on_conversation_assigned` trigger, so the
+  // assignee must not be notified twice.
+  const targets = config.handoffAgentIds
+  const owner = targets[0] ?? null
+  if (owner) {
+    await db
+      .from('conversations')
+      .update({ assigned_agent_id: owner })
+      .eq('id', conversationId)
+      .is('assigned_agent_id', null)
+  }
+
+  // Empty list → the whole team (nobody owns it and nobody was told; the note
+  // lives inside the thread, so this is the only thing that reaches a human).
+  await notifyHandoff(db, {
+    accountId,
+    conversationId,
+    contactId,
+    summary,
+    targets: owner ? targets.slice(1) : [],
+    fallbackToTeam: !owner,
+  })
+
+  if (config.handoffMessage) {
+    try {
+      await sendAssistantText({
+        db,
+        accountId,
+        userId: configOwnerUserId,
+        conversationId,
+        contactId,
+        channel,
+        text: config.handoffMessage,
+      })
+    } catch (err) {
+      console.error('[ai auto-reply] handoff message failed:', err)
+    }
+  }
+}
+
+/**
+ * One sentence for the internal note naming what the assistant could not
+ * read and why — "a voice note, no speech-to-text key" tells the human to
+ * press play instead of re-reading the transcript.
+ */
+export function describeSkippedMedia(media: ReadableMedia): string {
+  if (media.skipped.length === 0) return ''
+  const types = [...new Set(media.skipped.map((s) => s.type))]
+  const reasons = [...new Set(media.skipped.map((s) => s.reason))]
+  const label: Record<string, string> = {
+    image: 'a photo',
+    audio: 'a voice note',
+    video: 'a video',
+    document: 'a document',
+    location: 'a location',
+  }
+  const what = types.map((t) => label[t] ?? `a ${t}`).join(' and ')
+  const why: Record<string, string> = {
+    unsupported_type: 'the assistant cannot read this format',
+    too_large: 'the file is too large for the model',
+    download_failed: 'the file could not be downloaded',
+    no_vision: 'the assistant model has no image reading',
+    no_audio_key: 'no speech-to-text key is configured',
+    transcription_failed: 'the transcription failed',
+    empty: 'the file was empty',
+  }
+  return `Customer sent ${what} — ${reasons.map((r) => why[r] ?? r).join('; ')}.`
 }
 
 /**

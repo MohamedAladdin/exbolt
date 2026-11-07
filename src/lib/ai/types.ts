@@ -58,6 +58,19 @@ export type OutsideHoursMode = 'always' | 'silent' | 'message'
 export interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
+  /**
+   * Images the customer sent with this turn, raw base64 (no `data:` prefix).
+   * Only ever set on a `user` turn — see `lib/ai/media.ts` for how they are
+   * fetched and capped. Adapters that support vision send them as content
+   * blocks; a turn with none behaves exactly as before.
+   */
+  images?: ChatImage[]
+}
+
+/** One image attached to a turn. */
+export interface ChatImage {
+  mediaType: string
+  dataBase64: string
 }
 
 /**

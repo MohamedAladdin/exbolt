@@ -1171,3 +1171,58 @@ describe('inbound webhook: first_inbound_message fires once', () => {
     expect(h.state.firstInboundClaims).toBe(0)
   })
 })
+
+describe('inbound webhook: media-only messages reach the assistant', () => {
+  const photoWithoutCaption = {
+    id: 'wamid.IMG.NOCAP',
+    from: '15551230000',
+    timestamp: '1700000000',
+    type: 'image',
+    image: { id: '1234567890123456', mime_type: 'image/jpeg' },
+  }
+
+  const voiceNote = {
+    id: 'wamid.AUDIO1',
+    from: '15551230000',
+    timestamp: '1700000000',
+    type: 'audio',
+    audio: { id: '1234567890123457', mime_type: 'audio/ogg; codecs=opus' },
+  }
+
+  it('dispatches a photo with no caption (it used to be dropped entirely)', async () => {
+    await runWebhook(photoWithoutCaption)
+
+    expect(h.state.upsertCalls[0].row).toMatchObject({
+      content_type: 'image',
+      content_text: null,
+    })
+    expect(h.dispatchInboundToAiReply).toHaveBeenCalledTimes(1)
+  })
+
+  it('dispatches a voice note, which carries no text at all', async () => {
+    await runWebhook(voiceNote)
+
+    expect(h.dispatchInboundToAiReply).toHaveBeenCalledTimes(1)
+  })
+
+  it('still dispatches a photo with a caption', async () => {
+    await runWebhook({
+      ...photoWithoutCaption,
+      image: { ...photoWithoutCaption.image, caption: 'شوف التحليل' },
+    })
+
+    expect(h.dispatchInboundToAiReply).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not dispatch for a reaction (no text, no media)', async () => {
+    await runWebhook({
+      id: 'wamid.REACT1',
+      from: '15551230000',
+      timestamp: '1700000000',
+      type: 'reaction',
+      reaction: { message_id: 'wamid.TEST1', emoji: '👍' },
+    })
+
+    expect(h.dispatchInboundToAiReply).not.toHaveBeenCalled()
+  })
+})

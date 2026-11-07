@@ -5,6 +5,7 @@ import {
   parseMessagingWebhook,
   type RawMessagingWebhook,
 } from "./inbound";
+import { shouldDispatchAi } from "./process-inbound";
 
 const messengerPayload: RawMessagingWebhook = {
   object: "page",
@@ -179,5 +180,25 @@ describe("contentTypeForAttachment", () => {
     expect(contentTypeForAttachment("audio")).toBe("audio");
     expect(contentTypeForAttachment("file")).toBe("document");
     expect(contentTypeForAttachment("share")).toBe("document");
+  });
+});
+
+describe('shouldDispatchAi', () => {
+  it('dispatches any message that carries words', () => {
+    expect(shouldDispatchAi({ text: 'hello', attachments: [] })).toBe(true);
+  });
+
+  it('dispatches an attachment with no caption', () => {
+    expect(shouldDispatchAi({ text: null, attachments: [{ type: 'image' }] })).toBe(
+      true,
+    );
+    expect(shouldDispatchAi({ text: '   ', attachments: [{ type: 'audio' }] })).toBe(
+      true,
+    );
+  });
+
+  it('stays out of it when there is neither text nor media', () => {
+    expect(shouldDispatchAi({ text: null, attachments: [] })).toBe(false);
+    expect(shouldDispatchAi({ text: '  ', attachments: [] })).toBe(false);
   });
 });

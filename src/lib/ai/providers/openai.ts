@@ -5,6 +5,7 @@ import {
   normalizeUsage,
   providerHttpError,
   toNetworkError,
+  toOpenAiContent,
   type ProviderArgs,
 } from './shared'
 import { getT } from '@/lib/i18n/translate'
@@ -42,7 +43,12 @@ export async function generateOpenAi(args: ProviderArgs): Promise<ProviderResult
         model,
         messages: [
           { role: 'system', content: systemPrompt },
-          ...mergeConsecutive(messages),
+          ...mergeConsecutive(messages).map((message) => ({
+            role: message.role,
+            // A photo of a lab report or a rash is answered from the picture,
+            // not from the caption: the customer's images ride with the turn.
+            content: toOpenAiContent(message),
+          })),
         ],
         max_completion_tokens: MAX_OUTPUT_TOKENS,
       }),
