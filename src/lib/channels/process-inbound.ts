@@ -37,7 +37,7 @@ import {
   type MessagingInboundEvent,
   type RawMessagingWebhook,
 } from './inbound';
-import { fetchChannelProfile } from './graph-api';
+import { fetchChannelProfile, fetchSenderNameFromMessage } from './graph-api';
 import type { MessagingChannel } from './types';
 import { dispatchInboundToAiReply } from '@/lib/ai/auto-reply';
 
@@ -67,6 +67,40 @@ export function shouldDispatchAi(event: {
 }): boolean {
   if (event.attachments.length > 0) return true;
   return Boolean(event.text && event.text.trim());
+}
+
+/**
+ * The name a channel contact is stored under.
+ *
+ * Order is deliberate: the channel's own profile, then the sender name carried
+ * by the message, then a neutral label built from the id. A customer's message
+ * text is never a name — it is not a name, and the live tenant proved it (155
+ * Messenger contacts, 12/12 sampled named after their first message).
+ */
+export function resolveContactName(args: {
+  channel: MessagingChannel;
+  senderId: string;
+  profileName?: string | null;
+  username?: string | null;
+  senderName?: string | null;
+}): string {
+  const profileName = args.profileName?.trim();
+  if (profileName) return profileName;
+  const username = args.username?.trim();
+  if (username) return `@${username}`;
+  const senderName = args.senderName?.trim();
+  if (senderName) return senderName;
+  const label = args.channel === "instagram" ? "Instagram" : "Messenger";
+  return `${label} · ${args.senderId.slice(-6)}`;
+}
+
+/** Does this stored name need a real one? Blank or the raw channel id only. */
+export function needsNameBackfill(
+  name: string | null | undefined,
+  senderId: string,
+): boolean {
+  const value = (name ?? "").trim();
+  return value === "" || value === senderId;
 }
 
 export interface ProcessMessagingResult {
@@ -206,7 +240,7 @@ async function persistEvent(
     senderId: event.senderId,
     accessToken,
     externalId: config.external_id,
-    fallbackName: event.text,
+    messageId: event.messageId,
   });
   if (!contact) return false;
 
@@ -310,20 +344,40 @@ async function findOrCreateContact(
     senderId: string;
     accessToken: string;
     externalId: string;
-    fallbackName: string | null;
+    /** Meta message id — the only handle that still resolves the sender name. */
+    messageId: string | null;
   },
 ): Promise<{ id: string } | null> {
   const { accountId, channel, senderId } = args;
 
   const { data: existing } = await db
     .from('contacts')
-    .select('id')
+    .select('id, name')
     .eq('account_id', accountId)
     .eq('channel', channel)
     .eq('channel_user_id', senderId)
     .maybeSingle();
 
-  if (existing) return existing as { id: string };
+  if (existing) {
+    // Repair a contact that never got a real name (blank, or only the raw id):
+    // one lookup on the message that just arrived, not on every inbound.
+    const current = (existing as { id: string; name: string | null }).name;
+    if (needsNameBackfill(current, senderId)) {
+      const senderName = args.messageId
+        ? await fetchSenderNameFromMessage({
+            messageId: args.messageId,
+            accessToken: args.accessToken,
+          })
+        : null;
+      if (senderName) {
+        await db
+          .from('contacts')
+          .update({ name: senderName })
+          .eq('id', (existing as { id: string }).id);
+      }
+    }
+    return existing as { id: string };
+  }
 
   // A channel user has no phone number, so `phone` stays '' — migration
   // 022's partial unique index ignores blank numbers, which is exactly
@@ -334,11 +388,22 @@ async function findOrCreateContact(
     userId: senderId,
   });
 
-  const name =
-    profile?.name ||
-    (profile?.username ? `@${profile.username}` : null) ||
-    args.fallbackName ||
-    senderId;
+  // Never the message text: that is how every Messenger contact in the live
+  // tenant ended up named «ما هي تكلفة العلاج؟» (the PSID profile lookup is
+  // blocked, so the old fallback wrote the customer's first message instead).
+  const senderName = args.messageId
+    ? await fetchSenderNameFromMessage({
+        messageId: args.messageId,
+        accessToken: args.accessToken,
+      })
+    : null;
+  const name = resolveContactName({
+    channel,
+    senderId,
+    profileName: profile?.name ?? null,
+    username: profile?.username ?? null,
+    senderName,
+  });
 
   const { data: created, error } = await db
     .from('contacts')

@@ -147,6 +147,44 @@ export interface ChannelProfile {
  * name. Never throws: this runs inside the inbound webhook, and a
  * webhook that starts failing makes Meta retry the whole batch.
  */
+/**
+ * The sender's display name, from the message itself.
+ *
+ * `GET /{psid}?fields=name` is dead for pages: on the live tenant it answers
+ * `400 GraphMethodException — missing permissions`, which is why every
+ * Messenger contact ended up named after their first message. The message
+ * node still carries it: `GET /{mid}?fields=from{id,name}` returns the
+ * sender's real name with the same Page token (verified live).
+ *
+ * Best-effort: the caller falls back to a neutral label, never to message text.
+ */
+export async function fetchSenderNameFromMessage(args: {
+  messageId: string;
+  accessToken: string;
+}): Promise<string | null> {
+  try {
+    const url = new URL(graphUrl(args.messageId));
+    url.searchParams.set('fields', 'from{id,name}');
+    url.searchParams.set('access_token', args.accessToken);
+
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { from?: { name?: string } };
+    const name = data.from?.name?.trim();
+    return name && name.length > 0 ? name : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Best-effort display name + avatar for a channel user.
+ *
+ * Meta gates profile lookups per channel, and for Messenger the PSID lookup is
+ * blocked outright (`400 GraphMethodException`), so this only serves Instagram
+ * and the rare page that still allows it. Any failure returns null and the
+ * caller falls back to `fetchSenderNameFromMessage` and then a neutral label.
+ */
 export async function fetchChannelProfile(
   channel: MessagingChannel,
   args: { externalId: string; accessToken: string; userId: string },

@@ -5,7 +5,11 @@ import {
   parseMessagingWebhook,
   type RawMessagingWebhook,
 } from "./inbound";
-import { shouldDispatchAi } from "./process-inbound";
+import {
+  needsNameBackfill,
+  resolveContactName,
+  shouldDispatchAi,
+} from "./process-inbound";
 
 const messengerPayload: RawMessagingWebhook = {
   object: "page",
@@ -200,5 +204,59 @@ describe('shouldDispatchAi', () => {
   it('stays out of it when there is neither text nor media', () => {
     expect(shouldDispatchAi({ text: null, attachments: [] })).toBe(false);
     expect(shouldDispatchAi({ text: '  ', attachments: [] })).toBe(false);
+  });
+});
+
+describe('resolveContactName', () => {
+  it('prefers the channel profile name', () => {
+    expect(
+      resolveContactName({
+        channel: 'messenger',
+        senderId: '24888220657508079',
+        profileName: 'Ahmed Fathy',
+        senderName: 'Other Name',
+      }),
+    ).toBe('Ahmed Fathy');
+  });
+
+  it('uses the @username Instagram exposes instead of a name', () => {
+    expect(
+      resolveContactName({
+        channel: 'instagram',
+        senderId: '17841400000000000',
+        username: 'ahmed.fathy',
+      }),
+    ).toBe('@ahmed.fathy');
+  });
+
+  it('falls back to the name carried by the message', () => {
+    expect(
+      resolveContactName({
+        channel: 'messenger',
+        senderId: '24888220657508079',
+        senderName: 'Ahmed Fathy',
+      }),
+    ).toBe('Ahmed Fathy');
+  });
+
+  it('never invents a name: a neutral label from the id is the last resort', () => {
+    const name = resolveContactName({
+      channel: 'messenger',
+      senderId: '24888220657508079',
+    });
+    expect(name).toBe('Messenger · 508079');
+    expect(name).not.toContain('تكلفة');
+  });
+});
+
+describe('needsNameBackfill', () => {
+  it('repairs blank names and raw ids', () => {
+    expect(needsNameBackfill(null, 'psid-1')).toBe(true);
+    expect(needsNameBackfill('   ', 'psid-1')).toBe(true);
+    expect(needsNameBackfill('psid-1', 'psid-1')).toBe(true);
+  });
+
+  it('leaves a real name alone', () => {
+    expect(needsNameBackfill('Ahmed Fathy', 'psid-1')).toBe(false);
   });
 });
