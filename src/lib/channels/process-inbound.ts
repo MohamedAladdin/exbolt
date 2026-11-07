@@ -39,6 +39,7 @@ import {
 } from './inbound';
 import { fetchChannelProfile } from './graph-api';
 import type { MessagingChannel } from './types';
+import { dispatchInboundToAiReply } from '@/lib/ai/auto-reply';
 
 interface ChannelConfigRow {
   id: string;
@@ -77,6 +78,9 @@ export async function processMessagingWebhook(
 
   let processed = 0;
   let skipped = 0;
+  // Assistant replies are collected and settled once the whole batch is
+  // stored — see the note in persistEvent.
+  const aiJobs: Array<() => Promise<void>> = [];
 
   for (const group of groups.values()) {
     const first = group[0];
@@ -116,7 +120,7 @@ export async function processMessagingWebhook(
 
     for (const event of group) {
       try {
-        const stored = await persistEvent(db, config, accessToken, event);
+        const stored = await persistEvent(db, config, accessToken, event, aiJobs);
         if (stored) processed += 1;
         else skipped += 1;
       } catch (err) {
@@ -129,6 +133,11 @@ export async function processMessagingWebhook(
       }
     }
   }
+
+  // Settle the assistant's replies before the route's `after()` closes: a
+  // detached promise is frozen there. Each job owns its try/catch, so this
+  // cannot reject.
+  await Promise.allSettled(aiJobs.map((run) => run()));
 
   return { processed, skipped };
 }
@@ -158,6 +167,7 @@ async function persistEvent(
   config: ChannelConfigRow,
   accessToken: string,
   event: MessagingInboundEvent,
+  aiJobs: Array<() => Promise<void>>,
 ): Promise<boolean> {
   const accountId = config.account_id;
 
@@ -198,15 +208,17 @@ async function persistEvent(
     ? await mirrorRemoteMedia(db, accountId, primary)
     : null;
 
-  const { error: insertError } = await db.from('messages').insert({
-    conversation_id: conversationId,
-    sender_type: 'customer',
-    content_type: primary ? contentTypeForAttachment(primary.type) : 'text',
-    content_text: event.text,
-    media_url: mediaUrl,
-    message_id: event.messageId,
-    status: 'delivered',
-  });
+  const { error: insertError } = await db
+    .from('messages')
+    .insert({
+      conversation_id: conversationId,
+      sender_type: 'customer',
+      content_type: primary ? contentTypeForAttachment(primary.type) : 'text',
+      content_text: event.text,
+      media_url: mediaUrl,
+      message_id: event.messageId,
+      status: 'delivered',
+    });
 
   if (insertError) {
     console.error('[channels] message insert failed:', insertError.message);
@@ -233,6 +245,27 @@ async function persistEvent(
     .update({ status: 'open', closed_at: null })
     .eq('id', conversationId)
     .eq('status', 'closed');
+
+  // The assistant answers Messenger / Instagram inbounds too. Queued as a
+  // thunk, not awaited: every event in the batch is stored first, then the
+  // replies run together — so a customer firing three messages at once gets
+  // one answer (each dispatch sees a newer inbound and stands down), and a
+  // batch never serialises N LLM round trips inside the webhook's budget.
+  // `dispatchInboundToAiReply` owns its gates and never throws.
+  if (event.text && event.text.trim()) {
+    aiJobs.push(() =>
+      dispatchInboundToAiReply({
+        accountId,
+        conversationId,
+        contactId: contact.id,
+        configOwnerUserId: auditUserId,
+        // Meta's own message id, compared against `messages.message_id` by
+        // the stale-reply guard exactly like a WhatsApp wamid. The typing
+        // indicator it also feeds is skipped on these channels.
+        inboundMessageId: event.messageId ?? undefined,
+      }),
+    );
+  }
 
   return true;
 }

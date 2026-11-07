@@ -13,10 +13,14 @@ import {
 } from './hours'
 import { logAiUsage } from './usage'
 import { latestUserMessage } from './query'
+import { aiPauseState } from './pause'
+import { AiError } from './types'
 import {
   engineSendText,
   loadConversationMetaCredentials,
 } from '@/lib/flows/meta-send'
+import { sendMessageToConversation } from '@/lib/whatsapp/send-message'
+import { toChannel, type Channel } from '@/lib/channels/types'
 import { sendTypingIndicator } from '@/lib/whatsapp/meta-api'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { getT } from '@/lib/i18n/translate'
@@ -25,6 +29,17 @@ const tAi = getT('AiAgent')
 
 /** At most one "we're closed" reply per thread in this window. */
 const AWAY_REPLY_COOLDOWN_MS = 6 * 60 * 60 * 1000
+
+/**
+ * How long a handoff mutes the assistant before it resumes on its own.
+ *
+ * A handoff used to disable auto-reply on the thread *permanently*: if no
+ * agent picked the thread up — the common case when the account has no
+ * handoff target configured — every later message from that customer was
+ * ignored. Thirty minutes is long enough for a human to take over and
+ * short enough that a missed handoff does not cost the conversation.
+ */
+const HANDOFF_PAUSE_MS = 30 * 60 * 1000
 
 /**
  * Acknowledgements and punctuation that need no answer.
@@ -127,13 +142,29 @@ export async function dispatchInboundToAiReply(
     const { data: conv, error: convErr } = await db
       .from('conversations')
       .select(
-        'assigned_agent_id, ai_autoreply_disabled, ai_reply_count, outside_hours_notified_at',
+        'channel, assigned_agent_id, ai_autoreply_disabled, ai_paused_until, ai_reply_count, outside_hours_notified_at',
       )
       .eq('id', conversationId)
       .maybeSingle()
     if (convErr || !conv) return
     if (conv.assigned_agent_id) return // a human owns this thread
-    if (conv.ai_autoreply_disabled) return // handed off / turned off here
+    const channel = toChannel(conv.channel)
+    // `ai_autoreply_disabled` covers two different intents: a handoff (which
+    // carries a deadline in `ai_paused_until`) and a human switching the bot
+    // off on the thread (no deadline, never auto-resumes).
+    const pause = aiPauseState(conv.ai_autoreply_disabled, conv.ai_paused_until)
+    if (pause === 'paused') return
+    if (pause === 'expired') {
+      // The handoff window ended with nobody assigned: take the thread back
+      // instead of leaving the customer unanswered for good.
+      await db
+        .from('conversations')
+        .update({ ai_autoreply_disabled: false, ai_paused_until: null })
+        .eq('id', conversationId)
+      console.log(
+        `[ai auto-reply] resuming on ${conversationId} — handoff window elapsed with no owner.`,
+      )
+    }
     // Cheap early-out; the authoritative cap check is the atomic claim
     // below (this read can race a concurrent inbound).
     if (conv.ai_reply_count >= config.autoReplyMaxPerConversation) return
@@ -159,6 +190,7 @@ export async function dispatchInboundToAiReply(
           configOwnerUserId,
           conversationId,
           contactId,
+          channel,
           text: config.outsideHoursMessage?.trim() || tAi('awayMessage'),
           lastNotifiedAt: conv.outside_hours_notified_at,
         })
@@ -204,7 +236,8 @@ export async function dispatchInboundToAiReply(
     // 25 s or when our reply lands, whichever is first, so there's
     // nothing to undo on the handoff / no-text path. Strictly
     // best-effort: a failed indicator must never cost us the reply.
-    if (inboundMessageId) {
+    // Messenger/Instagram have no typing indicator on the Send API.
+    if (inboundMessageId && channel === 'whatsapp') {
       await showTypingIndicator(db, accountId, conversationId, inboundMessageId)
     }
 
@@ -230,7 +263,7 @@ export async function dispatchInboundToAiReply(
       .filter(Boolean)
       .join('\n\n')
 
-    const { text, handoff, usage } = await generateReply({
+    const generateArgs = {
       config,
       systemPrompt,
       // Everything before the retrieved excerpts is identical on every call —
@@ -238,7 +271,24 @@ export async function dispatchInboundToAiReply(
       // there, so the instructions stop being billed at full price each turn.
       stablePrefixLength: prompt.stable.length,
       messages,
-    })
+    }
+
+    // A provider that answers with no text (Anthropic does this under load:
+    // "returned an empty response") used to end the turn with nothing said.
+    // One retry is cheap next to a customer left hanging; only after it fails
+    // do we treat the turn as unanswerable.
+    let generated
+    try {
+      generated = await generateReply(generateArgs)
+    } catch (err) {
+      if (!isRetryableAiError(err)) throw err
+      console.warn(
+        '[ai auto-reply] provider returned no usable text — retrying once:',
+        err instanceof Error ? err.message : err,
+      )
+      generated = await generateReply(generateArgs)
+    }
+    const { text, handoff, usage } = generated
 
     // Record token spend on the account's BYO key. Fire-and-forget so it
     // never adds latency to the customer-facing send: `logAiUsage`
@@ -268,7 +318,13 @@ export async function dispatchInboundToAiReply(
       })
       await db
         .from('conversations')
-        .update({ ai_autoreply_disabled: true, ai_handoff_summary: summary })
+        .update({
+          ai_autoreply_disabled: true,
+          // Bounded: if no agent takes the thread, the next inbound after
+          // this instant resumes the assistant (see `aiPauseState`).
+          ai_paused_until: new Date(Date.now() + HANDOFF_PAUSE_MS).toISOString(),
+          ai_handoff_summary: summary,
+        })
         .eq('id', conversationId)
       // One owner (the first target) so the inbox says who has it; the whole
       // list is alerted. Assigning fires the `on_conversation_assigned`
@@ -299,13 +355,14 @@ export async function dispatchInboundToAiReply(
       // the thread is already muted, so this cannot double-reply.
       if (config.handoffMessage) {
         try {
-          await engineSendText({
+          await sendAssistantText({
+            db,
             accountId,
             userId: configOwnerUserId,
             conversationId,
             contactId,
+            channel,
             text: config.handoffMessage,
-            aiGenerated: true,
           })
         } catch (err) {
           console.error('[ai auto-reply] handoff message failed:', err)
@@ -343,17 +400,78 @@ export async function dispatchInboundToAiReply(
     }
     if (claimed !== true) return
 
-    await engineSendText({
+    await sendAssistantText({
+      db,
       accountId,
       userId: configOwnerUserId,
       conversationId,
       contactId,
+      channel,
       text,
-      aiGenerated: true,
     })
   } catch (err) {
     console.error('[ai auto-reply] dispatch failed:', err)
   }
+}
+
+/**
+ * One outbound path for the assistant, whatever the thread's channel.
+ *
+ * WhatsApp goes through the flow runner's sender (signature, phone
+ * variants, its own 24h-window handling). Messenger/Instagram threads go
+ * through the channel-aware sender the inbox uses, with `aiGenerated` so
+ * the persisted row is attributed to the assistant and not to the config
+ * owner — the same rule as `signOutgoingText`'s `{ kind: 'ai' }`.
+ */
+async function sendAssistantText(args: {
+  db: ReturnType<typeof supabaseAdmin>
+  accountId: string
+  userId: string
+  conversationId: string
+  contactId: string
+  channel: Channel
+  text: string
+}): Promise<void> {
+  if (args.channel === 'whatsapp') {
+    await engineSendText({
+      accountId: args.accountId,
+      userId: args.userId,
+      conversationId: args.conversationId,
+      contactId: args.contactId,
+      text: args.text,
+      aiGenerated: true,
+    })
+    return
+  }
+
+  await sendMessageToConversation(
+    args.db,
+    args.accountId,
+    {
+      conversationId: args.conversationId,
+      messageType: 'text',
+      contentText: args.text,
+      senderId: args.userId,
+    },
+    { aiGenerated: true },
+  )
+}
+
+/**
+ * Worth one more provider call: a rate limit, a provider-side 5xx (which is
+ * how Anthropic's empty content block surfaces) or a timeout. A 400-class
+ * error is a configuration problem and retrying it only doubles the wait.
+ */
+function isRetryableAiError(err: unknown): boolean {
+  if (!(err instanceof AiError)) return false
+  const message = err.message.toLowerCase()
+  return (
+    err.status === 429 ||
+    err.status >= 500 ||
+    message.includes('empty response') ||
+    message.includes('overloaded') ||
+    message.includes('timed out')
+  )
 }
 
 async function hasNewerInbound(
@@ -388,6 +506,7 @@ async function sendOutsideHoursReply(args: {
   configOwnerUserId: string
   conversationId: string
   contactId: string
+  channel: Channel
   text: string
   lastNotifiedAt: string | null | undefined
 }): Promise<void> {
@@ -402,13 +521,14 @@ async function sendOutsideHoursReply(args: {
   }
 
   try {
-    await engineSendText({
+    await sendAssistantText({
+      db: args.db,
       accountId: args.accountId,
       userId: args.configOwnerUserId,
       conversationId: args.conversationId,
       contactId: args.contactId,
+      channel: args.channel,
       text: args.text,
-      aiGenerated: true,
     })
     await args.db
       .from('conversations')

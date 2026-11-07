@@ -109,6 +109,12 @@ export interface SendMessageResult {
 
 export interface SendMessageOptions {
   /**
+   * The assistant authored this message. The persisted row is attributed to
+   * the bot (never to a teammate) and the signature uses the agent's own
+   * name — the same attribution the AI send paths use on WhatsApp.
+   */
+  aiGenerated?: boolean;
+  /**
    * Reuse an existing row instead of inserting a new one. Used by the
    * inbox "edit" action on a message that FAILED: nothing was delivered,
    * so the corrected text replaces the old row in place — no duplicate
@@ -256,6 +262,7 @@ export async function sendMessageToConversation(
     messageType,
     text: rawContentText,
     senderId,
+    sender: options.aiGenerated ? { kind: 'ai' } : undefined,
   });
 
 
@@ -296,6 +303,7 @@ export async function sendMessageToConversation(
       filename,
       replyToMessageId,
       senderId,
+      aiGenerated: options.aiGenerated ?? false,
     });
   }
 
@@ -667,6 +675,8 @@ interface MessagingSendArgs {
   filename?: string | null;
   replyToMessageId?: string | null;
   senderId?: string | null;
+  /** True when the assistant, not a teammate, wrote this text. */
+  aiGenerated?: boolean;
 }
 
 async function sendOnMessagingChannel(
@@ -684,6 +694,7 @@ async function sendOnMessagingChannel(
     mediaUrl,
     replyToMessageId,
     senderId,
+    aiGenerated,
   } = args;
 
   if (messageType === 'template' || messageType === 'interactive') {
@@ -770,8 +781,9 @@ async function sendOnMessagingChannel(
     .from('messages')
     .insert({
       conversation_id: conversationId,
-      sender_type: 'agent',
+      sender_type: aiGenerated ? 'bot' : 'agent',
       sender_id: senderId ?? null,
+      ai_generated: aiGenerated ?? false,
       content_type: messageType,
       content_text: contentText ?? null,
       media_url: mediaUrl || null,
