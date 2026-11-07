@@ -36,10 +36,10 @@ const AWAY_REPLY_COOLDOWN_MS = 6 * 60 * 60 * 1000
  * A handoff used to disable auto-reply on the thread *permanently*: if no
  * agent picked the thread up — the common case when the account has no
  * handoff target configured — every later message from that customer was
- * ignored. Thirty minutes is long enough for a human to take over and
+ * ignored. Ten minutes is long enough for a human to take over and
  * short enough that a missed handoff does not cost the conversation.
  */
-const HANDOFF_PAUSE_MS = 30 * 60 * 1000
+const HANDOFF_PAUSE_MS = 10 * 60 * 1000
 
 /**
  * Acknowledgements and punctuation that need no answer.
