@@ -228,6 +228,17 @@ export async function dispatchInboundToAiReply(
     const understood = readable.images.length > 0 || readable.transcripts.length > 0
 
     if (turn.media.length > 0 && !understood) {
+      // One reply per batch: a newer inbound in the same burst owns the reply
+      // (its own dispatch will answer or hand off). Without this guard three
+      // unreadable attachments in one batch sent three identical holding lines
+      // — the holding line is a reply like any other, so it obeys the same
+      // `hasNewerInbound` rule the normal answer path does.
+      if (
+        inboundMessageId &&
+        (await hasNewerInbound(db, conversationId, inboundMessageId))
+      ) {
+        return
+      }
       // Something arrived that the assistant cannot read — a video, a PDF, a
       // photo on a text-only model, a voice note on an Anthropic-only account.
       // Staying silent is the one outcome that loses the customer, so hand it

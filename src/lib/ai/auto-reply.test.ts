@@ -718,6 +718,32 @@ describe('dispatchInboundToAiReply — inbound media', () => {
     ).toBe(true)
   })
 
+  it('sends ONE holding line per batch — a superseded unreadable attachment stays quiet', async () => {
+    // Three attachments in one burst = three dispatches in parallel. The
+    // holding line is a reply like any other, so only the batch's newest
+    // inbound may send it; the rest bow out before the handoff.
+    h.state.latestInbound = [{ message_id: 'wamid.inbound-3' }]
+    h.media = [
+      { content_type: 'document', media_url: 'https://cdn.test/report.pdf', content_text: null },
+    ]
+    h.readMediaForModel.mockResolvedValue({
+      images: [],
+      transcripts: [],
+      skipped: [{ type: 'document', reason: 'unsupported_type' }],
+    })
+
+    await dispatchInboundToAiReply(ARGS)
+
+    expect(h.notifyHandoff).not.toHaveBeenCalled()
+    expect(h.engineSendText).not.toHaveBeenCalled()
+    expect(
+      h.state.updates.some(
+        (u: { payload?: { ai_autoreply_disabled?: boolean } }) =>
+          u.payload?.ai_autoreply_disabled === true,
+      ),
+    ).toBe(false)
+  })
+
   it('hands a voice note off when the account has no speech key', async () => {
     // Anthropic-only account: nowhere to transcribe, so silence is not an option.
     h.loadAiConfig.mockResolvedValue(aiConfig({ provider: 'anthropic', model: 'claude-haiku-4-5-20251001' }))
